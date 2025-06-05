@@ -1,82 +1,33 @@
 {
   "expo": {
-    "name": "bolt-expo-nativewind",
-    "slug": "bolt-expo-nativewind",
+    "name": "dote-app",
+    "slug": "dote-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "plugins": [
-      "expo-router",
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location.",
-          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location while using the app.",
-          "isIosBackgroundLocationEnabled": true,
-          "isAndroidBackgroundLocationEnabled": true
-        }
-      ],
-      [
-        "expo-image-picker",
-        {
-          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos",
-          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera"
-        }
-      ]
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.yourcompany.doteapp",
-      "infoPlist": {
-        "UIBackgroundModes": [
-          "location",
-          "fetch"
-        ],
-        "NSLocationWhenInUseUsageDescription": "We need your location to track your walks and mark territories",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "We need your location to track your walks in the background",
-        "NSLocationAlwaysUsageDescription": "We need your location to track your walks in the background"
-      }
+      "bundleIdentifier": "com.yourcompany.doteapp"
     },
     "android": {
-      "package": "com.yourcompany.doteapp",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
+        "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION",
-        "ACCESS_BACKGROUND_LOCATION",
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE"
-      ]
-    }
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true,
-      "config": {
-        "googleMapsApiKey": "AIzaSyAd4aZH-kmHD2__AY-VJj3Q-s_h2MUx-mU"
-      }
-    },
-    "android": {
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyAd4aZH-kmHD2__AY-VJj3Q-s_h2MUx-mU"
-        }
-      }
+      "package": "com.yourcompany.doteapp"
     },
     "plugins": [
-      "expo-router",
-      "expo-font",
-      [
-        "expo-location",
-        {
-          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
-        }
-      ]
+      "expo-router"
     ],
     "experiments": {
       "typedRoutes": true

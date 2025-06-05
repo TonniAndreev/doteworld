@@ -1,19 +1,20 @@
-import { useEffect } from 'react';
-import { Redirect } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
+import { View, Text, StyleSheet } from 'react-native';
 
 export default function Index() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  // During initial loading, don't redirect
-  if (isLoading) {
-    return null;
-  }
-
-  // Redirect based on authentication status
-  if (isAuthenticated) {
-    return <Redirect href="/(tabs)" />;
-  } else {
-    return <Redirect href="/(auth)/login" />;
-  }
+  return (
+    <View style={styles.container}>
+      <Text style={styles.text}>Welcome to Expo!</Text>
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  text: {
+    fontSize: 20,
+  },
+});
