@@ -2,8 +2,8 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { Platform } from 'react-native';
-import app from '@/services/firebase';
+import { Platform, NativeModules, NativeEventEmitter } from 'react-native';
+import { app, auth } from '@/services/firebase';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-fonts/inter';
 import { SplashScreen } from 'expo-router';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -13,7 +13,19 @@ import { TerritoryProvider } from '@/contexts/TerritoryContext';
 
 // Initialize Firebase on iOS
 if (Platform.OS === 'ios') {
-  app;
+  useEffect(() => {
+    const configureFirebase = async () => {
+      try {
+        if (!app.apps.length) {
+          app.initializeApp();
+        }
+      } catch (error) {
+        console.error('Error initializing Firebase on iOS:', error);
+      }
+    };
+    
+    configureFirebase();
+  }, []);
 }
 
 // Prevent splash screen from auto-hiding
