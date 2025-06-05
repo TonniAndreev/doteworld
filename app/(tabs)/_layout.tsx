@@ -1,17 +1,18 @@
 import { Tabs } from 'expo-router';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   MapPin, 
   Trophy, 
-  User, 
   Award, 
   Users
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   
   return (
     <Tabs
@@ -69,8 +70,21 @@ export default function TabLayout() {
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <User size={size} color={color} />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={[styles.avatarContainer, focused && styles.avatarContainerActive]}>
+              {user?.photoURL ? (
+                <Image 
+                  source={{ uri: user.photoURL }} 
+                  style={styles.avatar} 
+                />
+              ) : (
+                <View style={[styles.avatarPlaceholder, focused && styles.avatarPlaceholderActive]}>
+                  <Text style={[styles.avatarText, focused && styles.avatarTextActive]}>
+                    {user?.displayName?.charAt(0) || 'U'}
+                  </Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />
@@ -95,5 +109,37 @@ const styles = StyleSheet.create({
   tabBarLabel: {
     fontSize: 12,
     fontFamily: 'SF-Pro-Display-Medium',
+  },
+  avatarContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  avatarContainerActive: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: COLORS.neutralLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarPlaceholderActive: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  avatarText: {
+    fontFamily: 'SF-Pro-Display-Bold',
+    fontSize: 12,
+    color: COLORS.neutralDark,
+  },
+  avatarTextActive: {
+    color: COLORS.primary,
   },
 });
