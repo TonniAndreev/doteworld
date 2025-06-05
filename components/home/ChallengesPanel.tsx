@@ -1,13 +1,14 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { Award, ChevronRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import { PanGestureHandler } from 'react-native-gesture-handler';
 
 type ChallengePanelProps = {
   walkDistance: number;
+  onClose: () => void;
 };
 
-export default function ChallengesPanel({ walkDistance }: ChallengePanelProps) {
-  // Mock challenges data - in a real app this would come from a backend
+export default function ChallengesPanel({ walkDistance, onClose }: ChallengePanelProps) {
   const challenges = [
     {
       id: '1',
@@ -38,66 +39,100 @@ export default function ChallengesPanel({ walkDistance }: ChallengePanelProps) {
     },
   ];
 
+  const handleGesture = (event) => {
+    const { translationY } = event.nativeEvent;
+    if (translationY > 50) {
+      onClose();
+    }
+  };
+
+  const activeChallenges = challenges.filter(challenge => 
+    challenge.progress < challenge.target
+  ).length;
+
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.titleContainer}>
-          <Award size={24} color={COLORS.primary} />
-          <Text style={styles.title}>Active Challenges</Text>
+    <PanGestureHandler onGestureEvent={handleGesture}>
+      <View style={styles.container}>
+        <View style={styles.dragHandle}>
+          <View style={styles.dragIndicator} />
         </View>
-        <TouchableOpacity style={styles.viewAllButton}>
-          <Text style={styles.viewAllText}>View All</Text>
-          <ChevronRight size={16} color={COLORS.primary} />
-        </TouchableOpacity>
-      </View>
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.challengesContainer}
-      >
-        {challenges.map((challenge) => (
-          <TouchableOpacity key={challenge.id} style={styles.challengeCard}>
-            <View style={styles.challengeHeader}>
-              <Text style={styles.challengeTitle}>{challenge.title}</Text>
-              <Text style={styles.rewardText}>{challenge.reward} Paws</Text>
-            </View>
-
-            <Text style={styles.challengeDescription}>{challenge.description}</Text>
-
-            <View style={styles.progressContainer}>
-              <View style={styles.progressBarContainer}>
-                <View 
-                  style={[
-                    styles.progressBar,
-                    { width: `${Math.min(100, (challenge.progress / challenge.target) * 100)}%` }
-                  ]} 
-                />
-              </View>
-              <Text style={styles.progressText}>
-                {challenge.progress}/{challenge.target}
-              </Text>
-            </View>
-
-            <View style={styles.timeContainer}>
-              <Text style={styles.timeText}>{challenge.timeLeft} left</Text>
-            </View>
+        <View style={styles.header}>
+          <View style={styles.titleContainer}>
+            <Award size={24} color={COLORS.primary} />
+            <Text style={styles.title}>
+              {activeChallenges} Active Challenge{activeChallenges !== 1 ? 's' : ''}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.viewAllButton}>
+            <Text style={styles.viewAllText}>View All</Text>
+            <ChevronRight size={16} color={COLORS.primary} />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
-    </View>
+        </View>
+
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.challengesContainer}
+        >
+          {challenges.map((challenge) => (
+            <TouchableOpacity key={challenge.id} style={styles.challengeCard}>
+              <View style={styles.challengeHeader}>
+                <Text style={styles.challengeTitle}>{challenge.title}</Text>
+                <Text style={styles.rewardText}>{challenge.reward} Paws</Text>
+              </View>
+
+              <Text style={styles.challengeDescription}>{challenge.description}</Text>
+
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBarContainer}>
+                  <View 
+                    style={[
+                      styles.progressBar,
+                      { width: `${Math.min(100, (challenge.progress / challenge.target) * 100)}%` }
+                    ]} 
+                  />
+                </View>
+                <Text style={styles.progressText}>
+                  {challenge.progress}/{challenge.target}
+                </Text>
+              </View>
+
+              <View style={styles.timeContainer}>
+                <Text style={styles.timeText}>{challenge.timeLeft} left</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+    </PanGestureHandler>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 24,
+  },
+  dragHandle: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  dragIndicator: {
+    width: 40,
+    height: 4,
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 2,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -120,7 +155,8 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   challengesContainer: {
-    paddingRight: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   challengeCard: {
     backgroundColor: COLORS.white,
