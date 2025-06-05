@@ -1,39 +1,24 @@
-// Mock Firebase service for demo purposes
-// In a real app, this would be replaced with actual Firebase configuration
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
-export const auth = {
-  onAuthStateChanged: (callback) => {
-    // Mock implementation
-    return () => {};
-  },
-  signInWithEmailAndPassword: async (email, password) => {
-    // Mock implementation
-    return Promise.resolve();
-  },
-  signOut: async () => {
-    // Mock implementation
-    return Promise.resolve();
-  },
+const firebaseConfig = {
+  apiKey: "AIzaSyDKflE0HU9fcR5u21MmCnruDg6YvNlrl58",
+  authDomain: "dote-world.firebaseapp.com",
+  projectId: "dote-world",
+  storageBucket: "dote-world.firebasestorage.app",
+  messagingSenderId: "640161399442",
+  appId: "1:640161399442:android:c86ade579ed3a7eb8a1c4b"
 };
 
-export const firestore = {
-  collection: (name) => ({
-    doc: (id) => ({
-      get: async () => ({
-        exists: true,
-        data: () => ({}),
-      }),
-      update: async (data) => {},
-      set: async (data) => {},
-    }),
-  }),
-};
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
 
-export const storage = {
-  ref: () => ({
-    child: (path) => ({
-      put: async (file) => {},
-      getDownloadURL: async () => 'https://example.com/image.jpg',
-    }),
-  }),
-};
+// Initialize Firebase services
+export const auth = getAuth(app);
+export const firestore = getFirestore(app);
+export const storage = getStorage(app);
+
+// Export the app instance as well
+export default app;

@@ -1,6 +1,20 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, firestore } from '@/services/firebase';
+import { 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile
+} from 'firebase/auth';
+import { 
+  doc, 
+  setDoc, 
+  getDoc,
+  updateDoc 
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, firestore, storage } from '@/services/firebase';
 
 const AuthContext = createContext();
 
@@ -9,115 +23,133 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        setIsLoading(true);
-        const savedUser = await AsyncStorage.getItem('doteUser');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
-        }
-      } catch (error) {
-        console.error('Error loading user:', error);
-      } finally {
-        setIsLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // Get additional user data from Firestore
+        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        const userData = userDoc.data();
+        
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          ...userData
+        });
+      } else {
+        setUser(null);
       }
-    };
+      setIsLoading(false);
+    });
 
-    loadUser();
+    return unsubscribe;
   }, []);
 
   const login = async (email, password) => {
-    if (email === 'demo@example.com' && password === 'password') {
-      const mockUser = {
-        uid: '123456',
-        email: email,
-        displayName: 'Demo User',
-        photoURL: null,
-        dogName: 'Buddy',
-        dogBreed: 'Golden Retriever',
-        achievementCount: 15,
-        friends: [
-          { id: '1', name: 'John Walker', dogName: 'Rex' },
-          { id: '2', name: 'Sarah Miller', dogName: 'Luna' },
-        ],
+    try {
+      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
+      const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+      const userData = userDoc.data();
+      
+      const fullUserData = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        ...userData
       };
       
-      setUser(mockUser);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(mockUser));
-      return mockUser;
-    } else {
-      throw new Error('Invalid email or password');
+      setUser(fullUserData);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+      return fullUserData;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
   };
 
-  const loginWithGoogle = async () => {
-    const mockUser = {
-      uid: '123456',
-      email: 'demo@gmail.com',
-      displayName: 'Demo Google',
-      photoURL: 'https://i.pravatar.cc/300?u=demo',
-      dogName: 'Max',
-      dogBreed: 'Labrador Retriever',
-      achievementCount: 8,
-      friends: [
-        { id: '1', name: 'John Walker', dogName: 'Rex' },
-      ],
-    };
-    
-    setUser(mockUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(mockUser));
-    return mockUser;
-  };
-
-  const loginWithFacebook = async () => {
-    const mockUser = {
-      uid: '123456',
-      email: 'demo@facebook.com',
-      displayName: 'Demo Facebook',
-      photoURL: 'https://i.pravatar.cc/300?u=facebook',
-      dogName: 'Charlie',
-      dogBreed: 'French Bulldog',
-      achievementCount: 5,
-      friends: [],
-    };
-    
-    setUser(mockUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(mockUser));
-    return mockUser;
-  };
-
   const register = async (email, password, displayName, phone) => {
-    const mockUser = {
-      uid: '123456',
-      email: email,
-      displayName: displayName,
-      phone: phone,
-      photoURL: null,
-      achievementCount: 0,
-      friends: [],
-    };
-    
-    setUser(mockUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(mockUser));
-    return mockUser;
+    try {
+      const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Update profile in Firebase Auth
+      await updateProfile(firebaseUser, {
+        displayName: displayName
+      });
+      
+      // Create user document in Firestore
+      const userData = {
+        displayName,
+        phone,
+        achievementCount: 0,
+        friends: [],
+        createdAt: new Date().toISOString()
+      };
+      
+      await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+      
+      const fullUserData = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        ...userData
+      };
+      
+      setUser(fullUserData);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+      return fullUserData;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const updateDogProfile = async (dogName, dogBreed, dogPhoto) => {
-    const updatedUser = {
-      ...user,
-      dogName,
-      dogBreed,
-      dogPhoto,
-    };
-    
-    setUser(updatedUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-    return updatedUser;
+    if (!user?.uid) throw new Error('No authenticated user');
+
+    try {
+      let photoURL = null;
+      
+      if (dogPhoto) {
+        // Upload photo to Firebase Storage
+        const photoRef = ref(storage, `dogs/${user.uid}/${Date.now()}`);
+        const response = await fetch(dogPhoto);
+        const blob = await response.blob();
+        await uploadBytes(photoRef, blob);
+        photoURL = await getDownloadURL(photoRef);
+      }
+      
+      const dogData = {
+        dogName,
+        dogBreed,
+        ...(photoURL && { dogPhoto: photoURL })
+      };
+      
+      // Update Firestore document
+      await updateDoc(doc(firestore, 'users', user.uid), dogData);
+      
+      const updatedUser = {
+        ...user,
+        ...dogData
+      };
+      
+      setUser(updatedUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating dog profile:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    setUser(null);
-    await AsyncStorage.removeItem('doteUser');
+    try {
+      await signOut(auth);
+      setUser(null);
+      await AsyncStorage.removeItem('doteUser');
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
   const value = {
@@ -125,8 +157,6 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     isLoading,
     login,
-    loginWithGoogle,
-    loginWithFacebook,
     register,
     updateDogProfile,
     logout,
