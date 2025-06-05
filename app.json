@@ -3,6 +3,14 @@
     "name": "bolt-expo-nativewind",
     "slug": "bolt-expo-nativewind",
     "version": "1.0.0",
+    "android": {
+      "package": "dote.world",
+      "googleServicesFile": "./google-services.json"
+    },
+    "ios": {
+      "bundleIdentifier": "dote.world",
+      "googleServicesFile": "./GoogleService-Info.plist"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
@@ -22,6 +30,7 @@
       }
     },
     "plugins": [
+      "@react-native-firebase/app",
       "expo-router",
       "expo-font",
       [
