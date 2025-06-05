@@ -111,9 +111,9 @@ const styles = StyleSheet.create({
     fontFamily: 'SF-Pro-Display-Medium',
   },
   avatarContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   avatarContainerActive: {
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 12,
+    fontSize: 16,
     color: COLORS.neutralDark,
   },
   avatarTextActive: {
