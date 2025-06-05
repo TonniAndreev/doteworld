@@ -1,15 +1,8 @@
-import { useEffect, Platform } from 'react';
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 
-// Patch UIManager for web platform
-if (Platform.OS === 'web') {
-  const UIManager = require('react-native').UIManager;
-  if (!UIManager.getViewManagerConfig) {
-    UIManager.getViewManagerConfig = () => ({});
-  }
-}
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-fonts/inter';
 import { SplashScreen } from 'expo-router';
 import { AuthProvider } from '@/contexts/AuthContext';

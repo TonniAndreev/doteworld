@@ -106,73 +106,75 @@ export default function MapScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {location ? (
-        Platform.OS !== 'web' ? <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            provider={Platform.select({
-              ios: 'google',
-              android: 'google',
-              web: undefined
-            })}
-            style={styles.map}
-            initialRegion={{
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            }}
-            showsUserLocation
-            followsUserLocation
+        Platform.OS !== 'web' ? (
+          <View style={styles.mapContainer}
           >
-            {territory.map((polygon, index) => (
-              <Polygon
-                key={index}
-                coordinates={polygon}
-                fillColor="rgba(138, 79, 255, 0.3)"
-                strokeColor={COLORS.primary}
-                strokeWidth={2}
-              />
-            ))}
-            
-            <Marker
-              coordinate={{
+            <MapView
+              ref={mapRef}
+              provider={Platform.select({
+                ios: 'google',
+                android: 'google',
+                web: undefined
+              })}
+              style={styles.map}
+              initialRegion={{
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
+                latitudeDelta: 0.005,
+                longitudeDelta: 0.005,
               }}
+              showsUserLocation
+              followsUserLocation
             >
-              <View style={styles.markerContainer}>
-                <MapPin color={COLORS.primary} size={24} />
-              </View>
-            </Marker>
-          </MapView>
-          
-          <MapControls 
-            isWalking={isWalking} 
-            onToggleWalking={toggleWalking}
-            walkDistance={walkDistance}
-            onToggleChallenges={toggleChallengesPanel}
-          />
-          
-          <FloatingPawsBalance balance={pawsBalance} />
-          
-          <Animated.View 
-            style={[
-              styles.challengesContainer,
-              {
-                transform: [
-                  {
-                    translateY: challengesPanelAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [300, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <ChallengesPanel walkDistance={walkDistance} />
-          </Animated.View>
-        </View> : 
+              {territory.map((polygon, index) => (
+                <Polygon
+                  key={index}
+                  coordinates={polygon}
+                  fillColor="rgba(138, 79, 255, 0.3)"
+                  strokeColor={COLORS.primary}
+                  strokeWidth={2}
+                />
+              ))}
+              
+              <Marker
+                coordinate={{
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
+                }}
+              >
+                <View style={styles.markerContainer}>
+                  <MapPin color={COLORS.primary} size={24} />
+                </View>
+              </Marker>
+            </MapView>
+            
+            <MapControls 
+              isWalking={isWalking} 
+              onToggleWalking={toggleWalking}
+              walkDistance={walkDistance}
+              onToggleChallenges={toggleChallengesPanel}
+            />
+            
+            <FloatingPawsBalance balance={pawsBalance} />
+            
+            <Animated.View 
+              style={[
+                styles.challengesContainer,
+                {
+                  transform: [
+                    {
+                      translateY: challengesPanelAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [300, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <ChallengesPanel walkDistance={walkDistance} />
+            </Animated.View>
+          </View> : 
           <View style={styles.webContainer}>
             <Text style={styles.webText}>
               Map view is only available on mobile devices.
