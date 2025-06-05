@@ -1,3 +1,4 @@
 {
-  "template": "bolt-expo"
+  "sync": false,
+  "version": "1.0.0"
 }
