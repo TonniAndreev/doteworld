@@ -1,20 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { 
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  updateProfile
-} from 'firebase/auth';
-import { 
-  doc, 
-  setDoc, 
-  getDoc,
-  updateDoc 
-} from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { auth, firestore, storage } from '@/services/firebase';
+import { auth, firestore } from '@/services/firebase';
 
 const AuthContext = createContext();
 
@@ -23,21 +9,25 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         // Get additional user data from Firestore
-        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        const userDoc = await firestore().collection('users').doc(firebaseUser.uid).get();
         const userData = userDoc.data();
         
-        setUser({
+        const fullUserData = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
           photoURL: firebaseUser.photoURL,
           ...userData
-        });
+        };
+        
+        setUser(fullUserData);
+        await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
       } else {
         setUser(null);
+        await AsyncStorage.removeItem('doteUser');
       }
       setIsLoading(false);
     });
@@ -47,8 +37,8 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
-      const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+      const { user: firebaseUser } = await auth().signInWithEmailAndPassword(email, password);
+      const userDoc = await firestore().collection('users').doc(firebaseUser.uid).get();
       const userData = userDoc.data();
       
       const fullUserData = {
@@ -70,10 +60,10 @@ export function AuthProvider({ children }) {
 
   const register = async (email, password, displayName, phone) => {
     try {
-      const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
+      const { user: firebaseUser } = await auth().createUserWithEmailAndPassword(email, password);
       
       // Update profile in Firebase Auth
-      await updateProfile(firebaseUser, {
+      await firebaseUser.updateProfile({
         displayName: displayName
       });
       
@@ -83,10 +73,10 @@ export function AuthProvider({ children }) {
         phone,
         achievementCount: 0,
         friends: [],
-        createdAt: new Date().toISOString()
+        createdAt: firestore.FieldValue.serverTimestamp()
       };
       
-      await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+      await firestore().collection('users').doc(firebaseUser.uid).set(userData);
       
       const fullUserData = {
         uid: firebaseUser.uid,
@@ -111,11 +101,11 @@ export function AuthProvider({ children }) {
       
       if (dogPhoto) {
         // Upload photo to Firebase Storage
-        const photoRef = ref(storage, `dogs/${user.uid}/${Date.now()}`);
+        const photoRef = storage().ref(`dogs/${user.uid}/${Date.now()}`);
         const response = await fetch(dogPhoto);
         const blob = await response.blob();
-        await uploadBytes(photoRef, blob);
-        photoURL = await getDownloadURL(photoRef);
+        await photoRef.put(blob);
+        photoURL = await photoRef.getDownloadURL();
       }
       
       const dogData = {
@@ -125,7 +115,7 @@ export function AuthProvider({ children }) {
       };
       
       // Update Firestore document
-      await updateDoc(doc(firestore, 'users', user.uid), dogData);
+      await firestore().collection('users').doc(user.uid).update(dogData);
       
       const updatedUser = {
         ...user,
@@ -143,7 +133,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await signOut(auth);
+      await auth().signOut();
       setUser(null);
       await AsyncStorage.removeItem('doteUser');
     } catch (error) {
