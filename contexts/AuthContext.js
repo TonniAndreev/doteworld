@@ -1,6 +1,20 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, firestore } from '@/services/firebase';
+import { 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile
+} from 'firebase/auth';
+import { 
+  doc, 
+  setDoc, 
+  getDoc,
+  serverTimestamp 
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, firestore, storage } from '@/services/firebase';
 
 const AuthContext = createContext();
 
@@ -9,22 +23,26 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // Get additional user data from Firestore
-        const userDoc = await firestore().collection('users').doc(firebaseUser.uid).get();
-        const userData = userDoc.data();
-        
-        const fullUserData = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          ...userData
-        };
-        
-        setUser(fullUserData);
-        await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+        try {
+          // Get additional user data from Firestore
+          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+          const userData = userDoc.data();
+          
+          const fullUserData = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            ...userData
+          };
+          
+          setUser(fullUserData);
+          await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
       } else {
         setUser(null);
         await AsyncStorage.removeItem('doteUser');
@@ -37,8 +55,8 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
-      const { user: firebaseUser } = await auth().signInWithEmailAndPassword(email, password);
-      const userDoc = await firestore().collection('users').doc(firebaseUser.uid).get();
+      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
+      const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
       const userData = userDoc.data();
       
       const fullUserData = {
@@ -60,10 +78,10 @@ export function AuthProvider({ children }) {
 
   const register = async (email, password, displayName, phone) => {
     try {
-      const { user: firebaseUser } = await auth().createUserWithEmailAndPassword(email, password);
+      const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
       
       // Update profile in Firebase Auth
-      await firebaseUser.updateProfile({
+      await updateProfile(firebaseUser, {
         displayName: displayName
       });
       
@@ -73,10 +91,10 @@ export function AuthProvider({ children }) {
         phone,
         achievementCount: 0,
         friends: [],
-        createdAt: firestore.FieldValue.serverTimestamp()
+        createdAt: serverTimestamp()
       };
       
-      await firestore().collection('users').doc(firebaseUser.uid).set(userData);
+      await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
       
       const fullUserData = {
         uid: firebaseUser.uid,
@@ -101,11 +119,11 @@ export function AuthProvider({ children }) {
       
       if (dogPhoto) {
         // Upload photo to Firebase Storage
-        const photoRef = storage().ref(`dogs/${user.uid}/${Date.now()}`);
+        const photoRef = ref(storage, `dogs/${user.uid}/${Date.now()}`);
         const response = await fetch(dogPhoto);
         const blob = await response.blob();
-        await photoRef.put(blob);
-        photoURL = await photoRef.getDownloadURL();
+        await uploadBytes(photoRef, blob);
+        photoURL = await getDownloadURL(photoRef);
       }
       
       const dogData = {
@@ -115,7 +133,7 @@ export function AuthProvider({ children }) {
       };
       
       // Update Firestore document
-      await firestore().collection('users').doc(user.uid).update(dogData);
+      await setDoc(doc(firestore, 'users', user.uid), dogData, { merge: true });
       
       const updatedUser = {
         ...user,
@@ -133,7 +151,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await auth().signOut();
+      await signOut(auth);
       setUser(null);
       await AsyncStorage.removeItem('doteUser');
     } catch (error) {
