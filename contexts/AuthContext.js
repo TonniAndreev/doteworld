@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import {
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { 
   getAuth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -8,13 +8,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  FacebookAuthProvider,
 } from 'firebase/auth';
-import { firebaseConfig } from '@/config/firebase';
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+import { auth } from '@/services/firebase';
 
 const AuthContext = createContext({});
 
@@ -23,7 +18,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Store user data in AsyncStorage
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+      } else {
+        await AsyncStorage.removeItem('user');
+      }
       setUser(user);
       setLoading(false);
     });
@@ -43,7 +44,6 @@ export function AuthProvider({ children }) {
   const register = async (email, password, displayName, phone) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // You can update the user profile here if needed
       return userCredential.user;
     } catch (error) {
       throw error;
@@ -60,19 +60,10 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithFacebook = async () => {
-    try {
-      const provider = new FacebookAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      return result.user;
-    } catch (error) {
-      throw error;
-    }
-  };
-
   const logout = async () => {
     try {
       await signOut(auth);
+      await AsyncStorage.removeItem('user');
     } catch (error) {
       throw error;
     }
@@ -83,8 +74,9 @@ export function AuthProvider({ children }) {
     
     try {
       // Here you would typically update the user's dog profile in your database
-      // For now, we'll just console.log the data
-      console.log('Updating dog profile:', { dogName, dogBreed, dogPhoto });
+      // For now, we'll just store it in AsyncStorage
+      const dogProfile = { dogName, dogBreed, dogPhoto };
+      await AsyncStorage.setItem(`dogProfile_${user.uid}`, JSON.stringify(dogProfile));
       return true;
     } catch (error) {
       throw error;
@@ -98,7 +90,6 @@ export function AuthProvider({ children }) {
     register,
     logout,
     loginWithGoogle,
-    loginWithFacebook,
     updateDogProfile,
   };
 
