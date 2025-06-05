@@ -11,6 +11,7 @@ import ChallengesPanel from '@/components/home/ChallengesPanel';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
 import MapControls from '@/components/home/MapControls';
 import { calculateDistance } from '@/utils/locationUtils';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -104,91 +105,102 @@ export default function MapScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      {location ? (
-        <View style={styles.mapContainer}>
-          <MapView
-            ref={mapRef}
-            provider={PROVIDER_GOOGLE}
-            style={styles.map}
-            initialRegion={{
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-              latitudeDelta: 0.005,
-              longitudeDelta: 0.005,
-            }}
-            showsUserLocation
-            followsUserLocation
-          >
-            {territory.map((polygon, index) => (
-              <Polygon
-                key={index}
-                coordinates={polygon}
-                fillColor="rgba(138, 79, 255, 0.3)"
-                strokeColor={COLORS.primary}
-                strokeWidth={2}
-              />
-            ))}
-            
-            <Marker
-              coordinate={{
+    <GestureHandlerRootView style={styles.container}>
+      <SafeAreaView style={styles.container}>
+        {location ? (
+          <View style={styles.mapContainer}>
+            <MapView
+              ref={mapRef}
+              provider={PROVIDER_GOOGLE}
+              style={styles.map}
+              initialRegion={{
                 latitude: location.coords.latitude,
                 longitude: location.coords.longitude,
+                latitudeDelta: 0.005,
+                longitudeDelta: 0.005,
               }}
+              showsUserLocation
+              followsUserLocation
             >
-              <View style={styles.markerContainer}>
-                <MapPin color={COLORS.primary} size={24} />
-              </View>
-            </Marker>
-          </MapView>
-          
-          <MapControls 
-            isWalking={isWalking} 
-            onToggleWalking={toggleWalking}
-            walkDistance={walkDistance}
-            onToggleChallenges={toggleChallengesPanel}
-          />
-          
-          <FloatingPawsBalance balance={pawsBalance} />
-          
-          {showChallenges && (
-            <Animated.View 
-              style={[
-                styles.challengesContainer,
-                {
-                  transform: [
-                    {
-                      translateY: challengesPanelAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [300, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <ChallengesPanel 
-                walkDistance={walkDistance} 
-                onClose={() => {
-                  Animated.spring(challengesPanelAnimation, {
-                    toValue: 0,
-                    useNativeDriver: true,
-                  }).start(() => {
-                    setShowChallenges(false);
-                  });
+              {territory.map((polygon, index) => (
+                <Polygon
+                  key={index}
+                  coordinates={polygon}
+                  fillColor="rgba(138, 79, 255, 0.3)"
+                  strokeColor={COLORS.primary}
+                  strokeWidth={2}
+                />
+              ))}
+              
+              <Marker
+                coordinate={{
+                  latitude: location.coords.latitude,
+                  longitude: location.coords.longitude,
                 }}
-              />
-            </Animated.View>
-          )}
-        </View>
-      ) : (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>
-            {errorMsg || "Finding your location..."}
-          </Text>
-        </View>
-      )}
-    </SafeAreaView>
+              >
+                <View style={styles.markerContainer}>
+                  <MapPin color={COLORS.primary} size={24} />
+                </View>
+              </Marker>
+            </MapView>
+
+            <View style={styles.topBar}>
+              <FloatingPawsBalance balance={pawsBalance} />
+              <TouchableOpacity 
+                style={styles.challengesButton}
+                onPress={toggleChallengesPanel}
+              >
+                <Award size={20} color={COLORS.primary} />
+                <Text style={styles.challengesText}>2 Daily Challenges</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <MapControls 
+              isWalking={isWalking} 
+              onToggleWalking={toggleWalking}
+              walkDistance={walkDistance}
+              onToggleChallenges={toggleChallengesPanel}
+            />
+            
+            {showChallenges && (
+              <Animated.View 
+                style={[
+                  styles.challengesContainer,
+                  {
+                    transform: [
+                      {
+                        translateY: challengesPanelAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [300, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <ChallengesPanel 
+                  walkDistance={walkDistance} 
+                  onClose={() => {
+                    Animated.spring(challengesPanelAnimation, {
+                      toValue: 0,
+                      useNativeDriver: true,
+                    }).start(() => {
+                      setShowChallenges(false);
+                    });
+                  }}
+                />
+              </Animated.View>
+            )}
+          </View>
+        ) : (
+          <View style={styles.loadingContainer}>
+            <Text style={styles.loadingText}>
+              {errorMsg || "Finding your location..."}
+            </Text>
+          </View>
+        )}
+      </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
@@ -216,6 +228,33 @@ const styles = StyleSheet.create({
   markerContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  topBar: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    right: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  challengesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: 12,
+    borderRadius: 20,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  challengesText: {
+    fontFamily: 'SF-Pro-Display-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+    marginLeft: 8,
   },
   challengesContainer: {
     position: 'absolute',
