@@ -95,12 +95,12 @@ export default function MapScreen() {
   };
   
   const toggleChallengesPanel = () => {
-    setShowChallenges(!showChallenges);
-    Animated.timing(challengesPanelAnimation, {
+    Animated.spring(challengesPanelAnimation, {
       toValue: showChallenges ? 0 : 1,
-      duration: 300,
       useNativeDriver: true,
-    }).start();
+    }).start(() => {
+      setShowChallenges(!showChallenges);
+    });
   };
 
   return (
@@ -151,23 +151,35 @@ export default function MapScreen() {
           
           <FloatingPawsBalance balance={pawsBalance} />
           
-          <Animated.View 
-            style={[
-              styles.challengesContainer,
-              {
-                transform: [
-                  {
-                    translateY: challengesPanelAnimation.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [300, 0],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <ChallengesPanel walkDistance={walkDistance} />
-          </Animated.View>
+          {showChallenges && (
+            <Animated.View 
+              style={[
+                styles.challengesContainer,
+                {
+                  transform: [
+                    {
+                      translateY: challengesPanelAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [300, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <ChallengesPanel 
+                walkDistance={walkDistance} 
+                onClose={() => {
+                  Animated.spring(challengesPanelAnimation, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                  }).start(() => {
+                    setShowChallenges(false);
+                  });
+                }}
+              />
+            </Animated.View>
+          )}
         </View>
       ) : (
         <View style={styles.loadingContainer}>

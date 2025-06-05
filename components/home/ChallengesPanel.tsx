@@ -1,12 +1,14 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Award, ChevronRight } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
+import { Award, ChevronRight, GripHorizontal } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import { PanGestureHandler, State } from 'react-native-gesture-handler';
 
 type ChallengePanelProps = {
   walkDistance: number;
+  onClose: () => void;
 };
 
-export default function ChallengesPanel({ walkDistance }: ChallengePanelProps) {
+export default function ChallengesPanel({ walkDistance, onClose }: ChallengePanelProps) {
   // Mock challenges data - in a real app this would come from a backend
   const challenges = [
     {
@@ -38,8 +40,22 @@ export default function ChallengesPanel({ walkDistance }: ChallengePanelProps) {
     },
   ];
 
+  const handleGesture = ({ nativeEvent }) => {
+    if (nativeEvent.state === State.END) {
+      if (nativeEvent.translationY > 50) {
+        onClose();
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
+      <PanGestureHandler onHandlerStateChange={handleGesture}>
+        <View style={styles.dragHandle}>
+          <GripHorizontal size={20} color={COLORS.neutralMedium} />
+        </View>
+      </PanGestureHandler>
+
       <View style={styles.header}>
         <View style={styles.titleContainer}>
           <Award size={24} color={COLORS.primary} />
@@ -93,11 +109,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  dragHandle: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
+    paddingHorizontal: 16,
   },
   titleContainer: {
     flexDirection: 'row',
@@ -120,7 +141,8 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   challengesContainer: {
-    paddingRight: 16,
+    paddingLeft: 16,
+    paddingRight: 32,
   },
   challengeCard: {
     backgroundColor: COLORS.white,
