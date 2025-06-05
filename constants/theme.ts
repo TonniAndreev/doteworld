@@ -33,7 +33,7 @@ export const COLORS = {
   gold: '#FFD700',
   silver: '#C0C0C0',
   bronze: '#CD7F32',
-};
+} as const;
 
 export const SPACING = {
   xs: 4,
@@ -42,7 +42,7 @@ export const SPACING = {
   lg: 24,
   xl: 32,
   xxl: 48,
-};
+} as const;
 
 export const TYPOGRAPHY = {
   largeTitle: {
@@ -95,4 +95,4 @@ export const TYPOGRAPHY = {
     fontSize: 12,
     lineHeight: 16,
   },
-};
+} as const;
