@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, PawPrint, Award } from 'lucide-react-native';
+import { MapPin, Play, Pause, Award } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
@@ -9,7 +9,6 @@ import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
 import ChallengesPanel from '@/components/home/ChallengesPanel';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
-import MapControls from '@/components/home/MapControls';
 import { calculateDistance } from '@/utils/locationUtils';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -20,6 +19,7 @@ export default function MapScreen() {
   const [walkDistance, setWalkDistance] = useState(0);
   const [lastLocation, setLastLocation] = useState<Location.LocationObject | null>(null);
   const [showChallenges, setShowChallenges] = useState(false);
+  const [activeChallengesCount, setActiveChallengesCount] = useState(2);
   
   const mapRef = useRef(null);
   const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
@@ -81,7 +81,7 @@ export default function MapScreen() {
       }
     };
   }, [isWalking, lastLocation]);
-  
+
   const toggleWalking = () => {
     if (!isWalking) {
       setWalkDistance(0);
@@ -94,7 +94,7 @@ export default function MapScreen() {
       }
     }
   };
-  
+
   const toggleChallengesPanel = () => {
     Animated.spring(challengesPanelAnimation, {
       toValue: showChallenges ? 0 : 1,
@@ -102,6 +102,17 @@ export default function MapScreen() {
     }).start(() => {
       setShowChallenges(!showChallenges);
     });
+  };
+
+  const handleMapPress = () => {
+    if (showChallenges) {
+      Animated.spring(challengesPanelAnimation, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowChallenges(false);
+      });
+    }
   };
 
   return (
@@ -120,6 +131,7 @@ export default function MapScreen() {
             }}
             showsUserLocation
             followsUserLocation
+            onPress={handleMapPress}
           >
             {territory.map((polygon, index) => (
               <Polygon
@@ -151,7 +163,9 @@ export default function MapScreen() {
                 onPress={toggleChallengesPanel}
               >
                 <Award size={20} color={COLORS.primary} />
-                <Text style={styles.challengesText}>2 Daily Challenges</Text>
+                <Text style={styles.challengesText}>
+                  {activeChallengesCount} Daily Challenge{activeChallengesCount !== 1 ? 's' : ''}
+                </Text>
               </TouchableOpacity>
             </View>
             
@@ -160,6 +174,11 @@ export default function MapScreen() {
                 style={styles.startWalkButton}
                 onPress={toggleWalking}
               >
+                {isWalking ? (
+                  <Pause size={24} color={COLORS.white} />
+                ) : (
+                  <Play size={24} color={COLORS.white} />
+                )}
                 <Text style={styles.startWalkText}>
                   {isWalking ? 'End Walk' : 'Start Walk'}
                 </Text>
@@ -268,17 +287,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   startWalkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: COLORS.primary,
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 16,
     width: '100%',
-    alignItems: 'center',
   },
   startWalkText: {
     fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 16,
     color: COLORS.white,
+    marginLeft: 8,
   },
   challengesContainer: {
     position: 'absolute',
