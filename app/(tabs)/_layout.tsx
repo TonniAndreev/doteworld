@@ -5,7 +5,8 @@ import {
   MapPin, 
   Trophy, 
   Award, 
-  Users
+  Users,
+  User
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
