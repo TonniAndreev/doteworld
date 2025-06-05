@@ -107,8 +107,7 @@ export default function MapScreen() {
     <SafeAreaView style={styles.container}>
       {location ? (
         Platform.OS !== 'web' ? (
-          <View style={styles.mapContainer}
-          >
+          <View style={styles.mapContainer}>
             <MapView
               ref={mapRef}
               provider={Platform.select({
@@ -174,15 +173,17 @@ export default function MapScreen() {
             >
               <ChallengesPanel walkDistance={walkDistance} />
             </Animated.View>
-          </View> : 
-          <View style={styles.webContainer}>
+          </View> 
+        ) : (
+           <View style={styles.webContainer}>
             <Text style={styles.webText}>
-              Map view is only available on mobile devices.
+                Map view is only available on mobile devices.
             </Text>
             <Text style={styles.webSubText}>
               Please use the mobile app to access the full features.
             </Text>
           </View>
+        )
       ) : (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>
