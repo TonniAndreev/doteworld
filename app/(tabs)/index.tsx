@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, PawPrint, Award } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Polygon, Marker } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -109,7 +109,11 @@ export default function MapScreen() {
         <View style={styles.mapContainer}>
           <MapView
             ref={mapRef}
-            provider={PROVIDER_GOOGLE}
+            provider={Platform.select({
+              ios: 'google',
+              android: 'google',
+              web: undefined
+            })}
             style={styles.map}
             initialRegion={{
               latitude: location.coords.latitude,
