@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Play, Pause } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import MapView, { Polygon, Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Polygon, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -20,13 +20,18 @@ export default function MapScreen() {
   const [lastLocation, setLastLocation] = useState<Location.LocationObject | null>(null);
   const [showChallenges, setShowChallenges] = useState(false);
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
-  const [conqueredTerritory, setConqueredTerritory] = useState(0);
-  const conqueredTerritoryOpacity = useRef(new Animated.Value(0)).current;
   
   const mapRef = useRef(null);
   const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
   
-  const { territory, updateTerritory, claimNewTerritory } = useTerritory();
+  const { 
+    territory, 
+    currentWalkPoints, 
+    currentPolygon,
+    startWalk, 
+    addWalkPoint, 
+    endWalk 
+  } = useTerritory();
   const { pawsBalance, addPaws } = usePaws();
 
   useEffect(() => {
@@ -62,9 +67,10 @@ export default function MapScreen() {
               
               if (newLocation.coords.speed && newLocation.coords.speed < 2.5) {
                 setWalkDistance(prev => prev + distance);
-                const newTerritory = Math.floor(Math.random() * 50) + 50; // Random territory between 50-100m²
-                setConqueredTerritory(prev => prev + newTerritory);
-                claimNewTerritory(newLocation.coords);
+                addWalkPoint({
+                  latitude: newLocation.coords.latitude,
+                  longitude: newLocation.coords.longitude
+                });
               }
             }
             
@@ -85,34 +91,15 @@ export default function MapScreen() {
       }
     };
   }, [isWalking, lastLocation]);
-
-  useEffect(() => {
-    if (isWalking) {
-      Animated.timing(conqueredTerritoryOpacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(conqueredTerritoryOpacity, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-      setConqueredTerritory(0);
-    }
-  }, [isWalking]);
   
   const toggleWalking = () => {
     if (!isWalking) {
       setWalkDistance(0);
       setIsWalking(true);
+      startWalk();
     } else {
       setIsWalking(false);
-      const pawsEarned = Math.floor(walkDistance * 10);
-      if (pawsEarned > 0) {
-        addPaws(pawsEarned);
-      }
+      endWalk();
     }
   };
 
@@ -154,6 +141,7 @@ export default function MapScreen() {
             followsUserLocation
             onPress={handleMapPress}
           >
+            {/* Existing conquered territories */}
             {territory.map((polygon, index) => (
               <Polygon
                 key={index}
@@ -164,16 +152,36 @@ export default function MapScreen() {
               />
             ))}
             
-            <Marker
-              coordinate={{
-                latitude: location.coords.latitude,
-                longitude: location.coords.longitude,
-              }}
-            >
-              <View style={styles.markerContainer}>
-                <MapPin color={COLORS.primary} size={24} />
-              </View>
-            </Marker>
+            {/* Current walk points and lines */}
+            {currentWalkPoints.length > 0 && (
+              <>
+                <Polyline
+                  coordinates={currentWalkPoints}
+                  strokeColor={COLORS.primary}
+                  strokeWidth={3}
+                />
+                {currentWalkPoints.map((point, index) => (
+                  <Marker
+                    key={`point-${index}`}
+                    coordinate={point}
+                    anchor={{ x: 0.5, y: 0.5 }}
+                  >
+                    <View style={styles.walkPoint} />
+                  </Marker>
+                ))}
+              </>
+            )}
+            
+            {/* Current potential territory polygon */}
+            {currentPolygon && (
+              <Polygon
+                coordinates={currentPolygon}
+                fillColor="rgba(138, 79, 255, 0.2)"
+                strokeColor={COLORS.primary}
+                strokeWidth={2}
+                strokeDashPattern={[5, 5]}
+              />
+            )}
           </MapView>
 
           <SafeAreaView style={styles.overlay}>
@@ -190,12 +198,6 @@ export default function MapScreen() {
             </View>
             
             <View style={styles.controlsContainer}>
-              <Animated.View style={[styles.conqueredInfo, { opacity: conqueredTerritoryOpacity }]}>
-                <Text style={styles.conqueredText}>
-                  {conqueredTerritory} m² territory conquered
-                </Text>
-              </Animated.View>
-              
               <TouchableOpacity 
                 style={[styles.startWalkButton, isWalking && styles.activeButton]}
                 onPress={toggleWalking}
@@ -206,7 +208,7 @@ export default function MapScreen() {
                   <Play size={24} color={COLORS.white} />
                 )}
                 <Text style={styles.startWalkText}>
-                  {isWalking ? 'Finish Conquest' : 'Conquer Territory'}
+                  {isWalking ? 'End Walk' : 'Start Walk'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -276,9 +278,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.neutralDark,
   },
-  markerContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  walkPoint: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    borderWidth: 2,
+    borderColor: COLORS.white,
   },
   topBar: {
     flexDirection: 'row',
@@ -310,23 +316,6 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     alignItems: 'center',
-  },
-  conqueredInfo: {
-    backgroundColor: COLORS.white,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  conqueredText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 14,
-    color: COLORS.primary,
   },
   startWalkButton: {
     flexDirection: 'row',

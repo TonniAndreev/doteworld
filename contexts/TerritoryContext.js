@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { usePaws } from './PawsContext';
+import { calculatePolygonArea, isValidPolygon, createConvexHull } from '@/utils/locationUtils';
 
 const TerritoryContext = createContext();
 
@@ -9,6 +10,9 @@ export function TerritoryProvider({ children }) {
   const [territory, setTerritory] = useState([]);
   const [territorySize, setTerritorySize] = useState(0);
   const [totalDistance, setTotalDistance] = useState(0);
+  const [currentWalkPoints, setCurrentWalkPoints] = useState([]);
+  const [currentPolygon, setCurrentPolygon] = useState(null);
+  
   const { user } = useAuth();
   const { addPaws } = usePaws();
 
@@ -24,23 +28,14 @@ export function TerritoryProvider({ children }) {
 
           if (savedTerritory) {
             setTerritory(JSON.parse(savedTerritory));
-          } else {
-            setTerritory([]);
-            await AsyncStorage.setItem(`dote_territory_${user.uid}`, JSON.stringify([]));
           }
 
           if (savedTerritorySize) {
             setTerritorySize(parseFloat(savedTerritorySize));
-          } else {
-            setTerritorySize(0);
-            await AsyncStorage.setItem(`dote_territory_size_${user.uid}`, '0');
           }
 
           if (savedTotalDistance) {
             setTotalDistance(parseFloat(savedTotalDistance));
-          } else {
-            setTotalDistance(0);
-            await AsyncStorage.setItem(`dote_total_distance_${user.uid}`, '0');
           }
         } catch (error) {
           console.error('Error loading territory data:', error);
@@ -51,75 +46,57 @@ export function TerritoryProvider({ children }) {
     loadTerritoryData();
   }, [user]);
 
-  const updateTerritory = async (newTerritory) => {
-    if (!user) return;
-    
-    setTerritory(newTerritory);
-    
-    const newSize = calculateTerritorySize(newTerritory);
-    setTerritorySize(newSize);
-    
-    await Promise.all([
-      AsyncStorage.setItem(`dote_territory_${user.uid}`, JSON.stringify(newTerritory)),
-      AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newSize.toString()),
-    ]);
+  const startWalk = () => {
+    setCurrentWalkPoints([]);
+    setCurrentPolygon(null);
   };
 
-  const claimNewTerritory = async (coordinates) => {
-    if (!user) return;
-    
-    const isNewTerritory = Math.random() > 0.5;
-    
-    if (isNewTerritory) {
-      const newPolygon = createPolygonAroundPoint(coordinates);
-      const updatedTerritory = [...territory, newPolygon];
-      const newSize = territorySize + 0.05;
-      
-      setTerritory(updatedTerritory);
-      setTerritorySize(newSize);
-      
-      await Promise.all([
-        AsyncStorage.setItem(`dote_territory_${user.uid}`, JSON.stringify(updatedTerritory)),
-        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newSize.toString()),
-      ]);
-      
-      addPaws(10, 'Claimed new territory');
+  const addWalkPoint = (coordinates) => {
+    const newPoints = [...currentWalkPoints, coordinates];
+    setCurrentWalkPoints(newPoints);
+
+    // Only try to form a polygon if we have at least 3 points
+    if (newPoints.length >= 3) {
+      const hull = createConvexHull(newPoints);
+      if (isValidPolygon(hull)) {
+        setCurrentPolygon(hull);
+      }
     }
   };
 
-  const updateTotalDistance = async (newDistance) => {
-    if (!user) return;
-    
-    const updatedDistance = totalDistance + newDistance;
-    setTotalDistance(updatedDistance);
-    
-    await AsyncStorage.setItem(`dote_total_distance_${user.uid}`, updatedDistance.toString());
-  };
+  const endWalk = async () => {
+    if (!currentPolygon || !user) return;
 
-  const calculateTerritorySize = (territory) => {
-    return territory.length * 0.05;
-  };
+    const newPolygonArea = calculatePolygonArea(currentPolygon);
+    const updatedTerritory = [...territory, currentPolygon];
+    const newTerritorySize = territorySize + newPolygonArea;
 
-  const createPolygonAroundPoint = (center) => {
-    const { latitude, longitude } = center;
-    const offset = 0.001;
-    
-    return [
-      { latitude: latitude - offset, longitude: longitude - offset },
-      { latitude: latitude - offset, longitude: longitude + offset },
-      { latitude: latitude + offset, longitude: longitude + offset },
-      { latitude: latitude + offset, longitude: longitude - offset },
-      { latitude: latitude - offset, longitude: longitude - offset },
-    ];
+    setTerritory(updatedTerritory);
+    setTerritorySize(newTerritorySize);
+    setCurrentWalkPoints([]);
+    setCurrentPolygon(null);
+
+    await Promise.all([
+      AsyncStorage.setItem(`dote_territory_${user.uid}`, JSON.stringify(updatedTerritory)),
+      AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
+    ]);
+
+    // Award paws based on the new territory size (1 paw per square meter)
+    const pawsEarned = Math.floor(newPolygonArea * 1000);
+    if (pawsEarned > 0) {
+      addPaws(pawsEarned, 'Territory conquered');
+    }
   };
 
   const value = {
     territory,
     territorySize,
     totalDistance,
-    updateTerritory,
-    claimNewTerritory,
-    updateTotalDistance,
+    currentWalkPoints,
+    currentPolygon,
+    startWalk,
+    addWalkPoint,
+    endWalk,
   };
 
   return <TerritoryContext.Provider value={value}>{children}</TerritoryContext.Provider>;
