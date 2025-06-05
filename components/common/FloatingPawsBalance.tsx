@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { router } from 'expo-router';
 import { PawPrint } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 
@@ -8,10 +9,13 @@ type FloatingPawsBalanceProps = {
 
 export default function FloatingPawsBalance({ balance }: FloatingPawsBalanceProps) {
   return (
-    <View style={styles.container}>
+    <TouchableOpacity 
+      style={styles.container}
+      onPress={() => router.push('/store')}
+    >
       <PawPrint size={20} color={COLORS.primary} />
       <Text style={styles.balanceText}>{balance}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
