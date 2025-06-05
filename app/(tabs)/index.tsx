@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Play, Pause } from 'lucide-react-native';
+import { MapPin, Play, Pause, Locate, Zap } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import MapView, { Polygon, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
@@ -21,8 +21,9 @@ export default function MapScreen() {
   const [showChallenges, setShowChallenges] = useState(false);
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
   const [territorySize, setTerritorySize] = useState(0);
+  const [isLocating, setIsLocating] = useState(false);
   
-  const mapRef = useRef(null);
+  const mapRef = useRef<MapView>(null);
   const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
   const territorySizeAnimation = useRef(new Animated.Value(0)).current;
   
@@ -119,6 +120,24 @@ export default function MapScreen() {
     }
   };
 
+  const handleLocateMe = async () => {
+    if (!mapRef.current || !location) return;
+    
+    setIsLocating(true);
+    try {
+      mapRef.current.animateToRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 1000);
+    } catch (error) {
+      console.error('Error animating to location:', error);
+    } finally {
+      setIsLocating(false);
+    }
+  };
+
   const toggleChallengesPanel = () => {
     Animated.spring(challengesPanelAnimation, {
       toValue: showChallenges ? 0 : 1,
@@ -156,8 +175,10 @@ export default function MapScreen() {
             showsUserLocation
             followsUserLocation
             onPress={handleMapPress}
+            zoomEnabled={true}
+            rotateEnabled={true}
+            scrollEnabled={true}
           >
-            {/* Existing conquered territories */}
             {territory.map((polygon, index) => (
               <Polygon
                 key={index}
@@ -168,7 +189,6 @@ export default function MapScreen() {
               />
             ))}
             
-            {/* Current walk points and lines */}
             {currentWalkPoints.length > 0 && (
               <>
                 <Polyline
@@ -188,7 +208,6 @@ export default function MapScreen() {
               </>
             )}
             
-            {/* Current potential territory polygon */}
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
@@ -200,7 +219,7 @@ export default function MapScreen() {
             )}
           </MapView>
 
-          <SafeAreaView style={styles.overlay}>
+          <SafeAreaView style={styles.overlay} pointerEvents="box-none">
             <View style={styles.topBar}>
               <FloatingPawsBalance balance={pawsBalance} />
               <TouchableOpacity 
@@ -235,19 +254,37 @@ export default function MapScreen() {
                 </Text>
               </Animated.View>
 
-              <TouchableOpacity 
-                style={[styles.startWalkButton, isWalking && styles.activeButton]}
-                onPress={toggleWalking}
-              >
-                {isWalking ? (
-                  <Pause size={24} color={COLORS.white} />
-                ) : (
-                  <Play size={24} color={COLORS.white} />
-                )}
-                <Text style={styles.startWalkText}>
-                  {isWalking ? 'Finish Conquest' : 'Conquer Territory'}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.bottomControlsRow}>
+                <TouchableOpacity style={styles.boltLogoContainer}>
+                  <Zap size={24} color={COLORS.primary} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.startWalkButton, isWalking && styles.activeButton]}
+                  onPress={toggleWalking}
+                >
+                  {isWalking ? (
+                    <Pause size={24} color={COLORS.white} />
+                  ) : (
+                    <Play size={24} color={COLORS.white} />
+                  )}
+                  <Text style={styles.startWalkText}>
+                    {isWalking ? 'Finish Conquest' : 'Conquer Territory'}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.locateButton}
+                  onPress={handleLocateMe}
+                  disabled={isLocating}
+                >
+                  {isLocating ? (
+                    <ActivityIndicator color={COLORS.primary} />
+                  ) : (
+                    <Locate size={24} color={COLORS.primary} />
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </SafeAreaView>
           
@@ -371,6 +408,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.primary,
   },
+  bottomControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  boltLogoContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   startWalkButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -379,7 +435,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 16,
-    width: '100%',
+    flex: 1,
+    marginHorizontal: 12,
   },
   activeButton: {
     backgroundColor: COLORS.error,
@@ -389,6 +446,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.white,
     marginLeft: 8,
+  },
+  locateButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   challengesContainer: {
     position: 'absolute',
