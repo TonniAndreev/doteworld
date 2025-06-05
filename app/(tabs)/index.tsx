@@ -20,9 +20,11 @@ export default function MapScreen() {
   const [lastLocation, setLastLocation] = useState<Location.LocationObject | null>(null);
   const [showChallenges, setShowChallenges] = useState(false);
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
+  const [territorySize, setTerritorySize] = useState(0);
   
   const mapRef = useRef(null);
   const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
+  const territorySizeAnimation = useRef(new Animated.Value(0)).current;
   
   const { 
     territory, 
@@ -33,6 +35,20 @@ export default function MapScreen() {
     endWalk 
   } = useTerritory();
   const { pawsBalance, addPaws } = usePaws();
+
+  useEffect(() => {
+    if (isWalking) {
+      Animated.spring(territorySizeAnimation, {
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.spring(territorySizeAnimation, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isWalking]);
 
   useEffect(() => {
     let locationSubscription: Location.LocationSubscription | null = null;
@@ -198,6 +214,27 @@ export default function MapScreen() {
             </View>
             
             <View style={styles.controlsContainer}>
+              <Animated.View 
+                style={[
+                  styles.territorySizeContainer,
+                  {
+                    transform: [
+                      {
+                        translateY: territorySizeAnimation.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [100, 0],
+                        }),
+                      },
+                    ],
+                    opacity: territorySizeAnimation,
+                  },
+                ]}
+              >
+                <Text style={styles.territorySizeText}>
+                  {(territorySize * 1000).toFixed(0)} m² territory conquered
+                </Text>
+              </Animated.View>
+
               <TouchableOpacity 
                 style={[styles.startWalkButton, isWalking && styles.activeButton]}
                 onPress={toggleWalking}
@@ -208,7 +245,7 @@ export default function MapScreen() {
                   <Play size={24} color={COLORS.white} />
                 )}
                 <Text style={styles.startWalkText}>
-                  {isWalking ? 'End Walk' : 'Start Walk'}
+                  {isWalking ? 'Finish Conquest' : 'Conquer Territory'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -316,6 +353,23 @@ const styles = StyleSheet.create({
     left: 16,
     right: 16,
     alignItems: 'center',
+  },
+  territorySizeContainer: {
+    backgroundColor: COLORS.white,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 16,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  territorySizeText: {
+    fontFamily: 'SF-Pro-Display-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
   },
   startWalkButton: {
     flexDirection: 'row',
