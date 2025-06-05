@@ -10,10 +10,10 @@ const config = {
   resolver: {
     ...defaultConfig.resolver,
     resolveRequest: (context, moduleName, platform) => {
-      // Handle the native-only module import for web platform
+      // Alias native-only modules to UnimplementedView for web platform
       if (platform === 'web' && moduleName === 'react-native/Libraries/Utilities/codegenNativeCommands') {
         return {
-          filePath: require.resolve('react-native-web/dist/exports/View'),
+          filePath: require.resolve('react-native-web/dist/exports/UnimplementedView'),
           type: 'sourceFile',
         };
       }
