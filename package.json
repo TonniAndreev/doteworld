@@ -54,7 +54,6 @@
     "@babel/core": "^7.25.2",
     "@babel/plugin-transform-export-namespace-from": "^7.24.1",
     "babel-plugin-module-resolver": "^5.0.0",
-    "@types/react": "~19.0.10",
-    "react-native-web": "~0.19.9"
+    "@types/react": "~19.0.10"
   }
 }

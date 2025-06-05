@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, PawPrint, Award } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -106,7 +106,7 @@ export default function MapScreen() {
   return (
     <SafeAreaView style={styles.container}>
       {location ? (
-        <View style={styles.mapContainer}>
+        Platform.OS !== 'web' ? (<View style={styles.mapContainer}>
           <MapView
             ref={mapRef}
             provider={Platform.select({
@@ -172,6 +172,14 @@ export default function MapScreen() {
           >
             <ChallengesPanel walkDistance={walkDistance} />
           </Animated.View>
+        </View>) : (
+        <View style={styles.webContainer}>
+          <Text style={styles.webText}>
+            Map view is only available on mobile devices.
+          </Text>
+          <Text style={styles.webSubText}>
+            Please use the mobile app to access the full features.
+          </Text>
         </View>
       ) : (
         <View style={styles.loadingContainer}>
@@ -224,5 +232,19 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 10,
     height: 300,
+  },
+  webContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  webText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 20,
+    marginBottom: 10,
+  },
+  webSubText: {
+    color: COLORS.neutralDark,
   },
 });
