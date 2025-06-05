@@ -1,27 +1,8 @@
+import { Platform } from 'react-native';
 import { initializeApp, getApp, getApps } from 'firebase/app';
 
-// Validate environment variables
-const requiredEnvVars = [
-  'EXPO_PUBLIC_FIREBASE_API_KEY',
-  'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
-  'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
-  'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
-  'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-  'EXPO_PUBLIC_FIREBASE_APP_ID',
-] as const;
-
-// Check for missing environment variables
-const missingVars = requiredEnvVars.filter(
-  (varName) => !process.env[varName]
-);
-
-if (missingVars.length > 0) {
-  throw new Error(
-    `Missing required Firebase configuration variables: ${missingVars.join(', ')}`
-  );
-}
-
-export const firebaseConfig = {
+// Web configuration
+const webConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
@@ -29,6 +10,37 @@ export const firebaseConfig = {
   messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
+
+// iOS configuration
+const iosConfig = {
+  apiKey: "YOUR_IOS_API_KEY",
+  authDomain: "dote-world.firebaseapp.com",
+  projectId: "dote-world",
+  storageBucket: "dote-world.appspot.com",
+  messagingSenderId: "640161399442",
+  appId: "YOUR_IOS_APP_ID",
+  clientId: "YOUR_IOS_CLIENT_ID", // Add your iOS client ID
+  iosBundleId: "com.yourcompany.doteapp",
+};
+
+// Android configuration
+const androidConfig = {
+  apiKey: "YOUR_ANDROID_API_KEY",
+  authDomain: "dote-world.firebaseapp.com",
+  projectId: "dote-world",
+  storageBucket: "dote-world.appspot.com",
+  messagingSenderId: "640161399442",
+  appId: "YOUR_ANDROID_APP_ID",
+  clientId: "YOUR_ANDROID_CLIENT_ID", // Add your Android client ID
+  androidPackageName: "com.yourcompany.doteapp",
+};
+
+// Select configuration based on platform
+export const firebaseConfig = Platform.select({
+  ios: iosConfig,
+  android: androidConfig,
+  default: webConfig,
+});
 
 // Initialize Firebase
 let app;
