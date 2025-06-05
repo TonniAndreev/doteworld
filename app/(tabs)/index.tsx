@@ -181,7 +181,6 @@ export default function MapScreen() {
               Please use the mobile app to access the full features.
             </Text>
           </View>
-        )
       ) : (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>
