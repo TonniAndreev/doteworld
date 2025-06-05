@@ -13,7 +13,7 @@ const config = {
       // Alias native-only modules to UnimplementedView for web platform
       if (platform === 'web' && moduleName === 'react-native/Libraries/Utilities/codegenNativeCommands') {
         return {
-          filePath: require.resolve('react-native-web/dist/exports/UnimplementedView'),
+          filePath: require.resolve('react-native-web/dist/modules/UnimplementedView'),
           type: 'sourceFile',
         };
       }

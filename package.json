@@ -53,6 +53,6 @@
     "@babel/core": "^7.25.2",
     "@babel/plugin-transform-export-namespace-from": "^7.24.1",
     "@types/react": "~19.0.10",
-    "typescript": "~5.8.3"
+    "react-native-web": "~0.19.9"
   }
 }

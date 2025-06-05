@@ -1,26 +1,34 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth } from '@/services/firebase';
-import { 
+import { initializeApp } from 'firebase/app';
+import {
+  getAuth,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  FacebookAuthProvider,
 } from 'firebase/auth';
+import { firebaseConfig } from '@/config/firebase';
 
-const AuthContext = createContext();
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setUser(user);
-      setIsLoading(false);
+      setLoading(false);
     });
-    
-    return () => unsubscribe();
+
+    return unsubscribe;
   }, []);
 
   const login = async (email, password) => {
@@ -28,43 +36,79 @@ export function AuthProvider({ children }) {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return userCredential.user;
     } catch (error) {
-      throw new Error('Invalid email or password');
+      throw error;
     }
   };
 
   const register = async (email, password, displayName, phone) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      // You can update the user profile here if needed
       return userCredential.user;
     } catch (error) {
-      throw new Error('Registration failed');
+      throw error;
     }
   };
 
-  const updateDogProfile = async (dogName, dogBreed, dogPhoto) => {
-    // This will be implemented with Firestore later
-    return null;
+  const loginWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      return result.user;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const loginWithFacebook = async () => {
+    try {
+      const provider = new FacebookAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      return result.user;
+    } catch (error) {
+      throw error;
+    }
   };
 
   const logout = async () => {
     try {
       await signOut(auth);
     } catch (error) {
-      throw new Error('Logout failed');
+      throw error;
+    }
+  };
+
+  const updateDogProfile = async (dogName, dogBreed, dogPhoto) => {
+    if (!user) throw new Error('No authenticated user');
+    
+    try {
+      // Here you would typically update the user's dog profile in your database
+      // For now, we'll just console.log the data
+      console.log('Updating dog profile:', { dogName, dogBreed, dogPhoto });
+      return true;
+    } catch (error) {
+      throw error;
     }
   };
 
   const value = {
     user,
-    isAuthenticated: !!user,
-    isLoading,
+    loading,
     login,
     register,
-    updateDogProfile,
     logout,
+    loginWithGoogle,
+    loginWithFacebook,
+    updateDogProfile,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  return useContext(AuthContext);
+};
