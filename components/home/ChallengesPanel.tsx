@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
-import { Award, ChevronRight, GripHorizontal } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Award, ChevronRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { PanGestureHandler, State } from 'react-native-gesture-handler';
 
@@ -9,7 +9,6 @@ type ChallengePanelProps = {
 };
 
 export default function ChallengesPanel({ walkDistance, onClose }: ChallengePanelProps) {
-  // Mock challenges data - in a real app this would come from a backend
   const challenges = [
     {
       id: '1',
@@ -52,7 +51,7 @@ export default function ChallengesPanel({ walkDistance, onClose }: ChallengePane
     <View style={styles.container}>
       <PanGestureHandler onHandlerStateChange={handleGesture}>
         <View style={styles.dragHandle}>
-          <GripHorizontal size={20} color={COLORS.neutralMedium} />
+          <View style={styles.dragIndicator} />
         </View>
       </PanGestureHandler>
 
@@ -111,7 +110,13 @@ const styles = StyleSheet.create({
   },
   dragHandle: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 4,
+  },
+  dragIndicator: {
+    width: 32,
+    height: 4,
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 2,
   },
   header: {
     flexDirection: 'row',
@@ -141,8 +146,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   challengesContainer: {
-    paddingLeft: 16,
-    paddingRight: 32,
+    paddingHorizontal: 16,
   },
   challengeCard: {
     backgroundColor: COLORS.white,
