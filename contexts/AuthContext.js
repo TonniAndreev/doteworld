@@ -1,9 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, firestore, storage } from '../services/firebase';
-import { serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { uploadFile } from '../services/firebaseStorage';
 
 // Create type for context (optional but good for TS)
@@ -24,10 +21,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+          const userDoc = await firestore().collection('users').doc(firebaseUser.uid).get();
           const userData = userDoc.data();
 
           const fullUserData = {
@@ -55,10 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await auth().signInWithEmailAndPassword(email, password);
       const firebaseUser = userCredential.user;
 
-      const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+      const userDoc = await firestore().collection('users').doc(firebaseUser.uid).get();
       const userData = userDoc.data();
 
       const fullUserData = {
@@ -80,20 +77,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = async (email: string, password: string, displayName: string, phone: string) => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await auth().createUserWithEmailAndPassword(email, password);
       const firebaseUser = userCredential.user;
 
-      await updateProfile(firebaseUser, { displayName });
+      await firebaseUser.updateProfile({ displayName });
 
       const userData = {
         displayName,
         phone,
         achievementCount: 0,
         friends: [],
-        createdAt: serverTimestamp()
+        createdAt: firestore.FieldValue.serverTimestamp()
       };
 
-      await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+      await firestore().collection('users').doc(firebaseUser.uid).set(userData);
 
       const fullUserData = {
         uid: firebaseUser.uid,
@@ -128,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ...(photoURL && { dogPhoto: photoURL }),
     };
 
-    await updateDoc(doc(firestore, 'users', user.uid), dogData);
+    await firestore().collection('users').doc(user.uid).update(dogData);
 
     const updatedUser = {
       ...user,
@@ -146,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await signOut(auth);
+      await auth().signOut();
       setUser(null);
       await AsyncStorage.removeItem('doteUser');
     } catch (error) {
