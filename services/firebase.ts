@@ -21,13 +21,15 @@ const firebaseConfig = {
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth with AsyncStorage persistence for React Native
-const auth = Platform.select({
-  web: () => getAuth(app),
-  default: () => initializeAuth(app, {
+// Initialize Auth with proper platform handling
+let auth;
+if (Platform.OS === 'web') {
+  auth = getAuth(app);
+} else {
+  auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage)
-  })
-})();
+  });
+}
 
 // Initialize Firestore
 const firestore = getFirestore(app);
