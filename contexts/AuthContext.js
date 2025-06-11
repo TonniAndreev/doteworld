@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, firestore, storage } from '../services/firebase';
-import { uploadFile } from '../services/firebaseStorage';
+import { auth, firestore } from '@/services/firebase';
+import { uploadFile } from '@/services/firebaseStorage';
 
 // Create type for context (optional but good for TS)
 interface AuthContextType {

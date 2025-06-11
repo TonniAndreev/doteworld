@@ -1,4 +1,4 @@
-import { storage } from './firebase';
+import storage from '@react-native-firebase/storage';
 
 /**
  * Upload a local file (fileUri) to Firebase Storage and return the download URL.
