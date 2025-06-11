@@ -1,32 +1,35 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, firestore } from '@/services/firebase';
-import { uploadFile } from '@/services/firebaseStorage';
+import { 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile
+} from 'firebase/auth';
+import { 
+  doc, 
+  setDoc, 
+  getDoc,
+  serverTimestamp 
+} from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { auth, firestore, storage } from '@/services/firebase';
 
-// Create type for context (optional but good for TS)
-interface AuthContextType {
-  user: any;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, password: string) => Promise<any>;
-  register: (email: string, password: string, displayName: string, phone: string) => Promise<any>;
-  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto: string | null) => Promise<any>;
-  logout: () => Promise<void>;
-}
+const AuthContext = createContext();
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null);
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged(async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          const userDoc = await firestore().collection('users').doc(firebaseUser.uid).get();
+          // Get additional user data from Firestore
+          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
           const userData = userDoc.data();
-
+          
           const fullUserData = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
@@ -34,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             photoURL: firebaseUser.photoURL,
             ...userData
           };
-
+          
           setUser(fullUserData);
           await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
         } catch (error) {
@@ -47,17 +50,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return unsubscribe;
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email, password) => {
     try {
-      const userCredential = await auth().signInWithEmailAndPassword(email, password);
-      const firebaseUser = userCredential.user;
-
-      const userDoc = await firestore().collection('users').doc(firebaseUser.uid).get();
+      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
+      const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
       const userData = userDoc.data();
-
+      
       const fullUserData = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
@@ -65,7 +66,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         photoURL: firebaseUser.photoURL,
         ...userData
       };
-
+      
       setUser(fullUserData);
       await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
       return fullUserData;
@@ -75,30 +76,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, displayName: string, phone: string) => {
+  const register = async (email, password, displayName, phone) => {
     try {
-      const userCredential = await auth().createUserWithEmailAndPassword(email, password);
-      const firebaseUser = userCredential.user;
-
-      await firebaseUser.updateProfile({ displayName });
-
+      const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
+      
+      // Update profile in Firebase Auth
+      await updateProfile(firebaseUser, {
+        displayName: displayName
+      });
+      
+      // Create user document in Firestore
       const userData = {
         displayName,
         phone,
         achievementCount: 0,
         friends: [],
-        createdAt: firestore.FieldValue.serverTimestamp()
+        createdAt: serverTimestamp()
       };
-
-      await firestore().collection('users').doc(firebaseUser.uid).set(userData);
-
+      
+      await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+      
       const fullUserData = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
-        displayName,
         ...userData
       };
-
+      
       setUser(fullUserData);
       await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
       return fullUserData;
@@ -108,42 +111,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto: string | null) => {
-  if (!user?.uid) throw new Error('No authenticated user');
+  const updateDogProfile = async (dogName, dogBreed, dogPhoto) => {
+    if (!user?.uid) throw new Error('No authenticated user');
 
-  try {
-    let photoURL = null;
-
-    if (dogPhoto) {
-      const path = `dogs/${user.uid}/${Date.now()}`;
-      photoURL = await uploadFile(path, dogPhoto);
+    try {
+      let photoURL = null;
+      
+      if (dogPhoto) {
+        // Upload photo to Firebase Storage
+        const photoRef = ref(storage, `dogs/${user.uid}/${Date.now()}`);
+        const response = await fetch(dogPhoto);
+        const blob = await response.blob();
+        await uploadBytes(photoRef, blob);
+        photoURL = await getDownloadURL(photoRef);
+      }
+      
+      const dogData = {
+        dogName,
+        dogBreed,
+        ...(photoURL && { dogPhoto: photoURL })
+      };
+      
+      // Update Firestore document
+      await setDoc(doc(firestore, 'users', user.uid), dogData, { merge: true });
+      
+      const updatedUser = {
+        ...user,
+        ...dogData
+      };
+      
+      setUser(updatedUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating dog profile:', error);
+      throw error;
     }
-
-    const dogData = {
-      dogName,
-      dogBreed,
-      ...(photoURL && { dogPhoto: photoURL }),
-    };
-
-    await firestore().collection('users').doc(user.uid).update(dogData);
-
-    const updatedUser = {
-      ...user,
-      ...dogData,
-    };
-
-    setUser(updatedUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-    return updatedUser;
-  } catch (error) {
-    console.error('Error updating dog profile:', error);
-    throw error;
-  }
-};
+  };
 
   const logout = async () => {
     try {
-      await auth().signOut();
+      await signOut(auth);
       setUser(null);
       await AsyncStorage.removeItem('doteUser');
     } catch (error) {
@@ -152,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const value: AuthContextType = {
+  const value = {
     user,
     isAuthenticated: !!user,
     isLoading,
@@ -165,8 +173,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used inside AuthProvider");
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
