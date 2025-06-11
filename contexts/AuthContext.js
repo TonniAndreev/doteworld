@@ -4,6 +4,7 @@ import { auth, firestore, storage } from '../services/firebase';
 import { serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { uploadFile } from '../services/firebaseStorage';
 
 // Create type for context (optional but good for TS)
 interface AuthContextType {
@@ -111,41 +112,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto: string | null) => {
-    if (!user?.uid) throw new Error('No authenticated user');
+  if (!user?.uid) throw new Error('No authenticated user');
 
-    try {
-      let photoURL = null;
+  try {
+    let photoURL = null;
 
-      if (dogPhoto) {
-        const photoRef = ref(storage, `dogs/${user.uid}/${Date.now()}`);
-        const response = await fetch(dogPhoto);
-        const blob = await response.blob();
-
-        await uploadBytes(photoRef, blob);
-        photoURL = await getDownloadURL(photoRef);
-      }
-
-      const dogData = {
-        dogName,
-        dogBreed,
-        ...(photoURL && { dogPhoto: photoURL })
-      };
-
-      await updateDoc(doc(firestore, 'users', user.uid), dogData);
-
-      const updatedUser = {
-        ...user,
-        ...dogData
-      };
-
-      setUser(updatedUser);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-      return updatedUser;
-    } catch (error) {
-      console.error('Error updating dog profile:', error);
-      throw error;
+    if (dogPhoto) {
+      const path = `dogs/${user.uid}/${Date.now()}`;
+      photoURL = await uploadFile(path, dogPhoto);
     }
-  };
+
+    const dogData = {
+      dogName,
+      dogBreed,
+      ...(photoURL && { dogPhoto: photoURL }),
+    };
+
+    await updateDoc(doc(firestore, 'users', user.uid), dogData);
+
+    const updatedUser = {
+      ...user,
+      ...dogData,
+    };
+
+    setUser(updatedUser);
+    await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+    return updatedUser;
+  } catch (error) {
+    console.error('Error updating dog profile:', error);
+    throw error;
+  }
+};
 
   const logout = async () => {
     try {
