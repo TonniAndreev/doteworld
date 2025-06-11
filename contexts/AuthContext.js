@@ -5,7 +5,9 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  GoogleAuthProvider,
+  signInWithCredential
 } from 'firebase/auth';
 import { 
   doc, 

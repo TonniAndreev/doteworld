@@ -6,21 +6,21 @@
     "android": {
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyAd4aZH-kmHD2__AY-VJj3Q-s_h2MUx-mU"
+          "apiKey": "AIzaSyDKflE0HU9fcR5u21MmCnruDg6YvNlrl58"
         }
       },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "package": "com.anonymous.boltexponativewind"
+      "package": "com.boltexponativewind"
     },
     "ios": {
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "AIzaSyAd4aZH-kmHD2__AY-VJj3Q-s_h2MUx-mU"
+        "googleMapsApiKey": "AIzaSyAwjs7_i08L_cJVar9fPHCsFGfzE6rbteM"
       },
-      "bundleIdentifier": "com.anonymous.boltexponativewind"
+      "bundleIdentifier": "com.boltexponativewind"
     },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
