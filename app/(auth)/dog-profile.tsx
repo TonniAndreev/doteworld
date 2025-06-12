@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Camera, ChevronDown, AlertCircle, Check } from 'lucide-react-native';
+import { Camera, ChevronDown, CircleAlert as AlertCircle, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
