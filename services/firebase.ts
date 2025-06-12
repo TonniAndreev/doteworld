@@ -4,7 +4,14 @@ import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import { initializeFirestore, persistentLocalCache } from 'firebase/firestore';
 
+const firestore = getFirestore(app);
+
+initializeFirestore(app, {
+  localCache: persistentLocalCache(),
+  experimentalForceLongPolling: true,
+});
 // ✅ Firebase config (your working credentials)
 const firebaseConfig = {
   apiKey: "AIzaSyAwjs7_i08L_cJVar9fPHCsFGfzE6rbteM",
