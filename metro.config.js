@@ -4,7 +4,7 @@ const { getDefaultConfig } = require('expo/metro-config');
 const config = getDefaultConfig(__dirname, {
   isCSSEnabled: false,
   defaultConfig.resolver.sourceExts.push('cjs');
-defaultConfig.resolver.unstable_enablePackageExports = false;
+  defaultConfig.resolver.unstable_enablePackageExports = false;
 });
 
 // Handle platform-specific extensions
