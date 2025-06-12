@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, firestore, storage } from '../services/firebase';
 import { serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
@@ -38,13 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
 
           setUser(fullUserData);
-          await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+          localStorage.setItem('doteUser', JSON.stringify(fullUserData));
         } catch (error) {
           console.error('Error fetching user data:', error);
         }
       } else {
         setUser(null);
-        await AsyncStorage.removeItem('doteUser');
+        localStorage.removeItem('doteUser');
       }
       setIsLoading(false);
     });
@@ -71,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     setUser(fullUserData);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+    localStorage.setItem('doteUser', JSON.stringify(fullUserData));
     console.log('AuthContext: Login complete, user set');
     return fullUserData;
   };
@@ -100,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     setUser(fullUserData);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+    localStorage.setItem('doteUser', JSON.stringify(fullUserData));
     return fullUserData;
   };
 
@@ -122,14 +121,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await updateDoc(doc(firestore, 'users', user.uid), dogData);
     const updatedUser = { ...user, ...dogData };
     setUser(updatedUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+    localStorage.setItem('doteUser', JSON.stringify(updatedUser));
     return updatedUser;
   };
 
   const logout = async () => {
     await signOut(auth);
     setUser(null);
-    await AsyncStorage.removeItem('doteUser');
+    localStorage.removeItem('doteUser');
   };
 
   const value: AuthContextType = {

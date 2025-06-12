@@ -89,7 +89,7 @@ export default function RegisterScreen() {
       console.log('Attempting registration with:', email, firstName, lastName);
       await register(email, password, `${firstName} ${lastName}`, phone);
       console.log('Registration successful, redirecting...');
-      router.push('/(auth)/dog-profile');
+      router.replace('/(tabs)');
     } catch (error) {
       console.error('Registration error:', error);
       setError('Registration failed. Please try again.');
