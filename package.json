@@ -13,8 +13,6 @@
   "dependencies": {
     "@expo-google-fonts/inter": "^0.2.3",
     "@expo/vector-icons": "^14.1.0",
-    "@react-navigation/bottom-tabs": "^6.5.11",
-    "@react-navigation/native": "^6.1.9",
     "@turf/turf": "^6.5.0",
     "expo": "^53.0.11",
     "expo-constants": "~17.1.3",
