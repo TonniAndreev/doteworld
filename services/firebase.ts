@@ -5,7 +5,7 @@ import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// ✅ Use singleton pattern so app doesn't initialize multiple times in development
+// ✅ Firebase config (your working credentials)
 const firebaseConfig = {
   apiKey: "AIzaSyAwjs7_i08L_cJVar9fPHCsFGfzE6rbteM",
   authDomain: "dote-world.firebaseapp.com",
@@ -15,18 +15,18 @@ const firebaseConfig = {
   appId: "1:640161399442:web:f341ad3931da83c18a1c4b"
 };
 
-// Prevent re-initializing the app in Expo's Fast Refresh
+// ✅ Prevent re-initializing Firebase app on fast refresh
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Initialize Auth (web vs native)
+// ✅ Initialize Auth (persistence for native, normal for web)
 const auth = Platform.select({
   web: () => getAuth(app),
   default: () => initializeAuth(app, {
-    persistence: getReactNativePersistence(AsyncStorage)
+    persistence: getReactNativePersistence(AsyncStorage),
   }),
 })();
 
-// Initialize Firestore and Storage
+// ✅ Firestore & Storage
 const firestore = getFirestore(app);
 const storage = getStorage(app);
 
