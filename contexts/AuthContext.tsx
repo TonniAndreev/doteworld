@@ -53,11 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
+    console.log('AuthContext: Starting login process');
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const firebaseUser = userCredential.user;
+    console.log('AuthContext: Firebase user authenticated:', firebaseUser.uid);
 
     const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
     const userData = userDoc.data();
+    console.log('AuthContext: User data from Firestore:', userData);
 
     const fullUserData = {
       uid: firebaseUser.uid,
@@ -69,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     setUser(fullUserData);
     await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+    console.log('AuthContext: Login complete, user set');
     return fullUserData;
   };
 

@@ -35,9 +35,12 @@ export default function LoginScreen() {
     setError('');
     
     try {
+      console.log('Attempting login with:', email);
       await login(email, password);
+      console.log('Login successful, redirecting...');
       router.replace('/(tabs)');
     } catch (error) {
+      console.error('Login error:', error);
       setError('Invalid email or password');
     } finally {
       setIsLoading(false);

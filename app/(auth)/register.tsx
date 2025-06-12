@@ -94,9 +94,12 @@ export default function RegisterScreen() {
     setError('');
     
     try {
+      console.log('Attempting registration with:', email, firstName, lastName);
       await register(email, password, `${firstName} ${lastName}`, phone);
+      console.log('Registration successful, redirecting...');
       router.push('/(auth)/dog-profile');
     } catch (error) {
+      console.error('Registration error:', error);
       setError('Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
