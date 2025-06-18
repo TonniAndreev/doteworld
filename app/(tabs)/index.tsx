@@ -20,7 +20,6 @@ export default function MapScreen() {
   const [lastLocation, setLastLocation] = useState<Location.LocationObject | null>(null);
   const [showChallenges, setShowChallenges] = useState(false);
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
-  const [territorySize, setTerritorySize] = useState(0);
   const [isLocating, setIsLocating] = useState(false);
   
   const mapRef = useRef<MapView>(null);
@@ -28,14 +27,15 @@ export default function MapScreen() {
   const territorySizeAnimation = useRef(new Animated.Value(0)).current;
   
   const { 
-    territory, 
-    currentWalkPoints, 
+    territory,
+    territorySize,
+    currentWalkPoints,
     currentPolygon,
-    startWalk, 
-    addWalkPoint, 
-    endWalk 
+    startWalk,
+    addWalkPoint,
+    endWalk,
   } = useTerritory();
-  const { pawsBalance, addPaws } = usePaws();
+  const { pawsBalance } = usePaws();
 
   useEffect(() => {
     if (isWalking) {
