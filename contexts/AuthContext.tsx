@@ -7,23 +7,38 @@ import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, c
 import { uploadFile } from '../services/firebaseStorage';
 import { Platform } from 'react-native';
 
-// Create type for context (optional but good for TS)
+// Define the user type
+interface DoteUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+  phone?: string;
+  dogName?: string;
+  dogBreed?: string;
+  dogPhoto?: string;
+  achievementCount?: number;
+  friends?: any[];
+  createdAt?: any;
+}
+
+// Create type for context
 interface AuthContextType {
-  user: any;
+  user: DoteUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<any>;
-  register: (email: string, password: string, displayName: string, phone: string) => Promise<any>;
-  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto: string | null) => Promise<any>;
-  loginWithGoogle: () => Promise<any>;
-  loginWithFacebook: () => Promise<any>;
+  login: (email: string, password: string) => Promise<DoteUser>;
+  register: (email: string, password: string, displayName: string, phone: string) => Promise<DoteUser>;
+  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto: string | null) => Promise<DoteUser>;
+  loginWithGoogle: () => Promise<DoteUser>;
+  loginWithFacebook: () => Promise<DoteUser>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<DoteUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -33,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
           const userData = userDoc.data();
 
-          const fullUserData = {
+          const fullUserData: DoteUser = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
             displayName: firebaseUser.displayName,
@@ -56,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<DoteUser> => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -64,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
       const userData = userDoc.data();
 
-      const fullUserData = {
+      const fullUserData: DoteUser = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         displayName: firebaseUser.displayName,
@@ -81,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = async (): Promise<DoteUser> => {
     if (Platform.OS === 'web') {
       try {
         const provider = new GoogleAuthProvider();
@@ -104,7 +119,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
         }
 
-        const fullUserData = {
+        const fullUserData: DoteUser = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
@@ -126,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const loginWithFacebook = async () => {
+  const loginWithFacebook = async (): Promise<DoteUser> => {
     if (Platform.OS === 'web') {
       try {
         const provider = new FacebookAuthProvider();
@@ -149,7 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
         }
 
-        const fullUserData = {
+        const fullUserData: DoteUser = {
           uid: firebaseUser.uid,
           email: firebaseUser.email,
           displayName: firebaseUser.displayName,
@@ -171,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, displayName: string, phone: string) => {
+  const register = async (email: string, password: string, displayName: string, phone: string): Promise<DoteUser> => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -188,7 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
 
-      const fullUserData = {
+      const fullUserData: DoteUser = {
         uid: firebaseUser.uid,
         email: firebaseUser.email,
         displayName,
@@ -204,7 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto: string | null) => {
+  const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto: string | null): Promise<DoteUser> => {
     if (!user?.uid) throw new Error('No authenticated user');
 
     try {
@@ -223,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       await updateDoc(doc(firestore, 'users', user.uid), dogData);
 
-      const updatedUser = {
+      const updatedUser: DoteUser = {
         ...user,
         ...dogData,
       };
@@ -237,7 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
+  const logout = async (): Promise<void> => {
     try {
       await signOut(auth);
       setUser(null);
