@@ -3,8 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, firestore, storage } from '../services/firebase';
 import { serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup, FacebookAuthProvider } from 'firebase/auth';
 import { uploadFile } from '../services/firebaseStorage';
+import { Platform } from 'react-native';
 
 // Create type for context (optional but good for TS)
 interface AuthContextType {
@@ -14,6 +15,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<any>;
   register: (email: string, password: string, displayName: string, phone: string) => Promise<any>;
   updateDogProfile: (dogName: string, dogBreed: string, dogPhoto: string | null) => Promise<any>;
+  loginWithGoogle: () => Promise<any>;
+  loginWithFacebook: () => Promise<any>;
   logout: () => Promise<void>;
 }
 
@@ -78,6 +81,96 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loginWithGoogle = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const firebaseUser = result.user;
+
+        // Check if user exists in Firestore
+        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        let userData = userDoc.data();
+
+        // If user doesn't exist, create a new user document
+        if (!userData) {
+          userData = {
+            displayName: firebaseUser.displayName,
+            phone: '',
+            achievementCount: 0,
+            friends: [],
+            createdAt: serverTimestamp()
+          };
+          await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+        }
+
+        const fullUserData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          ...userData
+        };
+
+        setUser(fullUserData);
+        await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+        return fullUserData;
+      } catch (error) {
+        console.error('Google login error:', error);
+        throw error;
+      }
+    } else {
+      // For mobile platforms, you would need to implement Google Sign-In
+      // using @react-native-google-signin/google-signin or similar
+      throw new Error('Google Sign-In not implemented for mobile platforms');
+    }
+  };
+
+  const loginWithFacebook = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        const provider = new FacebookAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const firebaseUser = result.user;
+
+        // Check if user exists in Firestore
+        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        let userData = userDoc.data();
+
+        // If user doesn't exist, create a new user document
+        if (!userData) {
+          userData = {
+            displayName: firebaseUser.displayName,
+            phone: '',
+            achievementCount: 0,
+            friends: [],
+            createdAt: serverTimestamp()
+          };
+          await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+        }
+
+        const fullUserData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          ...userData
+        };
+
+        setUser(fullUserData);
+        await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+        return fullUserData;
+      } catch (error) {
+        console.error('Facebook login error:', error);
+        throw error;
+      }
+    } else {
+      // For mobile platforms, you would need to implement Facebook Login
+      // using react-native-fbsdk-next or similar
+      throw new Error('Facebook Sign-In not implemented for mobile platforms');
+    }
+  };
+
   const register = async (email: string, password: string, displayName: string, phone: string) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -112,37 +205,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto: string | null) => {
-  if (!user?.uid) throw new Error('No authenticated user');
+    if (!user?.uid) throw new Error('No authenticated user');
 
-  try {
-    let photoURL = null;
+    try {
+      let photoURL = null;
 
-    if (dogPhoto) {
-      const path = `dogs/${user.uid}/${Date.now()}`;
-      photoURL = await uploadFile(path, dogPhoto);
+      if (dogPhoto) {
+        const path = `dogs/${user.uid}/${Date.now()}`;
+        photoURL = await uploadFile(path, dogPhoto);
+      }
+
+      const dogData = {
+        dogName,
+        dogBreed,
+        ...(photoURL && { dogPhoto: photoURL }),
+      };
+
+      await updateDoc(doc(firestore, 'users', user.uid), dogData);
+
+      const updatedUser = {
+        ...user,
+        ...dogData,
+      };
+
+      setUser(updatedUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating dog profile:', error);
+      throw error;
     }
-
-    const dogData = {
-      dogName,
-      dogBreed,
-      ...(photoURL && { dogPhoto: photoURL }),
-    };
-
-    await updateDoc(doc(firestore, 'users', user.uid), dogData);
-
-    const updatedUser = {
-      ...user,
-      ...dogData,
-    };
-
-    setUser(updatedUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-    return updatedUser;
-  } catch (error) {
-    console.error('Error updating dog profile:', error);
-    throw error;
-  }
-};
+  };
 
   const logout = async () => {
     try {
@@ -162,6 +255,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     register,
     updateDogProfile,
+    loginWithGoogle,
+    loginWithFacebook,
     logout,
   };
 
