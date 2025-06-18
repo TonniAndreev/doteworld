@@ -5,10 +5,12 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -70,6 +72,10 @@ export default function LoginScreen() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleBoltNewPress = () => {
+    Linking.openURL('https://bolt.new');
   };
 
   return (
@@ -169,6 +175,16 @@ export default function LoginScreen() {
               <Text style={styles.registerText}>Register</Text>
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity 
+            style={styles.boltNewContainer}
+            onPress={handleBoltNewPress}
+          >
+            <Image
+              source={{ uri: 'https://images.pexels.com/photos/white_circle_360x360.png' }}
+              style={styles.boltNewImage}
+            />
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -309,6 +325,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 24,
   },
   noAccountText: {
     fontFamily: 'Inter-Regular',
@@ -320,5 +337,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 14,
     color: COLORS.primary,
+  },
+  boltNewContainer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  boltNewImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
 });

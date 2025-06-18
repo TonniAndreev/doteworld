@@ -9,7 +9,6 @@ import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
 import ChallengesPanel from '@/components/home/ChallengesPanel';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
-import Logo from '@/components/common/Logo';
 import { calculateDistance } from '@/utils/locationUtils';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -258,10 +257,6 @@ export default function MapScreen() {
               </Animated.View>
 
               <View style={styles.bottomControlsRow}>
-                <TouchableOpacity style={styles.logoContainer}>
-                  <Logo width={24} height={24} />
-                </TouchableOpacity>
-
                 <TouchableOpacity 
                   style={[styles.startWalkButton, isWalking && styles.activeButton]}
                   onPress={toggleWalking}
@@ -417,19 +412,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
-  logoContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
   startWalkButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -439,7 +421,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 16,
     flex: 1,
-    marginHorizontal: 12,
+    marginRight: 12,
   },
   activeButton: {
     backgroundColor: COLORS.error,
