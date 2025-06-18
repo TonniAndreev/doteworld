@@ -5,8 +5,8 @@ import { COLORS } from '@/constants/theme';
 type FriendRequestItemProps = {
   request: {
     id: string;
-    name: string;
-    dogName: string;
+    senderName: string;
+    senderDogName: string;
     timestamp: string;
   };
   onAccept: () => void;
@@ -18,12 +18,12 @@ export default function FriendRequestItem({ request, onAccept, onDecline }: Frie
     <View style={styles.container}>
       <View style={styles.userInfo}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{request.name.charAt(0)}</Text>
+          <Text style={styles.avatarText}>{request.senderName.charAt(0)}</Text>
         </View>
-        
+
         <View style={styles.details}>
-          <Text style={styles.name}>{request.name}</Text>
-          <Text style={styles.dogName}>with {request.dogName}</Text>
+          <Text style={styles.name}>{request.senderName}</Text>
+          <Text style={styles.dogName}>with {request.senderDogName}</Text>
           <Text style={styles.timestamp}>
             {new Date(request.timestamp).toLocaleDateString()}
           </Text>

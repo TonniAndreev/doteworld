@@ -18,6 +18,7 @@ export default function MapScreen() {
   const [isWalking, setIsWalking] = useState(false);
   const [walkDistance, setWalkDistance] = useState(0);
   const [lastLocation, setLastLocation] = useState<Location.LocationObject | null>(null);
+  const lastLocationRef = useRef<Location.LocationObject | null>(null);
   const [showChallenges, setShowChallenges] = useState(false);
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
   const [isLocating, setIsLocating] = useState(false);
@@ -73,15 +74,15 @@ export default function MapScreen() {
           },
           (newLocation) => {
             setLocation(newLocation);
-            
-            if (isWalking && lastLocation) {
+
+            if (isWalking && lastLocationRef.current) {
               const distance = calculateDistance(
-                lastLocation.coords.latitude,
-                lastLocation.coords.longitude,
+                lastLocationRef.current.coords.latitude,
+                lastLocationRef.current.coords.longitude,
                 newLocation.coords.latitude,
                 newLocation.coords.longitude
               );
-              
+
               if (newLocation.coords.speed && newLocation.coords.speed < 2.5) {
                 setWalkDistance(prev => prev + distance);
                 addWalkPoint({
@@ -90,7 +91,8 @@ export default function MapScreen() {
                 });
               }
             }
-            
+
+            lastLocationRef.current = newLocation;
             setLastLocation(newLocation);
           }
         );
@@ -107,7 +109,7 @@ export default function MapScreen() {
         locationSubscription.remove();
       }
     };
-  }, [isWalking, lastLocation]);
+  }, [isWalking]);
   
   const toggleWalking = () => {
     if (!isWalking) {
