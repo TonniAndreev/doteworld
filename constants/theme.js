@@ -46,52 +46,52 @@ export const SPACING = {
 
 export const TYPOGRAPHY = {
   largeTitle: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 36,
     lineHeight: 44,
   },
   title1: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 28,
     lineHeight: 34,
   },
   title2: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 22,
     lineHeight: 28,
   },
   title3: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 20,
     lineHeight: 25,
   },
   headline: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 18,
     lineHeight: 22,
   },
   body: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 16,
     lineHeight: 22,
   },
   callout: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 16,
     lineHeight: 22,
   },
   subhead: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 14,
     lineHeight: 20,
   },
   footnote: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 12,
     lineHeight: 16,
   },
   caption: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 12,
     lineHeight: 16,
   },

@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Camera, ChevronDown, CircleAlert as AlertCircle, Check } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera, ChevronDown, AlertCircle, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -42,42 +43,41 @@ export default function DogProfileScreen() {
   const { updateDogProfile } = useAuth();
   
   const pickImage = async () => {
-    if (Platform.OS === 'web') {
-      // Web implementation using HTML input
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = 'image/*';
-      input.onchange = (event) => {
-        const file = event.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            setDogPhoto(e.target.result);
-          };
-          reader.readAsDataURL(file);
-        }
-      };
-      input.click();
-    } else {
-      // For native platforms, you would use expo-image-picker
-      alert('Image picker not available on this platform');
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      alert('Sorry, we need camera roll permissions to make this work!');
+      return;
+    }
+    
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    
+    if (!result.canceled) {
+      setDogPhoto(result.assets[0].uri);
     }
   };
   
   const takePhoto = async () => {
-    if (Platform.OS === 'web') {
-      // Web implementation using camera
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        // For simplicity, we'll just use the file picker on web
-        pickImage();
-      } catch (error) {
-        console.error('Camera access denied:', error);
-        pickImage(); // Fallback to file picker
-      }
-    } else {
-      // For native platforms, you would use expo-camera
-      alert('Camera not available on this platform');
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    
+    if (status !== 'granted') {
+      alert('Sorry, we need camera permissions to make this work!');
+      return;
+    }
+    
+    let result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    
+    if (!result.canceled) {
+      setDogPhoto(result.assets[0].uri);
     }
   };
   
@@ -241,13 +241,13 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 28,
     color: COLORS.neutralDark,
     marginBottom: 8,
   },
   subtitle: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
     textAlign: 'center',
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 14,
     color: COLORS.error,
     marginLeft: 8,
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   photoPlaceholderText: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 16,
     color: COLORS.neutralMedium,
     marginTop: 8,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   photoButtonText: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
@@ -313,13 +313,13 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   inputLabel: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
     marginBottom: 8,
   },
   input: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     backgroundColor: COLORS.neutralLight,
@@ -339,12 +339,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   breedText: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
   breedPlaceholder: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
   },
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.neutralLight,
   },
   dropdownItemText: {
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   saveButtonText: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 16,
     color: COLORS.white,
   },
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   skipButtonText: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
   },
