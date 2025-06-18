@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Play, Pause, Locate, Zap } from 'lucide-react-native';
+import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import MapView, { Polygon, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
@@ -9,6 +9,7 @@ import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
 import ChallengesPanel from '@/components/home/ChallengesPanel';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
+import Logo from '@/components/common/Logo';
 import { calculateDistance } from '@/utils/locationUtils';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -185,7 +186,7 @@ export default function MapScreen() {
               <Polygon
                 key={index}
                 coordinates={polygon}
-                fillColor="rgba(138, 79, 255, 0.3)"
+                fillColor="rgba(241, 102, 46, 0.3)"
                 strokeColor={COLORS.primary}
                 strokeWidth={2}
               />
@@ -213,7 +214,7 @@ export default function MapScreen() {
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
-                fillColor="rgba(138, 79, 255, 0.2)"
+                fillColor="rgba(241, 102, 46, 0.2)"
                 strokeColor={COLORS.primary}
                 strokeWidth={2}
                 strokeDashPattern={[5, 5]}
@@ -257,8 +258,8 @@ export default function MapScreen() {
               </Animated.View>
 
               <View style={styles.bottomControlsRow}>
-                <TouchableOpacity style={styles.boltLogoContainer}>
-                  <Zap size={24} color={COLORS.primary} />
+                <TouchableOpacity style={styles.logoContainer}>
+                  <Logo width={24} height={24} />
                 </TouchableOpacity>
 
                 <TouchableOpacity 
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
@@ -382,7 +383,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   challengesText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
@@ -406,7 +407,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   territorySizeText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
@@ -416,7 +417,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
   },
-  boltLogoContainer: {
+  logoContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
@@ -444,7 +445,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.error,
   },
   startWalkText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
     marginLeft: 8,

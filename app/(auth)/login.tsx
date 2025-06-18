@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -16,6 +15,7 @@ import { router } from 'expo-router';
 import { Mail, Lock, Facebook, AlertCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import Logo from '@/components/common/Logo';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -83,10 +83,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoContainer}>
-            <Image
-              source={{ uri: 'https://i.imgur.com/QvXwzC5.png' }}
-              style={styles.logo}
-            />
+            <Logo width={100} height={100} />
             <Text style={styles.logoText}>Dote</Text>
             <Text style={styles.tagline}>Walk. Explore. Conquer.</Text>
           </View>
@@ -153,10 +150,6 @@ export default function LoginScreen() {
               onPress={handleGoogleLogin}
               disabled={isLoading}
             >
-              <Image
-                source={{ uri: 'https://i.imgur.com/Sk5VHhy.png' }}
-                style={styles.socialIcon}
-              />
               <Text style={styles.socialButtonText}>Google</Text>
             </TouchableOpacity>
             
@@ -199,19 +192,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 16,
-  },
   logoText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 36,
     color: COLORS.primary,
     marginBottom: 8,
+    marginTop: 16,
   },
   tagline: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
@@ -224,7 +213,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.error,
     marginLeft: 8,
@@ -245,7 +234,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     padding: 12,
@@ -254,7 +243,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-end',
   },
   forgotPasswordText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
@@ -266,7 +255,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   loginButtonText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
   },
@@ -281,7 +270,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.neutralLight,
   },
   orText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralMedium,
     marginHorizontal: 16,
@@ -307,18 +296,14 @@ const styles = StyleSheet.create({
   facebookButton: {
     backgroundColor: '#4267B2',
   },
-  socialIcon: {
-    width: 20,
-    height: 20,
-    marginRight: 8,
-  },
   socialButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
   },
   facebookButtonText: {
     color: COLORS.white,
+    marginLeft: 8,
   },
   registerContainer: {
     flexDirection: 'row',
@@ -326,13 +311,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   noAccountText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralDark,
     marginRight: 4,
   },
   registerText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 14,
     color: COLORS.primary,
   },
