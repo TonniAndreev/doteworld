@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Mail, Lock, Facebook, AlertCircle } from 'lucide-react-native';
+import { Mail, Lock, Facebook, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import Logo from '@/components/common/Logo';
