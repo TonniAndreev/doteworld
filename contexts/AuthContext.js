@@ -1,10 +1,12 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, firestore, storage } from '../services/firebase';
 import { serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { uploadFile } from '../services/firebaseStorage';
 
-// ✅ Type definition
+// Create type for context (optional but good for TS)
 interface AuthContextType {
   user: any;
   isAuthenticated: boolean;
@@ -37,13 +39,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
 
           setUser(fullUserData);
-          localStorage.setItem('doteUser', JSON.stringify(fullUserData));
+          await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
         } catch (error) {
           console.error('Error fetching user data:', error);
         }
       } else {
         setUser(null);
-        localStorage.removeItem('doteUser');
+        await AsyncStorage.removeItem('doteUser');
       }
       setIsLoading(false);
     });
@@ -52,61 +54,69 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    console.log('AuthContext: Starting login process');
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const firebaseUser = userCredential.user;
-    console.log('AuthContext: Firebase user authenticated:', firebaseUser.uid);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
 
-    const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-    const userData = userDoc.data();
-    console.log('AuthContext: User data from Firestore:', userData);
+      const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+      const userData = userDoc.data();
 
-    const fullUserData = {
-      uid: firebaseUser.uid,
-      email: firebaseUser.email,
-      displayName: firebaseUser.displayName,
-      photoURL: firebaseUser.photoURL,
-      ...userData
-    };
+      const fullUserData = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        ...userData
+      };
 
-    setUser(fullUserData);
-    localStorage.setItem('doteUser', JSON.stringify(fullUserData));
-    console.log('AuthContext: Login complete, user set');
-    return fullUserData;
+      setUser(fullUserData);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+      return fullUserData;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const register = async (email: string, password: string, displayName: string, phone: string) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const firebaseUser = userCredential.user;
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
 
-    await updateProfile(firebaseUser, { displayName });
+      await updateProfile(firebaseUser, { displayName });
 
-    const userData = {
-      displayName,
-      phone,
-      achievementCount: 0,
-      friends: [],
-      createdAt: serverTimestamp()
-    };
+      const userData = {
+        displayName,
+        phone,
+        achievementCount: 0,
+        friends: [],
+        createdAt: serverTimestamp()
+      };
 
-    await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+      await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
 
-    const fullUserData = {
-      uid: firebaseUser.uid,
-      email: firebaseUser.email,
-      displayName,
-      ...userData
-    };
+      const fullUserData = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName,
+        ...userData
+      };
 
-    setUser(fullUserData);
-    localStorage.setItem('doteUser', JSON.stringify(fullUserData));
-    return fullUserData;
+      setUser(fullUserData);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+      return fullUserData;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto: string | null) => {
-    if (!user?.uid) throw new Error('No authenticated user');
+  if (!user?.uid) throw new Error('No authenticated user');
 
+  try {
     let photoURL = null;
+
     if (dogPhoto) {
       const path = `dogs/${user.uid}/${Date.now()}`;
       photoURL = await uploadFile(path, dogPhoto);
@@ -119,16 +129,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     await updateDoc(doc(firestore, 'users', user.uid), dogData);
-    const updatedUser = { ...user, ...dogData };
+
+    const updatedUser = {
+      ...user,
+      ...dogData,
+    };
+
     setUser(updatedUser);
-    localStorage.setItem('doteUser', JSON.stringify(updatedUser));
+    await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
     return updatedUser;
-  };
+  } catch (error) {
+    console.error('Error updating dog profile:', error);
+    throw error;
+  }
+};
 
   const logout = async () => {
-    await signOut(auth);
-    setUser(null);
-    localStorage.removeItem('doteUser');
+    try {
+      await signOut(auth);
+      setUser(null);
+      await AsyncStorage.removeItem('doteUser');
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
   const value: AuthContextType = {

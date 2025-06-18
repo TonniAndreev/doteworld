@@ -12,7 +12,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { User, Mail, Phone, Lock, CircleAlert as AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  Lock, 
+  AlertCircle, 
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -86,12 +94,9 @@ export default function RegisterScreen() {
     setError('');
     
     try {
-      console.log('Attempting registration with:', email, firstName, lastName);
       await register(email, password, `${firstName} ${lastName}`, phone);
-      console.log('Registration successful, redirecting...');
-      router.replace('/(tabs)');
+      router.push('/(auth)/dog-profile');
     } catch (error) {
-      console.error('Registration error:', error);
       setError('Registration failed. Please try again.');
     } finally {
       setIsLoading(false);

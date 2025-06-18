@@ -35,12 +35,18 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
+      <PawsProvider>
+        <NotificationProvider>
+          <TerritoryProvider>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
             </Stack>
             <StatusBar style="auto" />
+          </TerritoryProvider>
+        </NotificationProvider>
+      </PawsProvider>
     </AuthProvider>
   );
 }

@@ -1,19 +1,50 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Modal,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { User, Settings, LogOut } from 'lucide-react-native';
+import {
+  Settings,
+  Award,
+  Users,
+  Map,
+  Route,
+  PawPrint,
+  LogOut,
+  Edit,
+} from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePaws } from '@/contexts/PawsContext';
+import { useTerritory } from '@/contexts/TerritoryContext';
+import StatsCard from '@/components/profile/StatsCard';
+import AchievementsRow from '@/components/profile/AchievementsRow';
+import NotificationsButton from '@/components/common/NotificationsButton';
 
 export default function ProfileScreen() {
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  
   const { user, logout } = useAuth();
+  const { pawsBalance } = usePaws();
+  const { territorySize, totalDistance } = useTerritory();
 
   const handleLogout = () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
         {
           text: 'Logout',
           style: 'destructive',
@@ -29,46 +60,155 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <User size={32} color={COLORS.primary} />
         <Text style={styles.title}>Profile</Text>
+        
+        <View style={styles.headerButtons}>
+          <NotificationsButton />
+          
+          <TouchableOpacity 
+            style={styles.settingsButton}
+            onPress={() => router.push('/settings')}
+          >
+            <Settings size={24} color={COLORS.neutralDark} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView 
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <User size={48} color={COLORS.primary} />
+          <View style={styles.profileImageContainer}>
+            {user.photoURL ? (
+              <Image 
+                source={{ uri: user.photoURL }} 
+                style={styles.profileImage} 
+              />
+            ) : (
+              <View style={styles.profileImagePlaceholder}>
+                <Text style={styles.profileImagePlaceholderText}>
+                  {user.displayName.charAt(0)}
+                </Text>
+              </View>
+            )}
+            
+            <TouchableOpacity 
+              style={styles.editProfileButton}
+              onPress={() => setEditModalVisible(true)}
+            >
+              <Edit size={16} color={COLORS.white} />
+            </TouchableOpacity>
           </View>
-          <Text style={styles.nameText}>
-            {user?.displayName || 'Dog Walker'}
-          </Text>
-          <Text style={styles.emailText}>{user?.email}</Text>
+          
+          <Text style={styles.userName}>{user.displayName}</Text>
+          
+          <View style={styles.dogInfoContainer}>
+            <Text style={styles.dogName}>{user.dogName}</Text>
+            <Text style={styles.dogBreed}>{user.dogBreed}</Text>
+          </View>
         </View>
 
         <View style={styles.statsSection}>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Total Distance</Text>
-            <Text style={styles.statValue}>45.2 km</Text>
+          <View style={styles.statsRow}>
+            <StatsCard
+              icon={<PawPrint size={24} color={COLORS.primary} />}
+              value={pawsBalance.toString()}
+              label="Paws"
+            />
+            <StatsCard
+              icon={<Map size={24} color={COLORS.primary} />}
+              value={`${territorySize.toFixed(2)} km²`}
+              label="Territory"
+            />
           </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Territory Claimed</Text>
-            <Text style={styles.statValue}>2.5 km²</Text>
-          </View>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>Achievements</Text>
-            <Text style={styles.statValue}>8</Text>
+          
+          <View style={styles.statsRow}>
+            <StatsCard
+              icon={<Route size={24} color={COLORS.primary} />}
+              value={`${totalDistance.toFixed(1)} km`}
+              label="Walked"
+            />
+            <StatsCard
+              icon={<Award size={24} color={COLORS.primary} />}
+              value={user.achievementCount.toString()}
+              label="Achievements"
+            />
           </View>
         </View>
 
-        <TouchableOpacity style={styles.settingsButton}>
-          <Settings size={20} color={COLORS.neutralDark} />
-          <Text style={styles.settingsText}>Settings</Text>
-        </TouchableOpacity>
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Achievements</Text>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push('/(tabs)/achievements')}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <AchievementsRow />
+        </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Friends</Text>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push('/(tabs)/friends')}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.friendsPreviewContainer}>
+            {user.friends.length > 0 ? (
+              user.friends.slice(0, 3).map((friend) => (
+                <View key={friend.id} style={styles.friendItem}>
+                  <View style={styles.friendAvatar}>
+                    <Text style={styles.friendAvatarText}>{friend.name.charAt(0)}</Text>
+                  </View>
+                  <Text style={styles.friendName} numberOfLines={1}>{friend.name}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.noFriendsText}>Add friends to see them here</Text>
+            )}
+          </View>
+        </View>
+
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
           <LogOut size={20} color={COLORS.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={editModalVisible}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Edit Profile</Text>
+            
+            {/* Profile editing form would go here */}
+            <Text style={styles.modalText}>Profile editing functionality will be implemented in the next version.</Text>
+            
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={() => setEditModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -80,95 +220,212 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 24,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   title: {
-    fontFamily: 'Inter-Bold',
+    fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 28,
     color: COLORS.neutralDark,
-    marginLeft: 12,
   },
-  content: {
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingsButton: {
+    marginLeft: 16,
+  },
+  scrollContainer: {
     flex: 1,
-    paddingHorizontal: 24,
   },
   profileSection: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 24,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.neutralLight,
-    marginBottom: 32,
+    marginHorizontal: 16,
   },
-  avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+  profileImageContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: COLORS.primaryLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
-  nameText: {
-    fontFamily: 'Inter-Bold',
+  profileImagePlaceholderText: {
+    fontFamily: 'SF-Pro-Display-Bold',
+    fontSize: 40,
+    color: COLORS.primary,
+  },
+  editProfileButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: COLORS.primary,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  userName: {
+    fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 24,
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
-  emailText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
+  dogInfoContainer: {
+    alignItems: 'center',
+  },
+  dogName: {
+    fontFamily: 'SF-Pro-Display-Medium',
+    fontSize: 18,
+    color: COLORS.primary,
+  },
+  dogBreed: {
+    fontFamily: 'SF-Pro-Display-Regular',
+    fontSize: 14,
     color: COLORS.neutralMedium,
   },
   statsSection: {
-    marginBottom: 32,
+    padding: 16,
   },
-  statRow: {
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  sectionContainer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.neutralLight,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.neutralLight,
-  },
-  statLabel: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-  },
-  statValue: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.primary,
-  },
-  settingsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 16,
   },
-  settingsText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
+  sectionTitle: {
+    fontFamily: 'SF-Pro-Display-Bold',
+    fontSize: 18,
     color: COLORS.neutralDark,
-    marginLeft: 12,
+  },
+  seeAllButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  seeAllText: {
+    fontFamily: 'SF-Pro-Display-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+  },
+  friendsPreviewContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 8,
+  },
+  friendItem: {
+    alignItems: 'center',
+    width: 80,
+  },
+  friendAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  friendAvatarText: {
+    fontFamily: 'SF-Pro-Display-Bold',
+    fontSize: 24,
+    color: COLORS.primary,
+  },
+  friendName: {
+    fontFamily: 'SF-Pro-Display-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    textAlign: 'center',
+  },
+  noFriendsText: {
+    fontFamily: 'SF-Pro-Display-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
+    paddingVertical: 16,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 16,
+    margin: 16,
     borderWidth: 1,
     borderColor: COLORS.error,
     borderRadius: 12,
-    padding: 16,
   },
   logoutText: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'SF-Pro-Display-Medium',
     fontSize: 16,
     color: COLORS.error,
     marginLeft: 8,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontFamily: 'SF-Pro-Display-Bold',
+    fontSize: 20,
+    color: COLORS.neutralDark,
+    marginBottom: 16,
+  },
+  modalText: {
+    fontFamily: 'SF-Pro-Display-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  modalButtonText: {
+    fontFamily: 'SF-Pro-Display-Medium',
+    fontSize: 16,
+    color: COLORS.white,
   },
 });
