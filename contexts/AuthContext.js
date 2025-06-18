@@ -1,138 +1,270 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, firestore } from '@/services/firebase';
+import { auth, firestore, storage } from '../services/firebase';
+import { serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup, FacebookAuthProvider } from 'firebase/auth';
+import { uploadFile } from '../services/firebaseStorage';
+import { Platform } from 'react-native';
 
-const AuthContext = createContext();
+// Create type for context (optional but good for TS)
+interface AuthContextType {
+  user: any;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<any>;
+  register: (email: string, password: string, displayName: string, phone: string) => Promise<any>;
+  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto: string | null) => Promise<any>;
+  loginWithGoogle: () => Promise<any>;
+  loginWithFacebook: () => Promise<any>;
+  logout: () => Promise<void>;
+}
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        setIsLoading(true);
-        const savedUser = await AsyncStorage.getItem('doteUser');
-        if (savedUser) {
-          setUser(JSON.parse(savedUser));
-        }
-      } catch (error) {
-        console.error('Error loading user:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+          const userData = userDoc.data();
 
-    loadUser();
+          const fullUserData = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+            ...userData
+          };
+
+          setUser(fullUserData);
+          await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+        }
+      } else {
+        setUser(null);
+        await AsyncStorage.removeItem('doteUser');
+      }
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
-  const login = async (email, password) => {
-    if (email === 'demo@example.com' && password === 'password') {
-      const mockUser = {
-        uid: '123456',
-        email: email,
-        displayName: 'Demo User',
-        photoURL: null,
-        dogName: 'Buddy',
-        dogBreed: 'Golden Retriever',
-        achievementCount: 15,
-        friends: [
-          { id: '1', name: 'John Walker', dogName: 'Rex' },
-          { id: '2', name: 'Sarah Miller', dogName: 'Luna' },
-        ],
+  const login = async (email: string, password: string) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+      const userData = userDoc.data();
+
+      const fullUserData = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        photoURL: firebaseUser.photoURL,
+        ...userData
       };
-      
-      setUser(mockUser);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(mockUser));
-      return mockUser;
-    } else {
-      throw new Error('Invalid email or password');
+
+      setUser(fullUserData);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+      return fullUserData;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     }
   };
 
   const loginWithGoogle = async () => {
-    const mockUser = {
-      uid: '123456',
-      email: 'demo@gmail.com',
-      displayName: 'Demo Google',
-      photoURL: 'https://i.pravatar.cc/300?u=demo',
-      dogName: 'Max',
-      dogBreed: 'Labrador Retriever',
-      achievementCount: 8,
-      friends: [
-        { id: '1', name: 'John Walker', dogName: 'Rex' },
-      ],
-    };
-    
-    setUser(mockUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(mockUser));
-    return mockUser;
+    if (Platform.OS === 'web') {
+      try {
+        const provider = new GoogleAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const firebaseUser = result.user;
+
+        // Check if user exists in Firestore
+        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        let userData = userDoc.data();
+
+        // If user doesn't exist, create a new user document
+        if (!userData) {
+          userData = {
+            displayName: firebaseUser.displayName,
+            phone: '',
+            achievementCount: 0,
+            friends: [],
+            createdAt: serverTimestamp()
+          };
+          await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+        }
+
+        const fullUserData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          ...userData
+        };
+
+        setUser(fullUserData);
+        await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+        return fullUserData;
+      } catch (error) {
+        console.error('Google login error:', error);
+        throw error;
+      }
+    } else {
+      // For mobile platforms, you would need to implement Google Sign-In
+      // using @react-native-google-signin/google-signin or similar
+      throw new Error('Google Sign-In not implemented for mobile platforms');
+    }
   };
 
   const loginWithFacebook = async () => {
-    const mockUser = {
-      uid: '123456',
-      email: 'demo@facebook.com',
-      displayName: 'Demo Facebook',
-      photoURL: 'https://i.pravatar.cc/300?u=facebook',
-      dogName: 'Charlie',
-      dogBreed: 'French Bulldog',
-      achievementCount: 5,
-      friends: [],
-    };
-    
-    setUser(mockUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(mockUser));
-    return mockUser;
+    if (Platform.OS === 'web') {
+      try {
+        const provider = new FacebookAuthProvider();
+        const result = await signInWithPopup(auth, provider);
+        const firebaseUser = result.user;
+
+        // Check if user exists in Firestore
+        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
+        let userData = userDoc.data();
+
+        // If user doesn't exist, create a new user document
+        if (!userData) {
+          userData = {
+            displayName: firebaseUser.displayName,
+            phone: '',
+            achievementCount: 0,
+            friends: [],
+            createdAt: serverTimestamp()
+          };
+          await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+        }
+
+        const fullUserData = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          ...userData
+        };
+
+        setUser(fullUserData);
+        await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+        return fullUserData;
+      } catch (error) {
+        console.error('Facebook login error:', error);
+        throw error;
+      }
+    } else {
+      // For mobile platforms, you would need to implement Facebook Login
+      // using react-native-fbsdk-next or similar
+      throw new Error('Facebook Sign-In not implemented for mobile platforms');
+    }
   };
 
-  const register = async (email, password, displayName, phone) => {
-    const mockUser = {
-      uid: '123456',
-      email: email,
-      displayName: displayName,
-      phone: phone,
-      photoURL: null,
-      achievementCount: 0,
-      friends: [],
-    };
-    
-    setUser(mockUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(mockUser));
-    return mockUser;
+  const register = async (email: string, password: string, displayName: string, phone: string) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      await updateProfile(firebaseUser, { displayName });
+
+      const userData = {
+        displayName,
+        phone,
+        achievementCount: 0,
+        friends: [],
+        createdAt: serverTimestamp()
+      };
+
+      await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
+
+      const fullUserData = {
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName,
+        ...userData
+      };
+
+      setUser(fullUserData);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
+      return fullUserData;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
-  const updateDogProfile = async (dogName, dogBreed, dogPhoto) => {
-    const updatedUser = {
-      ...user,
-      dogName,
-      dogBreed,
-      dogPhoto,
-    };
-    
-    setUser(updatedUser);
-    await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-    return updatedUser;
+  const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto: string | null) => {
+    if (!user?.uid) throw new Error('No authenticated user');
+
+    try {
+      let photoURL = null;
+
+      if (dogPhoto) {
+        const path = `dogs/${user.uid}/${Date.now()}`;
+        photoURL = await uploadFile(path, dogPhoto);
+      }
+
+      const dogData = {
+        dogName,
+        dogBreed,
+        ...(photoURL && { dogPhoto: photoURL }),
+      };
+
+      await updateDoc(doc(firestore, 'users', user.uid), dogData);
+
+      const updatedUser = {
+        ...user,
+        ...dogData,
+      };
+
+      setUser(updatedUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating dog profile:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    setUser(null);
-    await AsyncStorage.removeItem('doteUser');
+    try {
+      await signOut(auth);
+      setUser(null);
+      await AsyncStorage.removeItem('doteUser');
+    } catch (error) {
+      console.error('Logout error:', error);
+      throw error;
+    }
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     isAuthenticated: !!user,
     isLoading,
     login,
-    loginWithGoogle,
-    loginWithFacebook,
     register,
     updateDogProfile,
+    loginWithGoogle,
+    loginWithFacebook,
     logout,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error("useAuth must be used inside AuthProvider");
+  return context;
+};
