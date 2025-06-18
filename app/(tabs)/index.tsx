@@ -194,9 +194,10 @@ export default function MapScreen() {
             rotateEnabled={true}
             scrollEnabled={true}
           >
+            {/* Render conquered territories */}
             {territory.map((polygon, index) => (
               <Polygon
-                key={index}
+                key={`territory-${index}`}
                 coordinates={polygon}
                 fillColor="rgba(138, 79, 255, 0.3)"
                 strokeColor={COLORS.primary}
@@ -204,6 +205,7 @@ export default function MapScreen() {
               />
             ))}
             
+            {/* Render current walk path and points */}
             {currentWalkPoints.length > 0 && (
               <>
                 <Polyline
@@ -223,6 +225,7 @@ export default function MapScreen() {
               </>
             )}
             
+            {/* Render current polygon preview */}
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
@@ -265,7 +268,7 @@ export default function MapScreen() {
                 ]}
               >
                 <Text style={styles.territorySizeText}>
-                  {(territorySize * 1000).toFixed(0)} m² territory conquered
+                  {(territorySize * 1000000).toFixed(0)} m² territory conquered
                 </Text>
               </Animated.View>
 
@@ -379,7 +382,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.error,
+    backgroundColor: COLORS.primary, // Changed from red to purple
     borderWidth: 2,
     borderColor: COLORS.white,
   },
