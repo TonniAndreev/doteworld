@@ -58,7 +58,7 @@ export function TerritoryProvider({ children }) {
     // Only try to form a polygon if we have at least 3 points
     if (newPoints.length >= 3) {
       const hull = createConvexHull(newPoints);
-      if (isValidPolygon(hull)) {
+      if (hull && isValidPolygon(hull)) {
         setCurrentPolygon(hull);
       }
     }

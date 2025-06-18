@@ -51,16 +51,21 @@ export function isValidPolygon(coordinates: Array<{ latitude: number; longitude:
 }
 
 // Create a convex hull from points
-export function createConvexHull(coordinates: Array<{ latitude: number; longitude: number }>): Array<{ latitude: number; longitude: number }> | null {
+export function createConvexHull(
+  coordinates: Array<{ latitude: number; longitude: number }>,
+  tolerance = 0.0001
+): Array<{ latitude: number; longitude: number }> | null {
   if (coordinates.length < 3) return null;
 
   const points = coordinates.map(coord => [coord.longitude, coord.latitude]);
   const hull = turf.convex(turf.points(points));
-  
+
   if (!hull) return null;
 
-  return hull.geometry.coordinates[0].map(coord => ({
+  const simplified = turf.simplify(hull, { tolerance });
+
+  return simplified.geometry.coordinates[0].map(coord => ({
     latitude: coord[1],
-    longitude: coord[0]
+    longitude: coord[0],
   }));
 }
