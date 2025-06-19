@@ -18,8 +18,6 @@ export default function MapScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isWalking, setIsWalking] = useState(false);
   const [walkDistance, setWalkDistance] = useState(0);
-  const [lastLocation, setLastLocation] = useState<Location.LocationObject | null>(null);
-  const lastLocationRef = useRef<Location.LocationObject | null>(null);
   const [showChallenges, setShowChallenges] = useState(false);
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
   const [isLocating, setIsLocating] = useState(false);
@@ -28,6 +26,8 @@ export default function MapScreen() {
   const mapRef = useRef<MapView>(null);
   const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
   const territorySizeAnimation = useRef(new Animated.Value(0)).current;
+  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const lastLocationRef = useRef<Location.LocationObject | null>(null);
   
   const { 
     territory,
@@ -55,10 +55,9 @@ export default function MapScreen() {
     }
   }, [isWalking]);
 
+  // Initial location setup
   useEffect(() => {
-    let locationSubscription: Location.LocationSubscription | null = null;
-
-    const setupLocation = async () => {
+    const setupInitialLocation = async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
@@ -71,17 +70,42 @@ export default function MapScreen() {
         });
         setLocation(initialLocation);
         lastLocationRef.current = initialLocation;
+      } catch (error) {
+        console.error('Error getting initial location:', error);
+        setErrorMsg('Failed to get your location');
+      }
+    };
+
+    setupInitialLocation();
+  }, []);
+
+  // Location tracking during walking
+  useEffect(() => {
+    const startLocationTracking = async () => {
+      if (!isWalking) {
+        // Stop tracking when not walking
+        if (locationSubscriptionRef.current) {
+          locationSubscriptionRef.current.remove();
+          locationSubscriptionRef.current = null;
+        }
+        return;
+      }
+
+      try {
+        console.log('Starting location tracking for conquest...');
         
-        locationSubscription = await Location.watchPositionAsync(
+        // Start location subscription for walking
+        locationSubscriptionRef.current = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
             distanceInterval: 5, // Update every 5 meters
-            timeInterval: 5000, // Update every 5 seconds
+            timeInterval: 3000, // Update every 3 seconds minimum
           },
           (newLocation) => {
+            console.log('New location received:', newLocation.coords.latitude, newLocation.coords.longitude);
             setLocation(newLocation);
 
-            if (isWalking && lastLocationRef.current) {
+            if (lastLocationRef.current) {
               const distance = calculateDistance(
                 lastLocationRef.current.coords.latitude,
                 lastLocationRef.current.coords.longitude,
@@ -89,8 +113,11 @@ export default function MapScreen() {
                 newLocation.coords.longitude
               );
 
+              console.log('Distance moved:', distance * 1000, 'meters');
+
               // Only add point if we've moved at least 5 meters to avoid duplicate points
               if (distance >= 0.005) { // 5 meters in km
+                console.log('Adding new walk point');
                 setWalkDistance(prev => prev + distance);
                 addWalkPoint({
                   latitude: newLocation.coords.latitude,
@@ -99,23 +126,29 @@ export default function MapScreen() {
                 lastLocationRef.current = newLocation;
               }
             } else {
+              // First point during walk
+              console.log('Adding first walk point');
+              addWalkPoint({
+                latitude: newLocation.coords.latitude,
+                longitude: newLocation.coords.longitude
+              });
               lastLocationRef.current = newLocation;
             }
-
-            setLastLocation(newLocation);
           }
         );
       } catch (error) {
-        console.error('Error setting up location:', error);
-        setErrorMsg('Failed to initialize location services');
+        console.error('Error setting up location tracking:', error);
+        setErrorMsg('Failed to start location tracking');
       }
     };
 
-    setupLocation();
+    startLocationTracking();
 
+    // Cleanup function
     return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
+      if (locationSubscriptionRef.current) {
+        locationSubscriptionRef.current.remove();
+        locationSubscriptionRef.current = null;
       }
     };
   }, [isWalking, addWalkPoint]);
@@ -135,18 +168,30 @@ export default function MapScreen() {
         return;
       }
 
+      console.log('Starting conquest...');
       setWalkDistance(0);
       setIsWalking(true);
       startWalk();
+      
       // Add initial point if we have a location
       if (location) {
+        console.log('Adding initial walk point');
         addWalkPoint({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude
         });
+        lastLocationRef.current = location;
       }
     } else {
+      console.log('Ending conquest...');
       setIsWalking(false);
+      
+      // Stop location tracking
+      if (locationSubscriptionRef.current) {
+        locationSubscriptionRef.current.remove();
+        locationSubscriptionRef.current = null;
+      }
+      
       endWalk();
     }
   };
@@ -477,7 +522,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   walkStatsText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.secondary,
   },
