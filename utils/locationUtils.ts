@@ -134,72 +134,11 @@ export function coordinatesToTurfPolygon(
   }
 }
 
-// Enhanced merge function with better handling of disjoint territories
+// Merge two GeoJSON features using turf union - let it naturally create MultiPolygon for disjoint territories
 export function mergePolygons(
   existing: turf.Feature<turf.Polygon | turf.MultiPolygon>,
   newPolygon: turf.Feature<turf.Polygon>
 ): turf.Feature<turf.Polygon | turf.MultiPolygon> | null {
-  try {
-    console.log('Attempting to merge polygons...');
-    
-    // Perform union operation
-    const unionResult = turf.union(existing, newPolygon);
-    
-    if (!unionResult) {
-      console.warn('Union operation returned null, keeping existing territory');
-      return existing;
-    }
-
-    console.log('Union result type:', unionResult.geometry.type);
-
-    // If the result is a MultiPolygon, try to dissolve contiguous polygons
-    if (unionResult.geometry.type === 'MultiPolygon') {
-      try {
-        console.log('Result is MultiPolygon, attempting to dissolve contiguous polygons...');
-        
-        // Flatten the MultiPolygon into individual Polygon features
-        const flattened = turf.flatten(unionResult);
-        
-        // Try to dissolve the polygons (merge contiguous ones)
-        const dissolved = turf.dissolve(flattened);
-        
-        if (dissolved && dissolved.features.length > 0) {
-          // If dissolve resulted in a single feature, return it
-          if (dissolved.features.length === 1) {
-            console.log('Dissolved into single polygon');
-            return dissolved.features[0] as turf.Feature<turf.Polygon | turf.MultiPolygon>;
-          } else {
-            // Multiple features remain - create a MultiPolygon from them
-            console.log('Dissolved into', dissolved.features.length, 'separate polygons');
-            const multiPolygonCoords = dissolved.features.map(feature => {
-              if (feature.geometry.type === 'Polygon') {
-                return feature.geometry.coordinates;
-              } else if (feature.geometry.type === 'MultiPolygon') {
-                return feature.geometry.coordinates[0]; // Take first polygon from MultiPolygon
-              }
-              return [];
-            }).filter(coords => coords.length > 0);
-            
-            return turf.multiPolygon(multiPolygonCoords);
-          }
-        } else {
-          console.log('Dissolve failed, returning original union result');
-          return unionResult;
-        }
-      } catch (dissolveError) {
-        console.warn('Dissolve operation failed:', dissolveError);
-        // Return the union result even if dissolve fails
-        return unionResult;
-      }
-    }
-
-    // If it's already a single Polygon, return as-is
-    console.log('Union result is single polygon');
-    return unionResult;
-    
-  } catch (error) {
-    console.error('Error in mergePolygons:', error);
-    // If all else fails, return the existing polygon to maintain app stability
-    return existing;
-  }
+  const union = turf.union(existing, newPolygon);
+  return union;
 }
