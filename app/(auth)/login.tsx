@@ -89,7 +89,11 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoContainer}>
-            <Logo width={120} height={120} color={COLORS.primary} />
+            <Image
+              source={require('@/assets/images/Logo_full_vertical.svg')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
           
           {error ? (
@@ -183,7 +187,7 @@ export default function LoginScreen() {
             onPress={handleBoltNewPress}
           >
             <Image
-              source={{ uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=200&h=60' }}
+              source={require('@/assets/images/white_circle_360x360.png')}
               style={styles.boltNewImage}
               resizeMode="contain"
             />
@@ -210,6 +214,10 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     marginBottom: 40,
+  },
+  logoImage: {
+    width: 120,
+    height: 120,
   },
   errorContainer: {
     flexDirection: 'row',
