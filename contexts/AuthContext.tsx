@@ -1,38 +1,35 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { auth, firestore, storage } from '../services/firebase';
-import { serverTimestamp, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { User as FirebaseUser, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updateProfile, GoogleAuthProvider, signInWithPopup, FacebookAuthProvider } from 'firebase/auth';
-import { uploadFile } from '../services/firebaseStorage';
-import { Platform } from 'react-native';
+import { supabase } from '../utils/supabase';
 
-// Define the user type
 interface DoteUser {
-  uid: string;
+  id: string;
   email: string | null;
-  displayName: string | null;
-  photoURL: string | null;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  avatar_url?: string;
   phone?: string;
-  dogName?: string;
-  dogBreed?: string;
-  dogPhoto?: string;
-  achievementCount?: number;
-  friends?: any[];
-  createdAt?: any;
+  achievement_count?: number;
+  created_at?: string;
 }
 
-// Create type for context
 interface AuthContextType {
   user: DoteUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<DoteUser>;
-  register: (email: string, password: string, displayName: string, phone: string) => Promise<DoteUser>;
-  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto: string | null) => Promise<DoteUser>;
-  loginWithGoogle: () => Promise<DoteUser>;
-  loginWithFacebook: () => Promise<DoteUser>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    username: string,
+    first_name: string,
+    last_name: string,
+    phone: string
+  ) => Promise<void>;
   logout: () => Promise<void>;
+  loginWithGoogle: () => Promise<void>; 
+  loginWithFacebook: () => Promise<void>; 
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,225 +39,109 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-          const userData = userDoc.data();
-
-          const fullUserData: DoteUser = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-            ...userData
-          };
-
-          setUser(fullUserData);
-          await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
-      } else {
-        setUser(null);
-        await AsyncStorage.removeItem('doteUser');
-      }
-      setIsLoading(false);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) fetchUserProfile();
+      else setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) fetchUserProfile();
+      else {
+        setUser(null);
+        AsyncStorage.removeItem('doteUser');
+        setIsLoading(false);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const login = async (email: string, password: string): Promise<DoteUser> => {
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
+  const fetchUserProfile = async () => {
+    setIsLoading(true);
 
-      const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-      const userData = userDoc.data();
-
-      const fullUserData: DoteUser = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName,
-        photoURL: firebaseUser.photoURL,
-        ...userData
-      };
-
-      setUser(fullUserData);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
-      return fullUserData;
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
-    }
-  };
-
-  const loginWithGoogle = async (): Promise<DoteUser> => {
-    if (Platform.OS === 'web') {
-      try {
-        const provider = new GoogleAuthProvider();
-        const result = await signInWithPopup(auth, provider);
-        const firebaseUser = result.user;
-
-        // Check if user exists in Firestore
-        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-        let userData = userDoc.data();
-
-        // If user doesn't exist, create a new user document
-        if (!userData) {
-          userData = {
-            displayName: firebaseUser.displayName,
-            phone: '',
-            achievementCount: 0,
-            friends: [],
-            createdAt: serverTimestamp()
-          };
-          await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
-        }
-
-        const fullUserData: DoteUser = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          ...userData
-        };
-
-        setUser(fullUserData);
-        await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
-        return fullUserData;
-      } catch (error) {
-        console.error('Google login error:', error);
-        throw error;
-      }
-    } else {
-      // For mobile platforms, you would need to implement Google Sign-In
-      // using @react-native-google-signin/google-signin or similar
-      throw new Error('Google Sign-In not implemented for mobile platforms');
-    }
-  };
-
-  const loginWithFacebook = async (): Promise<DoteUser> => {
-    if (Platform.OS === 'web') {
-      try {
-        const provider = new FacebookAuthProvider();
-        const result = await signInWithPopup(auth, provider);
-        const firebaseUser = result.user;
-
-        // Check if user exists in Firestore
-        const userDoc = await getDoc(doc(firestore, 'users', firebaseUser.uid));
-        let userData = userDoc.data();
-
-        // If user doesn't exist, create a new user document
-        if (!userData) {
-          userData = {
-            displayName: firebaseUser.displayName,
-            phone: '',
-            achievementCount: 0,
-            friends: [],
-            createdAt: serverTimestamp()
-          };
-          await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
-        }
-
-        const fullUserData: DoteUser = {
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName,
-          photoURL: firebaseUser.photoURL,
-          ...userData
-        };
-
-        setUser(fullUserData);
-        await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
-        return fullUserData;
-      } catch (error) {
-        console.error('Facebook login error:', error);
-        throw error;
-      }
-    } else {
-      // For mobile platforms, you would need to implement Facebook Login
-      // using react-native-fbsdk-next or similar
-      throw new Error('Facebook Sign-In not implemented for mobile platforms');
-    }
-  };
-
-  const register = async (email: string, password: string, displayName: string, phone: string): Promise<DoteUser> => {
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-
-      await updateProfile(firebaseUser, { displayName });
-
-      const userData = {
-        displayName,
-        phone,
-        achievementCount: 0,
-        friends: [],
-        createdAt: serverTimestamp()
-      };
-
-      await setDoc(doc(firestore, 'users', firebaseUser.uid), userData);
-
-      const fullUserData: DoteUser = {
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName,
-        ...userData
-      };
-
-      setUser(fullUserData);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUserData));
-      return fullUserData;
-    } catch (error) {
-      console.error('Registration error:', error);
-      throw error;
-    }
-  };
-
-  const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto: string | null): Promise<DoteUser> => {
-    if (!user?.uid) throw new Error('No authenticated user');
-
-    try {
-      let photoURL = null;
-
-      if (dogPhoto) {
-        const path = `dogs/${user.uid}/${Date.now()}`;
-        photoURL = await uploadFile(path, dogPhoto);
-      }
-
-      const dogData = {
-        dogName,
-        dogBreed,
-        ...(photoURL && { dogPhoto: photoURL }),
-      };
-
-      await updateDoc(doc(firestore, 'users', user.uid), dogData);
-
-      const updatedUser: DoteUser = {
-        ...user,
-        ...dogData,
-      };
-
-      setUser(updatedUser);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-      return updatedUser;
-    } catch (error) {
-      console.error('Error updating dog profile:', error);
-      throw error;
-    }
-  };
-
-  const logout = async (): Promise<void> => {
-    try {
-      await signOut(auth);
+    const { data: { user: supaUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !supaUser) {
       setUser(null);
-      await AsyncStorage.removeItem('doteUser');
-    } catch (error) {
-      console.error('Logout error:', error);
-      throw error;
+      setIsLoading(false);
+      return;
     }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', supaUser.id)
+      .single();
+
+    if (profileError) {
+      console.error('Failed to fetch profile:', profileError);
+      setUser(null);
+    } else {
+      const fullUser: DoteUser = {
+        id: supaUser.id,
+        email: supaUser.email,
+        ...profile,
+      };
+
+      setUser(fullUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUser));
+    }
+
+    setIsLoading(false);
+  };
+
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    await fetchUserProfile(); 
+  };
+  const register = async (
+    email: string,
+    password: string,
+    username: string,
+    first_name: string,
+    last_name: string,
+    phone: string
+  ) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username,
+          first_name,
+          last_name,
+          phone,
+        },
+      },
+    });
+  
+    if (error) throw error;
+  
+    await fetchUserProfile();
+  };
+  
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+    });
+    if (error) throw error;
+  };
+  
+  const loginWithFacebook = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'facebook',
+    });
+    if (error) throw error;
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    await AsyncStorage.removeItem('doteUser');
   };
 
   const value: AuthContextType = {
@@ -269,10 +150,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     login,
     register,
-    updateDogProfile,
-    loginWithGoogle,
-    loginWithFacebook,
     logout,
+    loginWithGoogle,
+    loginWithFacebook, 
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -280,6 +160,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used inside AuthProvider");
+  if (!context) throw new Error('useAuth must be used inside AuthProvider');
   return context;
 };
