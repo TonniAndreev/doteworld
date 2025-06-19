@@ -1,20 +1,34 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
-import { PawPrint } from 'lucide-react-native';
+import { PawPrint, Crown } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import { usePaws } from '@/contexts/PawsContext';
 
 type FloatingPawsBalanceProps = {
-  balance: number;
+  balance?: number; // Made optional since we get it from context
 };
 
 export default function FloatingPawsBalance({ balance }: FloatingPawsBalanceProps) {
+  const { pawsBalance, maxPaws, isSubscribed } = usePaws();
+  
+  const displayBalance = balance !== undefined ? balance : pawsBalance;
+
   return (
     <TouchableOpacity 
-      style={styles.container}
+      style={[styles.container, isSubscribed && styles.subscribedContainer]}
       onPress={() => router.push('/(tabs)/store')}
     >
-      <PawPrint size={20} color={COLORS.primary} />
-      <Text style={styles.balanceText}>{balance}</Text>
+      {isSubscribed ? (
+        <>
+          <Crown size={20} color={COLORS.accent} />
+          <Text style={[styles.balanceText, styles.subscribedText]}>Premium</Text>
+        </>
+      ) : (
+        <>
+          <PawPrint size={20} color={COLORS.primary} />
+          <Text style={styles.balanceText}>{displayBalance}/{maxPaws}</Text>
+        </>
+      )}
     </TouchableOpacity>
   );
 }
@@ -33,9 +47,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  subscribedContainer: {
+    backgroundColor: COLORS.accentLight,
+    borderWidth: 1,
+    borderColor: COLORS.accent,
+  },
   balanceText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.neutralDark,
+  },
+  subscribedText: {
+    color: COLORS.accent,
   },
 });
