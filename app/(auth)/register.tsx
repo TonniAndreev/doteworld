@@ -28,6 +28,7 @@ export default function RegisterScreen() {
   const [step, setStep] = useState(1);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -36,10 +37,14 @@ export default function RegisterScreen() {
   const [error, setError] = useState('');
   
   const { register } = useAuth();
-  
+
   const validateStep1 = () => {
     if (!firstName || !lastName) {
       setError('Please enter your first and last name');
+      return false;
+    }
+    if (!username) {
+      setError('Please choose a username');
       return false;
     }
     if (!email) {
@@ -94,9 +99,10 @@ export default function RegisterScreen() {
     setError('');
     
     try {
-      await register(email, password, `${firstName} ${lastName}`, phone);
+      await register(email, password, username, firstName, lastName, phone);
       router.push('/(auth)/dog-profile');
     } catch (error) {
+      console.error(error);
       setError('Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -138,7 +144,7 @@ export default function RegisterScreen() {
           {step === 1 && (
             <View style={styles.formContainer}>
               <Text style={styles.stepTitle}>Personal Information</Text>
-              
+
               <View style={styles.inputWrapper}>
                 <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
@@ -149,7 +155,7 @@ export default function RegisterScreen() {
                   placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
-              
+
               <View style={styles.inputWrapper}>
                 <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
@@ -160,7 +166,19 @@ export default function RegisterScreen() {
                   placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
-              
+
+              <View style={styles.inputWrapper}>
+                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Username"
+                  value={username}
+                  onChangeText={setUsername}
+                  autoCapitalize="none"
+                  placeholderTextColor={COLORS.neutralMedium}
+                />
+              </View>
+
               <View style={styles.inputWrapper}>
                 <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
@@ -173,7 +191,7 @@ export default function RegisterScreen() {
                   placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
-              
+
               <View style={styles.inputWrapper}>
                 <Phone size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
@@ -191,7 +209,7 @@ export default function RegisterScreen() {
           {step === 2 && (
             <View style={styles.formContainer}>
               <Text style={styles.stepTitle}>Create Password</Text>
-              
+
               <View style={styles.inputWrapper}>
                 <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
@@ -203,7 +221,7 @@ export default function RegisterScreen() {
                   placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
-              
+
               <View style={styles.inputWrapper}>
                 <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
@@ -215,13 +233,13 @@ export default function RegisterScreen() {
                   placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
-              
+
               <Text style={styles.passwordRequirements}>
                 Password must be at least 6 characters
               </Text>
             </View>
           )}
-          
+
           <TouchableOpacity 
             style={styles.nextButton}
             onPress={nextStep}
@@ -240,7 +258,7 @@ export default function RegisterScreen() {
               </>
             )}
           </TouchableOpacity>
-          
+
           <View style={styles.loginContainer}>
             <Text style={styles.haveAccountText}>Already have an account?</Text>
             <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
