@@ -87,7 +87,7 @@ export default function StoreScreen() {
           <View style={styles.statusHeader}>
             <View style={styles.statusIcon}>
               {isSubscribed ? (
-                <Crown size={32} color={COLORS.accent} />
+                <Crown size={32} color={COLORS.primary} />
               ) : (
                 <PawPrint size={32} color={COLORS.primary} />
               )}
@@ -121,10 +121,12 @@ export default function StoreScreen() {
 
         {/* Demo Toggle (Remove in production) */}
         <View style={styles.demoCard}>
-          <Text style={styles.demoTitle}>Demo Mode</Text>
-          <Text style={styles.demoDescription}>
-            Toggle subscription status for testing
-          </Text>
+          <View style={styles.demoContent}>
+            <Text style={styles.demoTitle}>Demo Mode</Text>
+            <Text style={styles.demoDescription}>
+              Toggle subscription status for testing
+            </Text>
+          </View>
           <Switch
             value={isSubscribed}
             onValueChange={setSubscriptionStatus}
@@ -199,7 +201,7 @@ export default function StoreScreen() {
 
           <View style={styles.benefitCard}>
             <View style={styles.benefitIcon}>
-              <Zap size={24} color={COLORS.accent} />
+              <Zap size={24} color={COLORS.primary} />
             </View>
             <View style={styles.benefitContent}>
               <Text style={styles.benefitTitle}>No Restrictions</Text>
@@ -211,7 +213,7 @@ export default function StoreScreen() {
 
           <View style={styles.benefitCard}>
             <View style={styles.benefitIcon}>
-              <Crown size={24} color={COLORS.accent} />
+              <Crown size={24} color={COLORS.primary} />
             </View>
             <View style={styles.benefitContent}>
               <Text style={styles.benefitTitle}>Exclusive Features</Text>
@@ -310,7 +312,7 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
   },
   demoCard: {
-    backgroundColor: COLORS.accentLight,
+    backgroundColor: COLORS.primaryLight,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
@@ -318,17 +320,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  demoContent: {
+    flex: 1,
+  },
   demoTitle: {
     fontFamily: 'SF-Pro-Display-Bold',
     fontSize: 16,
-    color: COLORS.accent,
+    color: COLORS.primary,
     marginBottom: 2,
   },
   demoDescription: {
     fontFamily: 'SF-Pro-Display-Regular',
     fontSize: 14,
-    color: COLORS.accent,
-    flex: 1,
+    color: COLORS.primary,
   },
   sectionTitle: {
     fontFamily: 'SF-Pro-Display-Bold',
@@ -349,14 +353,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   popularCard: {
-    borderColor: COLORS.accent,
+    borderColor: COLORS.primary,
     borderWidth: 2,
   },
   popularBadge: {
     position: 'absolute',
     top: -12,
     right: 16,
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -423,7 +427,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 16,
     gap: 8,
