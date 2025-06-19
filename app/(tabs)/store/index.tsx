@@ -87,7 +87,7 @@ export default function StoreScreen() {
           <View style={styles.statusHeader}>
             <View style={styles.statusIcon}>
               {isSubscribed ? (
-                <Crown size={32} color={COLORS.accent} />
+                <Crown size={32} color={COLORS.primary} />
               ) : (
                 <PawPrint size={32} color={COLORS.primary} />
               )}
@@ -199,7 +199,7 @@ export default function StoreScreen() {
 
           <View style={styles.benefitCard}>
             <View style={styles.benefitIcon}>
-              <Zap size={24} color={COLORS.accent} />
+              <Zap size={24} color={COLORS.primary} />
             </View>
             <View style={styles.benefitContent}>
               <Text style={styles.benefitTitle}>No Restrictions</Text>
@@ -211,7 +211,7 @@ export default function StoreScreen() {
 
           <View style={styles.benefitCard}>
             <View style={styles.benefitIcon}>
-              <Crown size={24} color={COLORS.accent} />
+              <Crown size={24} color={COLORS.primary} />
             </View>
             <View style={styles.benefitContent}>
               <Text style={styles.benefitTitle}>Exclusive Features</Text>
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   title: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
   },
@@ -278,13 +278,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statusTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
   statusSubtitle: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
   },
@@ -299,18 +299,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statLabel: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
     marginBottom: 4,
   },
   statValue: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
   demoCard: {
-    backgroundColor: COLORS.accentLight,
+    backgroundColor: COLORS.primaryLight,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
@@ -319,19 +319,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   demoTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
-    color: COLORS.accent,
+    color: COLORS.primary,
     marginBottom: 2,
   },
   demoDescription: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: COLORS.accent,
+    color: COLORS.primary,
     flex: 1,
   },
   sectionTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 24,
     color: COLORS.neutralDark,
     marginBottom: 16,
@@ -349,14 +349,14 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   popularCard: {
-    borderColor: COLORS.accent,
+    borderColor: COLORS.primary,
     borderWidth: 2,
   },
   popularBadge: {
     position: 'absolute',
     top: -12,
     right: 16,
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
@@ -365,7 +365,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   popularText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 12,
     color: COLORS.white,
   },
@@ -376,18 +376,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   planName: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
   planDescription: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
   },
   savingsText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.success,
     marginTop: 4,
@@ -396,12 +396,12 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   price: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 32,
     color: COLORS.neutralDark,
   },
   period: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
   },
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   featureText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
@@ -423,13 +423,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 16,
     gap: 8,
   },
   subscribeButtonText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
   },
@@ -437,7 +437,7 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   benefitsTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
     marginBottom: 16,
@@ -462,13 +462,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   benefitTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
   benefitDescription: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
   },

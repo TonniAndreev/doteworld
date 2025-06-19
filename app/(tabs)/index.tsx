@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import MapView, { Polygon, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -278,34 +278,23 @@ export default function MapScreen() {
               />
             ))}
             
-            {/* Render current walk path and points */}
-            {currentWalkPoints.length > 0 && (
-              <>
-                <Polyline
-                  coordinates={currentWalkPoints}
-                  strokeColor={COLORS.primary}
-                  strokeWidth={3}
-                />
-                {currentWalkPoints.map((point, index) => (
-                  <Marker
-                    key={`point-${index}`}
-                    coordinate={point}
-                    anchor={{ x: 0.5, y: 0.5 }}
-                  >
-                    <View style={styles.walkPoint} />
-                  </Marker>
-                ))}
-              </>
+            {/* Render current walk path */}
+            {currentWalkPoints.length > 1 && (
+              <Polyline
+                coordinates={currentWalkPoints}
+                strokeColor={COLORS.primary}
+                strokeWidth={3}
+              />
             )}
             
-            {/* Render current polygon preview */}
+            {/* Render current polygon preview with dashed border and more transparent fill */}
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
-                fillColor="rgba(241, 102, 46, 0.2)"
+                fillColor="rgba(241, 102, 46, 0.15)"
                 strokeColor={COLORS.primary}
                 strokeWidth={2}
-                strokeDashPattern={[5, 5]}
+                strokeDashPattern={[10, 5]}
               />
             )}
           </MapView>
@@ -452,14 +441,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
-  },
-  walkPoint: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
-    borderWidth: 2,
-    borderColor: COLORS.white,
   },
   topBar: {
     flexDirection: 'row',

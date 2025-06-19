@@ -8,7 +8,8 @@ import {
   createConvexHull,
   coordinatesToTurfPolygon,
   mergePolygons,
-  extractPolygonCoordinates
+  extractPolygonCoordinates,
+  doPolygonsOverlap
 } from '@/utils/locationUtils';
 import * as turf from '@turf/turf';
 
@@ -46,9 +47,9 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       if (user) {
         try {
           const [savedTerritoryGeoJSON, savedTerritorySize, savedTotalDistance] = await Promise.all([
-            AsyncStorage.getItem(`dote_territory_geojson_${user.uid}`),
-            AsyncStorage.getItem(`dote_territory_size_${user.uid}`),
-            AsyncStorage.getItem(`dote_total_distance_${user.uid}`),
+            AsyncStorage.getItem(`dote_territory_geojson_${user.uid || user.id}`),
+            AsyncStorage.getItem(`dote_territory_size_${user.uid || user.id}`),
+            AsyncStorage.getItem(`dote_total_distance_${user.uid || user.id}`),
           ]);
 
           if (savedTerritoryGeoJSON) {
@@ -124,17 +125,42 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       let newTerritorySize;
 
       if (territoryGeoJSON) {
-        // Merge with existing territory
-        const mergedPolygon = mergePolygons(territoryGeoJSON, newTurfPolygon);
-        if (mergedPolygon) {
-          updatedTerritoryGeoJSON = mergedPolygon;
-          // Calculate total area of merged territory
-          const totalArea = turf.area(mergedPolygon) / 1000000; // Convert to km²
-          newTerritorySize = totalArea;
+        // Check if the new polygon overlaps with existing territory
+        const hasOverlap = doPolygonsOverlap(territoryGeoJSON, newTurfPolygon);
+        
+        if (hasOverlap) {
+          // Merge with existing territory if there's overlap
+          const mergedPolygon = mergePolygons(territoryGeoJSON, newTurfPolygon);
+          if (mergedPolygon) {
+            updatedTerritoryGeoJSON = mergedPolygon;
+            // Calculate total area of merged territory
+            const totalArea = turf.area(mergedPolygon) / 1000000; // Convert to km²
+            newTerritorySize = totalArea;
+          } else {
+            // If merge fails, keep existing territory
+            updatedTerritoryGeoJSON = territoryGeoJSON;
+            newTerritorySize = territorySize;
+          }
         } else {
-          // If merge fails, keep existing territory
-          updatedTerritoryGeoJSON = territoryGeoJSON;
-          newTerritorySize = territorySize;
+          // No overlap - create a MultiPolygon to keep territories separate
+          const existingCoords = territoryGeoJSON.geometry.type === 'Polygon' 
+            ? [territoryGeoJSON.geometry.coordinates]
+            : territoryGeoJSON.geometry.coordinates;
+          
+          const newCoords = [...existingCoords, newTurfPolygon.geometry.coordinates];
+          
+          updatedTerritoryGeoJSON = {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'MultiPolygon',
+              coordinates: newCoords
+            }
+          } as turf.Feature<turf.MultiPolygon>;
+          
+          // Calculate total area of all territories
+          const totalArea = turf.area(updatedTerritoryGeoJSON) / 1000000; // Convert to km²
+          newTerritorySize = totalArea;
         }
       } else {
         // First territory
@@ -149,9 +175,10 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentPolygon(null);
 
       // Save to storage
+      const userId = user.uid || user.id;
       await Promise.all([
-        AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
-        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
+        AsyncStorage.setItem(`dote_territory_geojson_${userId}`, JSON.stringify(updatedTerritoryGeoJSON)),
+        AsyncStorage.setItem(`dote_territory_size_${userId}`, newTerritorySize.toString()),
       ]);
 
       // Award paws based on the NEW polygon area only (not total territory)

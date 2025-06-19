@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   premiumButton: {
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
   },
   optionIcon: {
     width: 48,
