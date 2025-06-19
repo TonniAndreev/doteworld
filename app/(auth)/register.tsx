@@ -19,7 +19,8 @@ import {
   Lock, 
   AlertCircle, 
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  CheckCircle
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,7 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [registrationComplete, setRegistrationComplete] = useState(false);
   
   const { register } = useAuth();
 
@@ -100,14 +102,34 @@ export default function RegisterScreen() {
     
     try {
       await register(email, password, username, firstName, lastName, phone);
-      router.push('/(auth)/dog-profile');
-    } catch (error) {
-      console.error(error);
-      setError('Registration failed. Please try again.');
+      setRegistrationComplete(true);
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      setError(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (registrationComplete) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.successContainer}>
+          <CheckCircle size={64} color={COLORS.success} />
+          <Text style={styles.successTitle}>Check Your Email!</Text>
+          <Text style={styles.successMessage}>
+            We've sent a confirmation link to {email}. Please click the link in your email to verify your account and complete the registration process.
+          </Text>
+          <TouchableOpacity 
+            style={styles.backToLoginButton}
+            onPress={() => router.replace('/(auth)/login')}
+          >
+            <Text style={styles.backToLoginText}>Back to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -288,7 +310,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   headerTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
   },
@@ -321,7 +343,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.error,
     marginLeft: 8,
@@ -330,7 +352,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   stepTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 24,
     color: COLORS.neutralDark,
     marginBottom: 24,
@@ -348,13 +370,13 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     padding: 12,
   },
   passwordRequirements: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
     marginTop: 8,
@@ -369,7 +391,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   nextButtonText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
     marginRight: 8,
@@ -380,14 +402,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   haveAccountText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralDark,
     marginRight: 4,
   },
   loginText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 14,
     color: COLORS.primary,
+  },
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  successTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 24,
+    color: COLORS.neutralDark,
+    marginTop: 24,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  backToLoginButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  backToLoginText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
   },
 });
