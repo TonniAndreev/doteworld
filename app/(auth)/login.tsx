@@ -89,10 +89,11 @@ export default function LoginScreen() {
         >
           <View style={styles.logoContainer}>
             <Image
-              source={require('@/assets/images/Logo_full_vertical.svg')}
+              source={{ uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
               style={styles.logo}
               resizeMode="contain"
             />
+            <Text style={styles.logoText}>Dote</Text>
             <Text style={styles.tagline}>Walk. Explore. Conquer.</Text>
           </View>
           
@@ -158,6 +159,10 @@ export default function LoginScreen() {
               onPress={handleGoogleLogin}
               disabled={isLoading}
             >
+              <Image
+                source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
+                style={styles.googleIcon}
+              />
               <Text style={styles.socialButtonText}>Google</Text>
             </TouchableOpacity>
             
@@ -183,7 +188,7 @@ export default function LoginScreen() {
             onPress={handleBoltNewPress}
           >
             <Image
-              source={require('@/assets/images/white_circle_360x360 copy.png')}
+              source={{ uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=120&h=120' }}
               style={styles.boltNewImage}
             />
           </TouchableOpacity>
@@ -211,9 +216,16 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logo: {
-    width: 200,
+    width: 120,
     height: 120,
     marginBottom: 16,
+    borderRadius: 60,
+  },
+  logoText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 36,
+    color: COLORS.primary,
+    marginBottom: 8,
   },
   tagline: {
     fontFamily: 'Inter-Regular',
@@ -308,6 +320,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.neutralLight,
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
   },
   facebookButton: {
     backgroundColor: '#4267B2',
