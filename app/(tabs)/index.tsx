@@ -63,14 +63,17 @@ export default function MapScreen() {
           return;
         }
 
-        const initialLocation = await Location.getCurrentPositionAsync({});
+        const initialLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
         setLocation(initialLocation);
+        lastLocationRef.current = initialLocation;
         
         locationSubscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            distanceInterval: 5,
-            timeInterval: 5000,
+            distanceInterval: 5, // Update every 5 meters
+            timeInterval: 5000, // Update every 5 seconds
           },
           (newLocation) => {
             setLocation(newLocation);
@@ -83,16 +86,19 @@ export default function MapScreen() {
                 newLocation.coords.longitude
               );
 
-              if (newLocation.coords.speed && newLocation.coords.speed < 2.5) {
+              // Only add point if we've moved at least 5 meters to avoid duplicate points
+              if (distance >= 0.005) { // 5 meters in km
                 setWalkDistance(prev => prev + distance);
                 addWalkPoint({
                   latitude: newLocation.coords.latitude,
                   longitude: newLocation.coords.longitude
                 });
+                lastLocationRef.current = newLocation;
               }
+            } else {
+              lastLocationRef.current = newLocation;
             }
 
-            lastLocationRef.current = newLocation;
             setLastLocation(newLocation);
           }
         );
@@ -109,13 +115,20 @@ export default function MapScreen() {
         locationSubscription.remove();
       }
     };
-  }, [isWalking]);
+  }, [isWalking, addWalkPoint]);
   
   const toggleWalking = () => {
     if (!isWalking) {
       setWalkDistance(0);
       setIsWalking(true);
       startWalk();
+      // Add initial point if we have a location
+      if (location) {
+        addWalkPoint({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude
+        });
+      }
     } else {
       setIsWalking(false);
       endWalk();
@@ -175,15 +188,16 @@ export default function MapScreen() {
               longitudeDelta: 0.005,
             }}
             showsUserLocation
-            followsUserLocation
+            followsUserLocation={!isWalking} // Don't follow when walking to see the path
             onPress={handleMapPress}
             zoomEnabled={true}
             rotateEnabled={true}
             scrollEnabled={true}
           >
+            {/* Render conquered territories */}
             {territory.map((polygon, index) => (
               <Polygon
-                key={index}
+                key={`territory-${index}`}
                 coordinates={polygon}
                 fillColor="rgba(241, 102, 46, 0.3)"
                 strokeColor={COLORS.primary}
@@ -191,6 +205,7 @@ export default function MapScreen() {
               />
             ))}
             
+            {/* Render current walk path and points */}
             {currentWalkPoints.length > 0 && (
               <>
                 <Polyline
@@ -210,6 +225,7 @@ export default function MapScreen() {
               </>
             )}
             
+            {/* Render current polygon preview */}
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
@@ -252,9 +268,17 @@ export default function MapScreen() {
                 ]}
               >
                 <Text style={styles.territorySizeText}>
-                  {(territorySize * 1000).toFixed(0)} m² territory conquered
+                  {(territorySize * 1000000).toFixed(0)} m² territory conquered
                 </Text>
               </Animated.View>
+
+              {isWalking && (
+                <View style={styles.walkStatsContainer}>
+                  <Text style={styles.walkStatsText}>
+                    {(walkDistance * 1000).toFixed(0)}m walked • {currentWalkPoints.length} points
+                  </Text>
+                </View>
+              )}
 
               <View style={styles.bottomControlsRow}>
                 <TouchableOpacity 
@@ -354,7 +378,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primary, // Changed from red to purple
     borderWidth: 2,
     borderColor: COLORS.white,
   },
@@ -405,6 +429,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
+  },
+  walkStatsContainer: {
+    backgroundColor: COLORS.white,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 16,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  walkStatsText: {
+    fontFamily: 'SF-Pro-Display-Medium',
+    fontSize: 14,
+    color: COLORS.secondary,
   },
   bottomControlsRow: {
     flexDirection: 'row',

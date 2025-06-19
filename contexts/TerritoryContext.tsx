@@ -2,13 +2,25 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { usePaws } from './PawsContext';
-import { calculatePolygonArea, isValidPolygon, createConvexHull } from '@/utils/locationUtils';
+import { 
+  calculatePolygonArea, 
+  isValidPolygon, 
+  createConvexHull,
+  coordinatesToTurfPolygon,
+  mergePolygons,
+  extractPolygonCoordinates
+} from '@/utils/locationUtils';
+import * as turf from '@turf/turf';
 
 interface Coordinate {
   latitude: number;
   longitude: number;
 }
 
+<<<<<<< HEAD:contexts/TerritoryContext.js
+export function TerritoryProvider({ children }) {
+  const [territoryGeoJSON, setTerritoryGeoJSON] = useState(null);
+=======
 interface TerritoryContextType {
   territory: Coordinate[][];
   territorySize: number;
@@ -24,6 +36,7 @@ const TerritoryContext = createContext<TerritoryContextType | undefined>(undefin
 
 export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [territory, setTerritory] = useState<Coordinate[][]>([]);
+>>>>>>> main:contexts/TerritoryContext.tsx
   const [territorySize, setTerritorySize] = useState(0);
   const [totalDistance, setTotalDistance] = useState(0);
   const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
@@ -36,14 +49,15 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     const loadTerritoryData = async () => {
       if (user) {
         try {
-          const [savedTerritory, savedTerritorySize, savedTotalDistance] = await Promise.all([
-            AsyncStorage.getItem(`dote_territory_${user.uid}`),
+          const [savedTerritoryGeoJSON, savedTerritorySize, savedTotalDistance] = await Promise.all([
+            AsyncStorage.getItem(`dote_territory_geojson_${user.uid}`),
             AsyncStorage.getItem(`dote_territory_size_${user.uid}`),
             AsyncStorage.getItem(`dote_total_distance_${user.uid}`),
           ]);
 
-          if (savedTerritory) {
-            setTerritory(JSON.parse(savedTerritory));
+          if (savedTerritoryGeoJSON) {
+            const parsedGeoJSON = JSON.parse(savedTerritoryGeoJSON);
+            setTerritoryGeoJSON(parsedGeoJSON);
           }
 
           if (savedTerritorySize) {
@@ -76,36 +90,100 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       const hull = createConvexHull(newPoints);
       if (hull && isValidPolygon(hull)) {
         setCurrentPolygon(hull);
+      } else {
+        setCurrentPolygon(null);
       }
+    } else {
+      setCurrentPolygon(null);
     }
   };
 
   const endWalk = async () => {
-    if (!currentPolygon || !user) return;
+    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user) {
+      console.log('Cannot end walk: insufficient points or no user');
+      return;
+    }
 
-    const newPolygonArea = calculatePolygonArea(currentPolygon);
-    const updatedTerritory = [...territory, currentPolygon];
-    const newTerritorySize = territorySize + newPolygonArea;
+    try {
+      // Create final polygon from all walk points
+      const finalHull = createConvexHull(currentWalkPoints);
+      if (!finalHull || !isValidPolygon(finalHull)) {
+        console.log('Cannot create valid polygon from walk points');
+        setCurrentWalkPoints([]);
+        setCurrentPolygon(null);
+        return;
+      }
 
-    setTerritory(updatedTerritory);
-    setTerritorySize(newTerritorySize);
-    setCurrentWalkPoints([]);
-    setCurrentPolygon(null);
+      // Calculate area of the new polygon before merging
+      const newPolygonArea = calculatePolygonArea(finalHull);
+      
+      // Convert to turf polygon
+      const newTurfPolygon = coordinatesToTurfPolygon(finalHull);
+      if (!newTurfPolygon) {
+        console.log('Failed to convert coordinates to turf polygon');
+        return;
+      }
 
-    await Promise.all([
-      AsyncStorage.setItem(`dote_territory_${user.uid}`, JSON.stringify(updatedTerritory)),
-      AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
-    ]);
+      let updatedTerritoryGeoJSON;
+      let newTerritorySize;
 
-    // Award paws based on the new territory size (1 paw per square meter)
-    const pawsEarned = Math.floor(newPolygonArea * 1000);
-    if (pawsEarned > 0) {
-      addPaws(pawsEarned, 'Territory conquered');
+      if (territoryGeoJSON) {
+        // Merge with existing territory
+        const mergedPolygon = mergePolygons(territoryGeoJSON, newTurfPolygon);
+        if (mergedPolygon) {
+          updatedTerritoryGeoJSON = mergedPolygon;
+          // Calculate total area of merged territory
+          const totalArea = turf.area(mergedPolygon) / 1000000; // Convert to km²
+          newTerritorySize = totalArea;
+        } else {
+          // If merge fails, keep existing territory
+          updatedTerritoryGeoJSON = territoryGeoJSON;
+          newTerritorySize = territorySize;
+        }
+      } else {
+        // First territory
+        updatedTerritoryGeoJSON = newTurfPolygon;
+        newTerritorySize = newPolygonArea;
+      }
+
+      // Update state
+      setTerritoryGeoJSON(updatedTerritoryGeoJSON);
+      setTerritorySize(newTerritorySize);
+      setCurrentWalkPoints([]);
+      setCurrentPolygon(null);
+
+      // Save to storage
+      await Promise.all([
+        AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
+        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
+      ]);
+
+      // Award paws based on the NEW polygon area only (not total territory)
+      const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
+      if (pawsEarned > 0) {
+        addPaws(pawsEarned, `Territory conquered: ${(newPolygonArea * 1000000).toFixed(0)} m²`);
+      }
+
+      console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered, ${pawsEarned} paws earned`);
+    } catch (error) {
+      console.error('Error ending walk:', error);
+      // Reset current walk state on error
+      setCurrentWalkPoints([]);
+      setCurrentPolygon(null);
     }
   };
 
+<<<<<<< HEAD:contexts/TerritoryContext.js
+  // Extract renderable polygons for the map
+  const renderablePolygons = extractPolygonCoordinates(territoryGeoJSON);
+
+  const value = {
+    territory: renderablePolygons, // For backward compatibility with existing map rendering
+    territoryGeoJSON,
+=======
   const value: TerritoryContextType = {
     territory,
+>>>>>>> main:contexts/TerritoryContext.tsx
     territorySize,
     totalDistance,
     currentWalkPoints,
