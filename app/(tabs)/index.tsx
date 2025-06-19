@@ -9,6 +9,7 @@ import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
 import ChallengesPanel from '@/components/home/ChallengesPanel';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
+import PawsModal from '@/components/home/PawsModal';
 import { calculateDistance } from '@/utils/locationUtils';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -22,6 +23,7 @@ export default function MapScreen() {
   const [showChallenges, setShowChallenges] = useState(false);
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
   const [isLocating, setIsLocating] = useState(false);
+  const [showPawsModal, setShowPawsModal] = useState(false);
   
   const mapRef = useRef<MapView>(null);
   const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
@@ -36,7 +38,8 @@ export default function MapScreen() {
     addWalkPoint,
     endWalk,
   } = useTerritory();
-  const { pawsBalance } = usePaws();
+  
+  const { canStartConquest, startConquest, isSubscribed } = usePaws();
 
   useEffect(() => {
     if (isWalking) {
@@ -117,8 +120,21 @@ export default function MapScreen() {
     };
   }, [isWalking, addWalkPoint]);
   
-  const toggleWalking = () => {
+  const toggleWalking = async () => {
     if (!isWalking) {
+      // Check if user can start conquest
+      if (!canStartConquest) {
+        setShowPawsModal(true);
+        return;
+      }
+
+      // Attempt to start conquest (consumes paw if not subscribed)
+      const success = await startConquest();
+      if (!success) {
+        setShowPawsModal(true);
+        return;
+      }
+
       setWalkDistance(0);
       setIsWalking(true);
       startWalk();
@@ -171,6 +187,18 @@ export default function MapScreen() {
         setShowChallenges(false);
       });
     }
+  };
+
+  const getButtonText = () => {
+    if (isWalking) return 'Finish Conquest';
+    if (!canStartConquest && !isSubscribed) return 'Need Paws to Conquer';
+    return 'Conquer Territory';
+  };
+
+  const getButtonStyle = () => {
+    if (isWalking) return [styles.startWalkButton, styles.activeButton];
+    if (!canStartConquest && !isSubscribed) return [styles.startWalkButton, styles.disabledButton];
+    return styles.startWalkButton;
   };
 
   return (
@@ -239,7 +267,7 @@ export default function MapScreen() {
 
           <SafeAreaView style={styles.overlay} pointerEvents="box-none">
             <View style={styles.topBar}>
-              <FloatingPawsBalance balance={pawsBalance} />
+              <FloatingPawsBalance />
               <TouchableOpacity 
                 style={styles.challengesButton}
                 onPress={toggleChallengesPanel}
@@ -282,8 +310,9 @@ export default function MapScreen() {
 
               <View style={styles.bottomControlsRow}>
                 <TouchableOpacity 
-                  style={[styles.startWalkButton, isWalking && styles.activeButton]}
+                  style={getButtonStyle()}
                   onPress={toggleWalking}
+                  disabled={!isWalking && !canStartConquest && !isSubscribed}
                 >
                   {isWalking ? (
                     <Pause size={24} color={COLORS.white} />
@@ -291,7 +320,7 @@ export default function MapScreen() {
                     <Play size={24} color={COLORS.white} />
                   )}
                   <Text style={styles.startWalkText}>
-                    {isWalking ? 'Finish Conquest' : 'Conquer Territory'}
+                    {getButtonText()}
                   </Text>
                 </TouchableOpacity>
 
@@ -339,6 +368,11 @@ export default function MapScreen() {
               />
             </Animated.View>
           )}
+
+          <PawsModal 
+            visible={showPawsModal}
+            onClose={() => setShowPawsModal(false)}
+          />
         </View>
       ) : (
         <View style={styles.loadingContainer}>
@@ -378,7 +412,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.primary, // Changed from red to purple
+    backgroundColor: COLORS.primary,
     borderWidth: 2,
     borderColor: COLORS.white,
   },
@@ -466,6 +500,9 @@ const styles = StyleSheet.create({
   },
   activeButton: {
     backgroundColor: COLORS.error,
+  },
+  disabledButton: {
+    backgroundColor: COLORS.neutralMedium,
   },
   startWalkText: {
     fontFamily: 'Inter-Bold',

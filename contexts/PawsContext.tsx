@@ -10,44 +10,113 @@ interface Transaction {
   timestamp: string;
 }
 
+interface DailyData {
+  date: string;
+  adsWatched: number;
+  pawsEarned: number;
+}
+
 interface PawsContextType {
   pawsBalance: number;
+  maxPaws: number;
+  dailyAdsWatched: number;
+  maxDailyAds: number;
+  isSubscribed: boolean;
   transactions: Transaction[];
+  canStartConquest: boolean;
+  timeUntilNextPaw: number;
   addPaws: (amount: number, description?: string) => Promise<void>;
   spendPaws: (amount: number, description?: string) => Promise<void>;
+  watchAd: () => Promise<boolean>;
+  startConquest: () => Promise<boolean>;
+  setSubscriptionStatus: (subscribed: boolean) => void;
 }
 
 const PawsContext = createContext<PawsContextType | undefined>(undefined);
 
 export function PawsProvider({ children }: { children: ReactNode }) {
   const [pawsBalance, setPawsBalance] = useState(0);
+  const [dailyAdsWatched, setDailyAdsWatched] = useState(0);
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [timeUntilNextPaw, setTimeUntilNextPaw] = useState(0);
   const { user } = useAuth();
+
+  const maxPaws = 5;
+  const maxDailyAds = 2;
 
   useEffect(() => {
     const loadPawsData = async () => {
       if (user) {
         try {
-          const [savedPaws, savedTransactions] = await Promise.all([
+          const [
+            savedPaws,
+            savedTransactions,
+            savedDailyData,
+            savedSubscription
+          ] = await Promise.all([
             AsyncStorage.getItem(`dote_paws_${user.uid}`),
             AsyncStorage.getItem(`dote_transactions_${user.uid}`),
+            AsyncStorage.getItem(`dote_daily_data_${user.uid}`),
+            AsyncStorage.getItem(`dote_subscription_${user.uid}`)
           ]);
 
-          if (savedPaws) {
-            setPawsBalance(parseInt(savedPaws, 10));
-          } else {
-            setPawsBalance(100);
-            await AsyncStorage.setItem(`dote_paws_${user.uid}`, '100');
+          // Load subscription status
+          if (savedSubscription) {
+            setIsSubscribed(JSON.parse(savedSubscription));
           }
 
-          if (savedTransactions) {
-            setTransactions(JSON.parse(savedTransactions));
+          // Check if it's a new day and reset daily data
+          const today = new Date().toDateString();
+          let dailyData: DailyData = { date: today, adsWatched: 0, pawsEarned: 0 };
+          
+          if (savedDailyData) {
+            const parsedDailyData = JSON.parse(savedDailyData);
+            if (parsedDailyData.date === today) {
+              dailyData = parsedDailyData;
+            } else {
+              // New day - give free paw if not at max
+              const currentPaws = savedPaws ? parseInt(savedPaws, 10) : 0;
+              if (currentPaws < maxPaws) {
+                const newPaws = Math.min(currentPaws + 1, maxPaws);
+                setPawsBalance(newPaws);
+                await AsyncStorage.setItem(`dote_paws_${user.uid}`, newPaws.toString());
+                
+                // Add transaction for daily paw
+                const dailyPawTransaction: Transaction = {
+                  id: Date.now().toString(),
+                  type: 'credit',
+                  amount: 1,
+                  description: 'Daily free paw',
+                  timestamp: new Date().toISOString(),
+                };
+                
+                const updatedTransactions = savedTransactions 
+                  ? [...JSON.parse(savedTransactions), dailyPawTransaction]
+                  : [dailyPawTransaction];
+                
+                setTransactions(updatedTransactions);
+                await AsyncStorage.setItem(
+                  `dote_transactions_${user.uid}`,
+                  JSON.stringify(updatedTransactions)
+                );
+              } else {
+                setPawsBalance(currentPaws);
+              }
+              
+              // Reset daily data for new day
+              await AsyncStorage.setItem(`dote_daily_data_${user.uid}`, JSON.stringify(dailyData));
+            }
           } else {
+            // First time user - give initial paw
+            setPawsBalance(1);
+            await AsyncStorage.setItem(`dote_paws_${user.uid}`, '1');
+            
             const initialTransaction: Transaction = {
               id: '1',
               type: 'credit',
-              amount: 100,
-              description: 'Welcome bonus',
+              amount: 1,
+              description: 'Welcome paw',
               timestamp: new Date().toISOString(),
             };
             setTransactions([initialTransaction]);
@@ -55,7 +124,21 @@ export function PawsProvider({ children }: { children: ReactNode }) {
               `dote_transactions_${user.uid}`,
               JSON.stringify([initialTransaction])
             );
+            await AsyncStorage.setItem(`dote_daily_data_${user.uid}`, JSON.stringify(dailyData));
           }
+
+          setDailyAdsWatched(dailyData.adsWatched);
+
+          // Load existing paws if not already set
+          if (savedPaws && dailyData.date === today) {
+            setPawsBalance(parseInt(savedPaws, 10));
+          }
+
+          // Load existing transactions if not already set
+          if (savedTransactions && transactions.length === 0) {
+            setTransactions(JSON.parse(savedTransactions));
+          }
+
         } catch (error) {
           console.error('Error loading paws data:', error);
         }
@@ -65,10 +148,29 @@ export function PawsProvider({ children }: { children: ReactNode }) {
     loadPawsData();
   }, [user]);
 
+  // Update countdown timer for next free paw
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      
+      const timeLeft = tomorrow.getTime() - now.getTime();
+      setTimeUntilNextPaw(Math.max(0, timeLeft));
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const canStartConquest = isSubscribed || pawsBalance > 0;
+
   const addPaws = async (amount: number, description = 'Earned paws') => {
     if (!user) return;
     
-    const newBalance = pawsBalance + amount;
+    const newBalance = Math.min(pawsBalance + amount, maxPaws);
     setPawsBalance(newBalance);
     
     const newTransaction: Transaction = {
@@ -89,7 +191,7 @@ export function PawsProvider({ children }: { children: ReactNode }) {
   };
 
   const spendPaws = async (amount: number, description = 'Spent paws') => {
-    if (!user) return;
+    if (!user || isSubscribed) return; // Subscribers don't spend paws
     if (pawsBalance < amount) {
       throw new Error('Insufficient paws balance');
     }
@@ -114,11 +216,81 @@ export function PawsProvider({ children }: { children: ReactNode }) {
     ]);
   };
 
+  const watchAd = async (): Promise<boolean> => {
+    if (!user || dailyAdsWatched >= maxDailyAds || pawsBalance >= maxPaws) {
+      return false;
+    }
+
+    try {
+      // TODO: Implement Expo Ads rewarded video here
+      // For now, simulate successful ad watch
+      console.log('Showing rewarded video ad...');
+      
+      // Simulate ad completion
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Award paw
+      await addPaws(1, 'Watched rewarded ad');
+      
+      // Update daily ad count
+      const newAdsWatched = dailyAdsWatched + 1;
+      setDailyAdsWatched(newAdsWatched);
+      
+      const today = new Date().toDateString();
+      const dailyData: DailyData = {
+        date: today,
+        adsWatched: newAdsWatched,
+        pawsEarned: 0 // This could track daily paws earned
+      };
+      
+      await AsyncStorage.setItem(`dote_daily_data_${user.uid}`, JSON.stringify(dailyData));
+      
+      return true;
+    } catch (error) {
+      console.error('Error watching ad:', error);
+      return false;
+    }
+  };
+
+  const startConquest = async (): Promise<boolean> => {
+    if (!user) return false;
+    
+    if (isSubscribed) {
+      // Subscribers can always start conquest
+      return true;
+    }
+    
+    if (pawsBalance <= 0) {
+      // No paws available
+      return false;
+    }
+    
+    // Spend 1 paw to start conquest
+    await spendPaws(1, 'Started conquest');
+    return true;
+  };
+
+  const setSubscriptionStatus = async (subscribed: boolean) => {
+    if (!user) return;
+    
+    setIsSubscribed(subscribed);
+    await AsyncStorage.setItem(`dote_subscription_${user.uid}`, JSON.stringify(subscribed));
+  };
+
   const value: PawsContextType = {
     pawsBalance,
+    maxPaws,
+    dailyAdsWatched,
+    maxDailyAds,
+    isSubscribed,
     transactions,
+    canStartConquest,
+    timeUntilNextPaw,
     addPaws,
     spendPaws,
+    watchAd,
+    startConquest,
+    setSubscriptionStatus,
   };
 
   return <PawsContext.Provider value={value}>{children}</PawsContext.Provider>;
