@@ -12,16 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Lock, 
-  AlertCircle, 
-  ChevronLeft,
-  ChevronRight,
-  CheckCircle
-} from 'lucide-react-native';
+import { User, Mail, Phone, Lock, CircleAlert as AlertCircle, ChevronLeft, ChevronRight, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
