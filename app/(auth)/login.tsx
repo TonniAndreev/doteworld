@@ -17,7 +17,6 @@ import { router } from 'expo-router';
 import { Mail, Lock, Facebook, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import Logo from '@/components/common/Logo';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -90,7 +89,7 @@ export default function LoginScreen() {
         >
           <View style={styles.logoContainer}>
             <Image
-              source={require('@/assets/images/Logo_full_vertical.svg')}
+              source={require('@/assets/images/Logo-full-vertical.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />
@@ -216,8 +215,8 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   logoImage: {
-    width: 120,
-    height: 120,
+    width: 150,
+    height: 150,
   },
   errorContainer: {
     flexDirection: 'row',
