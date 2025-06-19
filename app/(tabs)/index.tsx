@@ -278,31 +278,21 @@ export default function MapScreen() {
               />
             ))}
             
-            {/* Render current walk path and points */}
-            {currentWalkPoints.length > 0 && (
-              <>
-                <Polyline
-                  coordinates={currentWalkPoints}
-                  strokeColor={COLORS.primary}
-                  strokeWidth={3}
-                />
-                {currentWalkPoints.map((point, index) => (
-                  <Marker
-                    key={`point-${index}`}
-                    coordinate={point}
-                    anchor={{ x: 0.5, y: 0.5 }}
-                  >
-                    <View style={styles.walkPoint} />
-                  </Marker>
-                ))}
-              </>
+            {/* Render current walk path */}
+            {currentWalkPoints.length > 1 && (
+              <Polyline
+                coordinates={currentWalkPoints}
+                strokeColor={COLORS.primary}
+                strokeWidth={3}
+                lineDashPattern={[10, 5]}
+              />
             )}
             
-            {/* Render current polygon preview */}
+            {/* Render current polygon preview with dashed border and more transparent fill */}
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
-                fillColor="rgba(241, 102, 46, 0.2)"
+                fillColor="rgba(241, 102, 46, 0.15)"
                 strokeColor={COLORS.primary}
                 strokeWidth={2}
                 strokeDashPattern={[5, 5]}
