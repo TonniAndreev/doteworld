@@ -148,17 +148,3 @@ export function mergePolygons(
     return existing;
   }
 }
-
-// Check if two polygons overlap
-export function doPolygonsOverlap(
-  polygon1: turf.Feature<turf.Polygon | turf.MultiPolygon>,
-  polygon2: turf.Feature<turf.Polygon>
-): boolean {
-  try {
-    const intersection = turf.intersect(polygon1, polygon2);
-    return intersection !== null;
-  } catch (error) {
-    console.error('Error checking polygon overlap:', error);
-    return false;
-  }
-}
