@@ -17,12 +17,9 @@ interface Coordinate {
   longitude: number;
 }
 
-<<<<<<< HEAD:contexts/TerritoryContext.js
-export function TerritoryProvider({ children }) {
-  const [territoryGeoJSON, setTerritoryGeoJSON] = useState(null);
-=======
 interface TerritoryContextType {
   territory: Coordinate[][];
+  territoryGeoJSON: turf.Feature<turf.Polygon | turf.MultiPolygon> | null;
   territorySize: number;
   totalDistance: number;
   currentWalkPoints: Coordinate[];
@@ -35,8 +32,7 @@ interface TerritoryContextType {
 const TerritoryContext = createContext<TerritoryContextType | undefined>(undefined);
 
 export function TerritoryProvider({ children }: { children: ReactNode }) {
-  const [territory, setTerritory] = useState<Coordinate[][]>([]);
->>>>>>> main:contexts/TerritoryContext.tsx
+  const [territoryGeoJSON, setTerritoryGeoJSON] = useState<turf.Feature<turf.Polygon | turf.MultiPolygon> | null>(null);
   const [territorySize, setTerritorySize] = useState(0);
   const [totalDistance, setTotalDistance] = useState(0);
   const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
@@ -173,17 +169,12 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     }
   };
 
-<<<<<<< HEAD:contexts/TerritoryContext.js
   // Extract renderable polygons for the map
   const renderablePolygons = extractPolygonCoordinates(territoryGeoJSON);
 
-  const value = {
+  const value: TerritoryContextType = {
     territory: renderablePolygons, // For backward compatibility with existing map rendering
     territoryGeoJSON,
-=======
-  const value: TerritoryContextType = {
-    territory,
->>>>>>> main:contexts/TerritoryContext.tsx
     territorySize,
     totalDistance,
     currentWalkPoints,
