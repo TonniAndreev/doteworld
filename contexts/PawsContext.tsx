@@ -1,12 +1,27 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 
-const PawsContext = createContext();
+interface Transaction {
+  id: string;
+  type: 'credit' | 'debit';
+  amount: number;
+  description: string;
+  timestamp: string;
+}
 
-export function PawsProvider({ children }) {
+interface PawsContextType {
+  pawsBalance: number;
+  transactions: Transaction[];
+  addPaws: (amount: number, description?: string) => Promise<void>;
+  spendPaws: (amount: number, description?: string) => Promise<void>;
+}
+
+const PawsContext = createContext<PawsContextType | undefined>(undefined);
+
+export function PawsProvider({ children }: { children: ReactNode }) {
   const [pawsBalance, setPawsBalance] = useState(0);
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -28,7 +43,7 @@ export function PawsProvider({ children }) {
           if (savedTransactions) {
             setTransactions(JSON.parse(savedTransactions));
           } else {
-            const initialTransaction = {
+            const initialTransaction: Transaction = {
               id: '1',
               type: 'credit',
               amount: 100,
@@ -50,13 +65,13 @@ export function PawsProvider({ children }) {
     loadPawsData();
   }, [user]);
 
-  const addPaws = async (amount, description = 'Earned paws') => {
+  const addPaws = async (amount: number, description = 'Earned paws') => {
     if (!user) return;
     
     const newBalance = pawsBalance + amount;
     setPawsBalance(newBalance);
     
-    const newTransaction = {
+    const newTransaction: Transaction = {
       id: Date.now().toString(),
       type: 'credit',
       amount,
@@ -73,7 +88,7 @@ export function PawsProvider({ children }) {
     ]);
   };
 
-  const spendPaws = async (amount, description = 'Spent paws') => {
+  const spendPaws = async (amount: number, description = 'Spent paws') => {
     if (!user) return;
     if (pawsBalance < amount) {
       throw new Error('Insufficient paws balance');
@@ -82,7 +97,7 @@ export function PawsProvider({ children }) {
     const newBalance = pawsBalance - amount;
     setPawsBalance(newBalance);
     
-    const newTransaction = {
+    const newTransaction: Transaction = {
       id: Date.now().toString(),
       type: 'debit',
       amount,
@@ -99,7 +114,7 @@ export function PawsProvider({ children }) {
     ]);
   };
 
-  const value = {
+  const value: PawsContextType = {
     pawsBalance,
     transactions,
     addPaws,
@@ -109,4 +124,8 @@ export function PawsProvider({ children }) {
   return <PawsContext.Provider value={value}>{children}</PawsContext.Provider>;
 }
 
-export const usePaws = () => useContext(PawsContext);
+export const usePaws = () => {
+  const context = useContext(PawsContext);
+  if (!context) throw new Error("usePaws must be used inside PawsProvider");
+  return context;
+};

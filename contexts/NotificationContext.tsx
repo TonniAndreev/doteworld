@@ -1,10 +1,26 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 
-const NotificationContext = createContext();
+interface Notification {
+  id: string;
+  type: 'achievement' | 'friend' | 'territory';
+  title: string;
+  message: string;
+  read: boolean;
+  timestamp: string;
+}
 
-export function NotificationProvider({ children }) {
-  const [notifications, setNotifications] = useState([]);
+interface NotificationContextType {
+  notifications: Notification[];
+  unreadCount: number;
+  markAsRead: (notificationId: string) => void;
+  markAllAsRead: () => void;
+}
+
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
+
+export function NotificationProvider({ children }: { children: ReactNode }) {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
 
@@ -12,7 +28,7 @@ export function NotificationProvider({ children }) {
     if (user) {
       // In a real app, this would fetch from Firestore
       // For demo, we'll use mock data
-      const mockNotifications = [
+      const mockNotifications: Notification[] = [
         {
           id: '1',
           type: 'achievement',
@@ -60,7 +76,7 @@ export function NotificationProvider({ children }) {
     }
   }, [user]);
 
-  const markAsRead = (notificationId) => {
+  const markAsRead = (notificationId: string) => {
     if (!user) return;
     
     setNotifications(prev => 
@@ -100,7 +116,7 @@ export function NotificationProvider({ children }) {
     // return batch.commit();
   };
 
-  const value = {
+  const value: NotificationContextType = {
     notifications,
     unreadCount,
     markAsRead,
@@ -110,4 +126,8 @@ export function NotificationProvider({ children }) {
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 }
 
-export const useNotifications = () => useContext(NotificationContext);
+export const useNotifications = () => {
+  const context = useContext(NotificationContext);
+  if (!context) throw new Error("useNotifications must be used inside NotificationProvider");
+  return context;
+};
