@@ -17,6 +17,7 @@ import { router } from 'expo-router';
 import { Mail, Lock, Facebook, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import Logo from '@/components/common/Logo';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -88,13 +89,7 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoContainer}>
-            <Image
-              source={require('@/assets/images/Logo_full_vertical.svg')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <Text style={styles.logoText}>Dote</Text>
-            <Text style={styles.tagline}>Walk. Explore. Conquer.</Text>
+            <Logo width={120} height={120} color={COLORS.primary} />
           </View>
           
           {error ? (
@@ -188,7 +183,7 @@ export default function LoginScreen() {
             onPress={handleBoltNewPress}
           >
             <Image
-              source={require('@/assets/images/white_circle_360x360 copy.png')}
+              source={{ uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=200&h=60' }}
               style={styles.boltNewImage}
               resizeMode="contain"
             />
@@ -215,22 +210,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     marginBottom: 40,
-  },
-  logo: {
-    width: 120,
-    height: 120,
-    marginBottom: 16,
-  },
-  logoText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 36,
-    color: COLORS.primary,
-    marginBottom: 8,
-  },
-  tagline: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -360,7 +339,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   boltNewImage: {
-    width: 60,
+    width: 200,
     height: 60,
   },
 });
