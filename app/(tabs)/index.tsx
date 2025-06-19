@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import MapView, { Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -277,6 +277,15 @@ export default function MapScreen() {
                 strokeWidth={2}
               />
             ))}
+            
+            {/* Render current walk path */}
+            {currentWalkPoints.length > 0 && (
+              <Polyline
+                coordinates={currentWalkPoints}
+                strokeColor={COLORS.primary}
+                strokeWidth={3}
+              />
+            )}
             
             {/* Render current polygon preview with enhanced dashed border and more transparent fill */}
             {currentPolygon && (
