@@ -11,7 +11,7 @@ export default function FloatingPawsBalance({ balance }: FloatingPawsBalanceProp
   return (
     <TouchableOpacity 
       style={styles.container}
-      onPress={() => router.push('/store')}
+      onPress={() => router.push('/(tabs)/store')}
     >
       <PawPrint size={20} color={COLORS.primary} />
       <Text style={styles.balanceText}>{balance}</Text>
@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   balanceText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.neutralDark,
   },

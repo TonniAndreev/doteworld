@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Play, Pause, Locate, Zap } from 'lucide-react-native';
+import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import MapView, { Polygon, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
@@ -185,7 +185,7 @@ export default function MapScreen() {
               <Polygon
                 key={index}
                 coordinates={polygon}
-                fillColor="rgba(138, 79, 255, 0.3)"
+                fillColor="rgba(241, 102, 46, 0.3)"
                 strokeColor={COLORS.primary}
                 strokeWidth={2}
               />
@@ -213,7 +213,7 @@ export default function MapScreen() {
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
-                fillColor="rgba(138, 79, 255, 0.2)"
+                fillColor="rgba(241, 102, 46, 0.2)"
                 strokeColor={COLORS.primary}
                 strokeWidth={2}
                 strokeDashPattern={[5, 5]}
@@ -257,10 +257,6 @@ export default function MapScreen() {
               </Animated.View>
 
               <View style={styles.bottomControlsRow}>
-                <TouchableOpacity style={styles.boltLogoContainer}>
-                  <Zap size={24} color={COLORS.primary} />
-                </TouchableOpacity>
-
                 <TouchableOpacity 
                   style={[styles.startWalkButton, isWalking && styles.activeButton]}
                   onPress={toggleWalking}
@@ -350,7 +346,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
@@ -382,7 +378,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   challengesText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
@@ -406,7 +402,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   territorySizeText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
@@ -415,19 +411,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-  },
-  boltLogoContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   startWalkButton: {
     flexDirection: 'row',
@@ -438,13 +421,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     borderRadius: 16,
     flex: 1,
-    marginHorizontal: 12,
+    marginRight: 12,
   },
   activeButton: {
     backgroundColor: COLORS.error,
   },
   startWalkText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
     marginLeft: 8,

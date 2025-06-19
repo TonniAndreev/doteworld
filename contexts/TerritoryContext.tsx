@@ -1,17 +1,33 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { usePaws } from './PawsContext';
 import { calculatePolygonArea, isValidPolygon, createConvexHull } from '@/utils/locationUtils';
 
-const TerritoryContext = createContext();
+interface Coordinate {
+  latitude: number;
+  longitude: number;
+}
 
-export function TerritoryProvider({ children }) {
-  const [territory, setTerritory] = useState([]);
+interface TerritoryContextType {
+  territory: Coordinate[][];
+  territorySize: number;
+  totalDistance: number;
+  currentWalkPoints: Coordinate[];
+  currentPolygon: Coordinate[] | null;
+  startWalk: () => void;
+  addWalkPoint: (coordinates: Coordinate) => void;
+  endWalk: () => Promise<void>;
+}
+
+const TerritoryContext = createContext<TerritoryContextType | undefined>(undefined);
+
+export function TerritoryProvider({ children }: { children: ReactNode }) {
+  const [territory, setTerritory] = useState<Coordinate[][]>([]);
   const [territorySize, setTerritorySize] = useState(0);
   const [totalDistance, setTotalDistance] = useState(0);
-  const [currentWalkPoints, setCurrentWalkPoints] = useState([]);
-  const [currentPolygon, setCurrentPolygon] = useState(null);
+  const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
+  const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
   
   const { user } = useAuth();
   const { addPaws } = usePaws();
@@ -51,7 +67,7 @@ export function TerritoryProvider({ children }) {
     setCurrentPolygon(null);
   };
 
-  const addWalkPoint = (coordinates) => {
+  const addWalkPoint = (coordinates: Coordinate) => {
     const newPoints = [...currentWalkPoints, coordinates];
     setCurrentWalkPoints(newPoints);
 
@@ -88,7 +104,7 @@ export function TerritoryProvider({ children }) {
     }
   };
 
-  const value = {
+  const value: TerritoryContextType = {
     territory,
     territorySize,
     totalDistance,
@@ -102,4 +118,8 @@ export function TerritoryProvider({ children }) {
   return <TerritoryContext.Provider value={value}>{children}</TerritoryContext.Provider>;
 }
 
-export const useTerritory = () => useContext(TerritoryContext);
+export const useTerritory = () => {
+  const context = useContext(TerritoryContext);
+  if (!context) throw new Error("useTerritory must be used inside TerritoryProvider");
+  return context;
+};
