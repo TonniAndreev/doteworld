@@ -17,7 +17,6 @@ import { router } from 'expo-router';
 import { Mail, Lock, Facebook, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import Logo from '@/components/common/Logo';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -89,8 +88,11 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoContainer}>
-            <Logo width={100} height={100} />
-            <Text style={styles.logoText}>Dote</Text>
+            <Image
+              source={require('@/assets/images/Logo_full_vertical.svg')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
             <Text style={styles.tagline}>Walk. Explore. Conquer.</Text>
           </View>
           
@@ -181,7 +183,7 @@ export default function LoginScreen() {
             onPress={handleBoltNewPress}
           >
             <Image
-              source={{ uri: 'https://images.pexels.com/photos/white_circle_360x360.png' }}
+              source={require('@/assets/images/white_circle_360x360 copy.png')}
               style={styles.boltNewImage}
             />
           </TouchableOpacity>
@@ -208,12 +210,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logoText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 36,
-    color: COLORS.primary,
-    marginBottom: 8,
-    marginTop: 16,
+  logo: {
+    width: 200,
+    height: 120,
+    marginBottom: 16,
   },
   tagline: {
     fontFamily: 'Inter-Regular',
