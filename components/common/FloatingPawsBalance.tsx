@@ -20,7 +20,7 @@ export default function FloatingPawsBalance({ balance }: FloatingPawsBalanceProp
     >
       {isSubscribed ? (
         <>
-          <Crown size={20} color={COLORS.primary} />
+          <Crown size={20} color={COLORS.accent} />
           <Text style={[styles.balanceText, styles.subscribedText]}>Premium</Text>
         </>
       ) : (
@@ -48,9 +48,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   subscribedContainer: {
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: COLORS.accentLight,
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.accent,
   },
   balanceText: {
     fontFamily: 'Inter-Bold',
@@ -58,6 +58,6 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
   },
   subscribedText: {
-    color: COLORS.primary,
+    color: COLORS.accent,
   },
 });

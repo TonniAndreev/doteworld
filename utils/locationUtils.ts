@@ -134,11 +134,17 @@ export function coordinatesToTurfPolygon(
   }
 }
 
-// Merge two GeoJSON features using turf union - let it naturally create MultiPolygon for disjoint territories
+// Merge two GeoJSON features using turf union
 export function mergePolygons(
   existing: turf.Feature<turf.Polygon | turf.MultiPolygon>,
   newPolygon: turf.Feature<turf.Polygon>
 ): turf.Feature<turf.Polygon | turf.MultiPolygon> | null {
-  const union = turf.union(existing, newPolygon);
-  return union;
+  try {
+    const union = turf.union(existing, newPolygon);
+    return union;
+  } catch (error) {
+    console.error('Error merging polygons:', error);
+    // If union fails, return the existing polygon
+    return existing;
+  }
 }
