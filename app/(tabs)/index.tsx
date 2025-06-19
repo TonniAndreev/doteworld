@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import MapView, { Polygon, Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Polygon, Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -278,13 +278,25 @@ export default function MapScreen() {
               />
             ))}
             
-            {/* Render current walk path */}
+            {/* Render current walk points as orange circles */}
+            {currentWalkPoints.map((point, index) => (
+              <Circle
+                key={`walk-point-${index}`}
+                center={point}
+                radius={3} // 3 meter radius
+                fillColor={COLORS.primary}
+                strokeColor={COLORS.white}
+                strokeWidth={2}
+              />
+            ))}
+            
+            {/* Render current walk path as dashed line */}
             {currentWalkPoints.length > 1 && (
               <Polyline
                 coordinates={currentWalkPoints}
                 strokeColor={COLORS.primary}
                 strokeWidth={3}
-                lineDashPattern={[10, 5]}
+                lineDashPattern={[10, 5]} // Dashed line pattern
               />
             )}
             
@@ -295,7 +307,7 @@ export default function MapScreen() {
                 fillColor="rgba(241, 102, 46, 0.15)"
                 strokeColor={COLORS.primary}
                 strokeWidth={2}
-                strokeDashPattern={[5, 5]}
+                lineDashPattern={[5, 5]}
               />
             )}
           </MapView>
