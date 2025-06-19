@@ -287,14 +287,14 @@ export default function MapScreen() {
               />
             )}
             
-            {/* Render current polygon preview with dashed border and more transparent fill */}
+            {/* Render current polygon preview with enhanced dashed border and more transparent fill */}
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
-                fillColor="rgba(241, 102, 46, 0.15)"
+                fillColor="rgba(241, 102, 46, 0.1)"
                 strokeColor={COLORS.primary}
-                strokeWidth={2}
-                strokeDashPattern={[10, 5]}
+                strokeWidth={4}
+                strokeDashPattern={[15, 10]}
               />
             )}
           </MapView>
