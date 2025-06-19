@@ -89,7 +89,7 @@ export default function LoginScreen() {
         >
           <View style={styles.logoContainer}>
             <Image
-              source={{ uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=400&h=300' }}
+              source={require('@/assets/images/Logo_full_vertical.svg')}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -188,8 +188,9 @@ export default function LoginScreen() {
             onPress={handleBoltNewPress}
           >
             <Image
-              source={{ uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=120&h=120' }}
+              source={require('@/assets/images/white_circle_360x360 copy.png')}
               style={styles.boltNewImage}
+              resizeMode="contain"
             />
           </TouchableOpacity>
         </ScrollView>
@@ -219,7 +220,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     marginBottom: 16,
-    borderRadius: 60,
   },
   logoText: {
     fontFamily: 'Inter-Bold',
@@ -362,6 +362,5 @@ const styles = StyleSheet.create({
   boltNewImage: {
     width: 60,
     height: 60,
-    borderRadius: 30,
   },
 });
