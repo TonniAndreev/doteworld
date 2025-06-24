@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Crown, Map, Route, Award, Coins } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import LeaderboardItem from '@/components/leaderboard/LeaderboardItem';
+import UserAvatar from '@/components/common/UserAvatar';
 import { fetchLeaderboard } from '@/services/leaderboardService';
 
 type LeaderboardTab = 'territory' | 'distance' | 'achievements' | 'paws';
@@ -88,9 +89,13 @@ export default function LeaderboardScreen() {
           <View style={styles.crownContainer}>
             {/* Empty space for alignment */}
           </View>
-          <View style={[styles.avatar, styles.avatar2]}>
-            <Text style={styles.avatarText}>{second.name.charAt(0)}</Text>
-          </View>
+          <UserAvatar
+            userId={second.id}
+            photoURL={second.photoURL}
+            userName={second.name}
+            size={52}
+            style={styles.avatarImage}
+          />
           <View style={styles.nameAndDogContainer}>
             <Text style={styles.topUserName} numberOfLines={1}>{second.name}</Text>
             <Text style={styles.topDogName} numberOfLines={1}>{second.dogName}</Text>
@@ -105,9 +110,13 @@ export default function LeaderboardScreen() {
           <View style={styles.crownContainer}>
             <Crown size={28} color={COLORS.accent} />
           </View>
-          <View style={[styles.avatar, styles.avatar1, styles.highlightedAvatar1]}>
-            <Text style={[styles.avatarText, styles.firstPlaceAvatarText]}>{first.name.charAt(0)}</Text>
-          </View>
+          <UserAvatar
+            userId={first.id}
+            photoURL={first.photoURL}
+            userName={first.name}
+            size={64}
+            style={[styles.avatarImage, styles.highlightedAvatar1]}
+          />
           <View style={styles.nameAndDogContainer}>
             <Text style={[styles.topUserName, styles.firstPlaceName]} numberOfLines={1}>{first.name}</Text>
             <Text style={[styles.topDogName, styles.firstPlaceDogName]} numberOfLines={1}>{first.dogName}</Text>
@@ -122,9 +131,13 @@ export default function LeaderboardScreen() {
           <View style={styles.crownContainer}>
             {/* Empty space for alignment */}
           </View>
-          <View style={[styles.avatar, styles.avatar3]}>
-            <Text style={styles.avatarText}>{third.name.charAt(0)}</Text>
-          </View>
+          <UserAvatar
+            userId={third.id}
+            photoURL={third.photoURL}
+            userName={third.name}
+            size={44}
+            style={styles.avatarImage}
+          />
           <View style={styles.nameAndDogContainer}>
             <Text style={styles.topUserName} numberOfLines={1}>{third.name}</Text>
             <Text style={styles.topDogName} numberOfLines={1}>{third.dogName}</Text>
@@ -331,38 +344,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatar: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 40,
-    backgroundColor: COLORS.primaryLight,
+  avatarImage: {
     marginBottom: 8,
-  },
-  avatar1: {
-    width: 64,
-    height: 64,
-  },
-  avatar2: {
-    width: 52,
-    height: 52,
-  },
-  avatar3: {
-    width: 44,
-    height: 44,
   },
   highlightedAvatar1: {
     borderWidth: 3,
     borderColor: COLORS.accent,
-    backgroundColor: COLORS.accentLight,
-  },
-  avatarText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.primary,
-  },
-  firstPlaceAvatarText: {
-    fontSize: 24,
-    color: COLORS.accent,
   },
   nameAndDogContainer: {
     alignItems: 'center',

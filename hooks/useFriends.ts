@@ -34,30 +34,33 @@ export function useFriends() {
       // Mock data - in a real app, this would fetch from your backend
       const mockFriends: User[] = [
         {
-          id: '1',
+          id: 'friend1',
           name: 'Sarah Miller',
           dogName: 'Luna',
           dogBreed: 'Golden Retriever',
+          photoURL: null, // Will use random avatar
           territorySize: 2.5,
           achievementCount: 15,
           totalDistance: 45.2,
           isFriend: true
         },
         {
-          id: '2',
+          id: 'friend2',
           name: 'John Walker',
           dogName: 'Max',
           dogBreed: 'German Shepherd',
+          photoURL: null, // Will use random avatar
           territorySize: 3.1,
           achievementCount: 12,
           totalDistance: 38.7,
           isFriend: true
         },
         {
-          id: '3',
+          id: 'friend3',
           name: 'Emma Davis',
           dogName: 'Bella',
           dogBreed: 'Labrador',
+          photoURL: null, // Will use random avatar
           territorySize: 1.8,
           achievementCount: 8,
           totalDistance: 25.4,
@@ -67,17 +70,19 @@ export function useFriends() {
 
       const mockRequests: FriendRequest[] = [
         {
-          id: '1',
-          senderId: '4',
+          id: 'req1',
+          senderId: 'sender1',
           senderName: 'Michael Brown',
           senderDogName: 'Rocky',
+          senderPhotoURL: null, // Will use random avatar
           timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() // 30 minutes ago
         },
         {
-          id: '2',
-          senderId: '5',
+          id: 'req2',
+          senderId: 'sender2',
           senderName: 'Lisa Anderson',
           senderDogName: 'Charlie',
+          senderPhotoURL: null, // Will use random avatar
           timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() // 2 hours ago
         }
       ];
@@ -94,19 +99,21 @@ export function useFriends() {
     // Mock user search results
     const mockSearchResults: User[] = [
       {
-        id: '6',
+        id: 'search1',
         name: 'David Wilson',
         dogName: 'Cooper',
         dogBreed: 'Beagle',
+        photoURL: null, // Will use random avatar
         territorySize: 1.2,
         achievementCount: 5,
         totalDistance: 15.8
       },
       {
-        id: '7',
+        id: 'search2',
         name: 'Rachel Green',
         dogName: 'Bailey',
         dogBreed: 'Poodle',
+        photoURL: null, // Will use random avatar
         territorySize: 0.8,
         achievementCount: 3,
         totalDistance: 10.2
@@ -137,6 +144,7 @@ export function useFriends() {
         name: request.senderName,
         dogName: request.senderDogName,
         dogBreed: 'Unknown', // In a real app, we'd have this info
+        photoURL: request.senderPhotoURL,
         territorySize: 0,
         achievementCount: 0,
         totalDistance: 0,

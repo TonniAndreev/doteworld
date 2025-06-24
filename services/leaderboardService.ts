@@ -3,6 +3,7 @@ export type LeaderboardUser = {
   id: string;
   name: string;
   dogName: string;
+  photoURL?: string | null;
   territorySize: number;
   totalDistance: number;
   achievementCount: number;
@@ -15,6 +16,7 @@ const mockLeaderboardData: LeaderboardUser[] = [
     id: '1',
     name: 'Sarah Miller',
     dogName: 'Luna',
+    photoURL: null, // Will use random avatar
     territorySize: 12.5,
     totalDistance: 85.2,
     achievementCount: 24,
@@ -24,6 +26,7 @@ const mockLeaderboardData: LeaderboardUser[] = [
     id: '2',
     name: 'John Walker',
     dogName: 'Max',
+    photoURL: null, // Will use random avatar
     territorySize: 10.8,
     totalDistance: 72.4,
     achievementCount: 18,
@@ -33,6 +36,7 @@ const mockLeaderboardData: LeaderboardUser[] = [
     id: '3',
     name: 'Emma Davis',
     dogName: 'Bella',
+    photoURL: null, // Will use random avatar
     territorySize: 9.2,
     totalDistance: 68.9,
     achievementCount: 15,
@@ -42,6 +46,7 @@ const mockLeaderboardData: LeaderboardUser[] = [
     id: '4',
     name: 'Michael Chen',
     dogName: 'Rocky',
+    photoURL: null, // Will use random avatar
     territorySize: 8.7,
     totalDistance: 61.3,
     achievementCount: 12,
@@ -51,6 +56,7 @@ const mockLeaderboardData: LeaderboardUser[] = [
     id: '5',
     name: 'Jessica Thompson',
     dogName: 'Charlie',
+    photoURL: null, // Will use random avatar
     territorySize: 7.9,
     totalDistance: 55.8,
     achievementCount: 10,

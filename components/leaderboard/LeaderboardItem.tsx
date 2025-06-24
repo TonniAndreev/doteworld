@@ -1,11 +1,14 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { COLORS } from '@/constants/theme';
+import UserAvatar from '@/components/common/UserAvatar';
 
 type LeaderboardItemProps = {
   rank: number;
   user: {
+    id: string;
     name: string;
     dogName: string;
+    photoURL?: string | null;
     territorySize?: number;
     totalDistance?: number;
     achievementCount?: number;
@@ -36,6 +39,14 @@ export default function LeaderboardItem({ rank, user, category }: LeaderboardIte
         <Text style={styles.rankText}>{rank}</Text>
       </View>
       
+      <UserAvatar
+        userId={user.id}
+        photoURL={user.photoURL}
+        userName={user.name}
+        size={40}
+        style={styles.avatar}
+      />
+      
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{user.name}</Text>
         <Text style={styles.dogName}>{user.dogName}</Text>
@@ -64,30 +75,33 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   rankContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: COLORS.neutralLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   rankText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
     color: COLORS.neutralDark,
+  },
+  avatar: {
+    marginRight: 12,
   },
   userInfo: {
     flex: 1,
   },
   userName: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.neutralDark,
     marginBottom: 2,
   },
   dogName: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
   },
@@ -96,7 +110,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   scoreText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.primary,
   },
