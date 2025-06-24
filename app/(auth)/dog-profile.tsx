@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Image,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
@@ -17,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Camera, ChevronDown, AlertCircle, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import UserAvatar from '@/components/common/UserAvatar';
 
 const DOG_BREEDS = [
   'Labrador Retriever',
@@ -35,12 +35,12 @@ const DOG_BREEDS = [
 export default function DogProfileScreen() {
   const [dogName, setDogName] = useState('');
   const [dogBreed, setDogBreed] = useState('');
-  const [dogPhoto, setDogPhoto] = useState(null);
+  const [dogPhoto, setDogPhoto] = useState<string | null>(null);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { updateDogProfile } = useAuth();
+  const { user, updateDogProfile } = useAuth();
   
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -81,7 +81,7 @@ export default function DogProfileScreen() {
     }
   };
   
-  const handleBreedSelect = (breed) => {
+  const handleBreedSelect = (breed: string) => {
     setDogBreed(breed);
     setShowBreedDropdown(false);
   };
@@ -133,14 +133,14 @@ export default function DogProfileScreen() {
           ) : null}
           
           <View style={styles.photoContainer}>
-            {dogPhoto ? (
-              <Image source={{ uri: dogPhoto }} style={styles.dogPhoto} />
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Camera size={40} color={COLORS.neutralMedium} />
-                <Text style={styles.photoPlaceholderText}>Add Photo</Text>
-              </View>
-            )}
+            <UserAvatar
+              userId={user?.id || 'temp'}
+              photoURL={dogPhoto}
+              userName={dogName || 'Dog'}
+              size={160}
+              showFallback={!dogPhoto}
+              style={styles.dogPhoto}
+            />
             
             <View style={styles.photoButtons}>
               <TouchableOpacity 
@@ -241,13 +241,13 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   title: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: COLORS.neutralDark,
     marginBottom: 8,
   },
   subtitle: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
     textAlign: 'center',
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   errorText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.error,
     marginLeft: 8,
@@ -271,25 +271,7 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   dogPhoto: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
     marginBottom: 16,
-  },
-  photoPlaceholder: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: COLORS.neutralLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  photoPlaceholderText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 16,
-    color: COLORS.neutralMedium,
-    marginTop: 8,
   },
   photoButtons: {
     flexDirection: 'row',
@@ -305,7 +287,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   photoButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
@@ -313,13 +295,13 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   inputLabel: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
     marginBottom: 8,
   },
   input: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     backgroundColor: COLORS.neutralLight,
@@ -339,12 +321,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   breedText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
   breedPlaceholder: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
   },
@@ -373,7 +355,7 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.neutralLight,
   },
   dropdownItemText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
@@ -385,7 +367,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   saveButtonText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
   },
@@ -394,7 +376,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   skipButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
   },
