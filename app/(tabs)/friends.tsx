@@ -24,6 +24,8 @@ import { COLORS } from '@/constants/theme';
 import { useFriends } from '@/hooks/useFriends';
 import UserCard from '@/components/friends/UserCard';
 import FriendRequestItem from '@/components/friends/FriendRequestItem';
+import UserAvatar from '@/components/common/UserAvatar';
+import UserProfileModal from '@/components/leaderboard/UserProfileModal';
 
 export default function FriendsScreen() {
   const [activeTab, setActiveTab] = useState('friends');
@@ -197,75 +199,11 @@ export default function FriendsScreen() {
         </>
       )}
 
-      <Modal
-        animationType="slide"
-        transparent={true}
+      <UserProfileModal
         visible={userModalVisible}
-        onRequestClose={closeUserModal}
-      >
-        {selectedUser && (
-          <View style={styles.modalContainer}>
-            <View style={styles.modalContent}>
-              <TouchableOpacity style={styles.closeButton} onPress={closeUserModal}>
-                <X size={24} color={COLORS.neutralDark} />
-              </TouchableOpacity>
-              
-              <View style={styles.userAvatar}>
-                <Text style={styles.userAvatarText}>{selectedUser.name.charAt(0)}</Text>
-              </View>
-              
-              <Text style={styles.userName}>{selectedUser.name}</Text>
-              
-              <View style={styles.dogInfoContainer}>
-                <Text style={styles.dogName}>{selectedUser.dogName}</Text>
-                <Text style={styles.dogBreed}>{selectedUser.dogBreed}</Text>
-              </View>
-              
-              <View style={styles.statsContainer}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{selectedUser.territorySize} km²</Text>
-                  <Text style={styles.statLabel}>Territory</Text>
-                </View>
-                
-                <View style={styles.statDivider} />
-                
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{selectedUser.achievementCount}</Text>
-                  <Text style={styles.statLabel}>Badges</Text>
-                </View>
-                
-                <View style={styles.statDivider} />
-                
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{selectedUser.totalDistance} km</Text>
-                  <Text style={styles.statLabel}>Distance</Text>
-                </View>
-              </View>
-              
-              {!selectedUser.isFriend && !selectedUser.requestSent && (
-                <TouchableOpacity style={styles.addFriendButton} onPress={handleSendRequest}>
-                  <UserPlus size={20} color={COLORS.white} />
-                  <Text style={styles.addFriendButtonText}>Add Friend</Text>
-                </TouchableOpacity>
-              )}
-              
-              {!selectedUser.isFriend && selectedUser.requestSent && (
-                <View style={styles.requestSentContainer}>
-                  <Clock size={20} color={COLORS.neutralDark} />
-                  <Text style={styles.requestSentText}>Request Sent</Text>
-                </View>
-              )}
-              
-              {selectedUser.isFriend && (
-                <View style={styles.friendStatusContainer}>
-                  <UserCheck size={20} color={COLORS.primary} />
-                  <Text style={styles.friendStatusText}>Friends</Text>
-                </View>
-              )}
-            </View>
-          </View>
-        )}
-      </Modal>
+        onClose={closeUserModal}
+        user={selectedUser}
+      />
     </SafeAreaView>
   );
 }
@@ -280,7 +218,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: COLORS.neutralDark,
   },
@@ -298,7 +236,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     padding: 10,
@@ -322,7 +260,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
   },
   tabText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 13,
     marginLeft: 4,
     color: COLORS.neutralDark,
@@ -345,7 +283,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.neutralMedium,
     marginBottom: 16,
@@ -357,142 +295,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   addFriendsButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.white,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 1,
-  },
-  userAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  userAvatarText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 32,
-    color: COLORS.primary,
-  },
-  userName: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 20,
-    color: COLORS.neutralDark,
-    marginBottom: 8,
-  },
-  dogInfoContainer: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dogName: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 16,
-    color: COLORS.primary,
-  },
-  dogBreed: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    paddingVertical: 16,
-    marginBottom: 24,
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-  },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statDivider: {
-    width: 1,
-    height: '80%',
-    backgroundColor: COLORS.neutralMedium,
-  },
-  statValue: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-  },
-  statLabel: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 12,
-    color: COLORS.neutralMedium,
-  },
-  addFriendButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    width: '100%',
-  },
-  addFriendButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 16,
-    color: COLORS.white,
-    marginLeft: 8,
-  },
-  requestSentContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    width: '100%',
-  },
-  requestSentText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    marginLeft: 8,
-  },
-  friendStatusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    width: '100%',
-  },
-  friendStatusText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 16,
-    color: COLORS.primary,
-    marginLeft: 8,
   },
 });
