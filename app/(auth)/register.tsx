@@ -1,373 +1,294 @@
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { User, Mail, Phone, Lock, CircleAlert as AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react-native';
-import { COLORS } from '@/constants/theme';
-import { useAuth } from '@/contexts/AuthContext';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from './AuthContext';
+import { usePaws } from './PawsContext';
+import { supabase } from '@/utils/supabase';
+import { 
+  calculatePolygonArea, 
+  isValidPolygon, 
+  createConvexHull,
+  coordinatesToTurfPolygon,
+  mergePolygons,
+  extractPolygonCoordinates
+} from '@/utils/locationUtils';
+import * as turf from '@turf/turf';
 
-export default function RegisterScreen() {
-  const [step, setStep] = useState(1);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  
-  const { register } = useAuth();
-
-  const validateStep1 = () => {
-    if (!firstName || !lastName) {
-      setError('Please enter your first and last name');
-      return false;
-    }
-    if (!username) {
-      setError('Please choose a username');
-      return false;
-    }
-    if (!email) {
-      setError('Please enter your email address');
-      return false;
-    }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
-      setError('Please enter a valid email address');
-      return false;
-    }
-    if (!phone) {
-      setError('Please enter your phone number');
-      return false;
-    }
-    return true;
-  };
-  
-  const validateStep2 = () => {
-    if (!password) {
-      setError('Please enter a password');
-      return false;
-    }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return false;
-    }
-    return true;
-  };
-  
-  const nextStep = () => {
-    setError('');
-    if (step === 1 && validateStep1()) {
-      setStep(2);
-    } else if (step === 2 && validateStep2()) {
-      handleRegister();
-    }
-  };
-  
-  const prevStep = () => {
-    if (step > 1) {
-      setStep(step - 1);
-      setError('');
-    }
-  };
-  
-  const handleRegister = async () => {
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      await register(email, password, firstName, lastName, phone);
-      router.push('/(auth)/dog-profile');
-    } catch (error) {
-      console.error(error);
-      setError('Registration failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        {step > 1 && (
-          <TouchableOpacity style={styles.backButton} onPress={prevStep}>
-            <ChevronLeft size={24} color={COLORS.neutralDark} />
-          </TouchableOpacity>
-        )}
-        
-        <Text style={styles.headerTitle}>Create Account</Text>
-        
-        <View style={styles.stepIndicator}>
-          <View style={[styles.stepDot, step >= 1 && styles.activeStepDot]} />
-          <View style={[styles.stepDot, step >= 2 && styles.activeStepDot]} />
-        </View>
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {error ? (
-            <View style={styles.errorContainer}>
-              <AlertCircle size={20} color={COLORS.error} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-          
-          {step === 1 && (
-            <View style={styles.formContainer}>
-              <Text style={styles.stepTitle}>Personal Information</Text>
-
-              <View style={styles.inputWrapper}>
-                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="First Name"
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Last Name"
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <Phone size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Phone Number"
-                  value={phone}
-                  onChangeText={setPhone}
-                  keyboardType="phone-pad"
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-            </View>
-          )}
-          
-          {step === 2 && (
-            <View style={styles.formContainer}>
-              <Text style={styles.stepTitle}>Create Password</Text>
-
-              <View style={styles.inputWrapper}>
-                <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Confirm Password"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-
-              <Text style={styles.passwordRequirements}>
-                Password must be at least 6 characters
-              </Text>
-            </View>
-          )}
-
-          <TouchableOpacity 
-            style={styles.nextButton}
-            onPress={nextStep}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <>
-                <Text style={styles.nextButtonText}>
-                  {step === 1 ? 'Continue' : 'Create Account'}
-                </Text>
-                {step === 1 && (
-                  <ChevronRight size={20} color={COLORS.white} />
-                )}
-              </>
-            )}
-          </TouchableOpacity>
-
-          <View style={styles.loginContainer}>
-            <Text style={styles.haveAccountText}>Already have an account?</Text>
-            <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-              <Text style={styles.loginText}>Login</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+interface Coordinate {
+  latitude: number;
+  longitude: number;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-  },
-  backButton: {
-    padding: 4,
-  },
-  headerTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 20,
-    color: COLORS.neutralDark,
-  },
-  stepIndicator: {
-    flexDirection: 'row',
-  },
-  stepDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.neutralLight,
-    marginHorizontal: 4,
-  },
-  activeStepDot: {
-    backgroundColor: COLORS.primary,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.errorLight,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  errorText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 14,
-    color: COLORS.error,
-    marginLeft: 8,
-  },
-  formContainer: {
-    marginBottom: 24,
-  },
-  stepTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 24,
-    color: COLORS.neutralDark,
-    marginBottom: 24,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    marginBottom: 16,
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    padding: 12,
-  },
-  passwordRequirements: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    marginTop: 8,
-  },
-  nextButton: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  nextButtonText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 16,
-    color: COLORS.white,
-    marginRight: 8,
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  haveAccountText: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-    marginRight: 4,
-  },
-  loginText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 14,
-    color: COLORS.primary,
-  },
-});
+interface TerritoryContextType {
+  territory: Coordinate[][];
+  territoryGeoJSON: turf.Feature<turf.Polygon | turf.MultiPolygon> | null;
+  territorySize: number;
+  totalDistance: number;
+  currentWalkPoints: Coordinate[];
+  currentPolygon: Coordinate[] | null;
+  currentWalkSessionId: string | null;
+  startWalk: () => void;
+  addWalkPoint: (coordinates: Coordinate) => void;
+  endWalk: () => Promise<void>;
+}
+
+const TerritoryContext = createContext<TerritoryContextType | undefined>(undefined);
+
+export function TerritoryProvider({ children }: { children: ReactNode }) {
+  const [territoryGeoJSON, setTerritoryGeoJSON] = useState<turf.Feature<turf.Polygon | turf.MultiPolygon> | null>(null);
+  const [territorySize, setTerritorySize] = useState(0);
+  const [totalDistance, setTotalDistance] = useState(0);
+  const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
+  const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
+  const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
+  const [isWalking, setIsWalking] = useState(false);
+  
+  const { user } = useAuth();
+  const { addPaws } = usePaws();
+
+  useEffect(() => {
+    const loadTerritoryData = async () => {
+      if (user && user.dogs.length > 0) {
+        try {
+          const dogId = user.dogs[0].id; // Use first dog for now
+          
+          // Load territory data from database
+          const { data: territoryPoints, error } = await supabase
+            .from('territory')
+            .select(`
+              walk_points (
+                latitude,
+                longitude
+              )
+            `)
+            .eq('dog_id', dogId);
+
+          if (error) {
+            console.error('Error loading territory data:', error);
+            return;
+          }
+
+          // Convert territory points to polygons and calculate total area
+          if (territoryPoints && territoryPoints.length > 0) {
+            // This is a simplified approach - in reality you'd need to reconstruct
+            // the actual territory polygons from the stored walk points
+            const allPoints = territoryPoints.map(tp => tp.walk_points).filter(Boolean);
+            
+            if (allPoints.length >= 3) {
+              const hull = createConvexHull(allPoints);
+              if (hull && isValidPolygon(hull)) {
+                const polygon = coordinatesToTurfPolygon(hull);
+                if (polygon) {
+                  setTerritoryGeoJSON(polygon);
+                  setTerritorySize(calculatePolygonArea(hull));
+                }
+              }
+            }
+          }
+
+          // Load from local storage as fallback
+          const [savedTerritoryGeoJSON, savedTerritorySize, savedTotalDistance] = await Promise.all([
+            AsyncStorage.getItem(`dote_territory_geojson_${user.uid}`),
+            AsyncStorage.getItem(`dote_territory_size_${user.uid}`),
+            AsyncStorage.getItem(`dote_total_distance_${user.uid}`),
+          ]);
+
+          if (savedTerritoryGeoJSON && !territoryGeoJSON) {
+            const parsedGeoJSON = JSON.parse(savedTerritoryGeoJSON);
+            setTerritoryGeoJSON(parsedGeoJSON);
+          }
+
+          if (savedTerritorySize && territorySize === 0) {
+            setTerritorySize(parseFloat(savedTerritorySize));
+          }
+
+          if (savedTotalDistance) {
+            setTotalDistance(parseFloat(savedTotalDistance));
+          }
+        } catch (error) {
+          console.error('Error loading territory data:', error);
+        }
+      }
+    };
+
+    loadTerritoryData();
+  }, [user]);
+
+  const startWalk = () => {
+    setCurrentWalkPoints([]);
+    setCurrentPolygon(null);
+    setIsWalking(true);
+    // Generate a unique session ID for this walk
+    setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  };
+
+  const addWalkPoint = async (coordinates: Coordinate) => {
+    if (!user || !user.dogs.length || !currentWalkSessionId) return;
+
+    const newPoints = [...currentWalkPoints, coordinates];
+    setCurrentWalkPoints(newPoints);
+
+    try {
+      // Save walk point to database
+      const { error } = await supabase
+        .from('walk_points')
+        .insert({
+          dog_id: user.dogs[0].id, // Use first dog for now
+          walk_session_id: currentWalkSessionId,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        });
+
+      if (error) {
+        console.error('Error saving walk point:', error);
+      }
+    } catch (error) {
+      console.error('Error saving walk point:', error);
+    }
+
+    // Only try to form a polygon if we have at least 3 points
+    if (newPoints.length >= 3) {
+      const hull = createConvexHull(newPoints);
+      if (hull && isValidPolygon(hull)) {
+        setCurrentPolygon(hull);
+      } else {
+        setCurrentPolygon(null);
+      }
+    } else {
+      setCurrentPolygon(null);
+    }
+  };
+
+  const endWalk = async () => {
+    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user || !user.dogs.length || !currentWalkSessionId) {
+      console.log('Cannot end walk: insufficient points, no user, or no session');
+      return;
+    }
+
+    try {
+      // Create final polygon from all walk points
+      const finalHull = createConvexHull(currentWalkPoints);
+      if (!finalHull || !isValidPolygon(finalHull)) {
+        console.log('Cannot create valid polygon from walk points');
+        setCurrentWalkPoints([]);
+        setCurrentPolygon(null);
+        setCurrentWalkSessionId(null);
+        return;
+      }
+
+      // Calculate area of the new polygon before merging
+      const newPolygonArea = calculatePolygonArea(finalHull);
+      
+      // Convert to turf polygon
+      const newTurfPolygon = coordinatesToTurfPolygon(finalHull);
+      if (!newTurfPolygon) {
+        console.log('Failed to convert coordinates to turf polygon');
+        return;
+      }
+
+      let updatedTerritoryGeoJSON;
+      let newTerritorySize;
+
+      if (territoryGeoJSON) {
+        // Merge with existing territory
+        const mergedPolygon = mergePolygons(territoryGeoJSON, newTurfPolygon);
+        if (mergedPolygon) {
+          updatedTerritoryGeoJSON = mergedPolygon;
+          // Calculate total area of merged territory
+          const totalArea = turf.area(mergedPolygon) / 1000000; // Convert to km²
+          newTerritorySize = totalArea;
+        } else {
+          // If merge fails, keep existing territory
+          updatedTerritoryGeoJSON = territoryGeoJSON;
+          newTerritorySize = territorySize;
+        }
+      } else {
+        // First territory
+        updatedTerritoryGeoJSON = newTurfPolygon;
+        newTerritorySize = newPolygonArea;
+      }
+
+      // Save territory points to database
+      try {
+        const dogId = user.dogs[0].id;
+        
+        // Get all walk points from this session
+        const { data: walkPoints, error: walkPointsError } = await supabase
+          .from('walk_points')
+          .select('id')
+          .eq('dog_id', dogId)
+          .eq('walk_session_id', currentWalkSessionId);
+
+        if (walkPointsError) {
+          console.error('Error fetching walk points:', walkPointsError);
+        } else if (walkPoints) {
+          // Add territory entries for each walk point
+          const territoryEntries = walkPoints.map(wp => ({
+            walk_point_id: wp.id,
+            dog_id: dogId,
+          }));
+
+          const { error: territoryError } = await supabase
+            .from('territory')
+            .insert(territoryEntries);
+
+          if (territoryError) {
+            console.error('Error saving territory:', territoryError);
+          }
+        }
+      } catch (error) {
+        console.error('Error saving territory to database:', error);
+      }
+
+      // Update state
+      setTerritoryGeoJSON(updatedTerritoryGeoJSON);
+      setTerritorySize(newTerritorySize);
+      setCurrentWalkPoints([]);
+      setCurrentPolygon(null);
+      setCurrentWalkSessionId(null);
+
+      // Save to storage
+      await Promise.all([
+        AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
+        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
+      ]);
+
+      // Award paws based on the NEW polygon area only (not total territory)
+      const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
+      if (pawsEarned > 0) {
+        addPaws(pawsEarned, `Territory conquered: ${(newPolygonArea * 1000000).toFixed(0)} m²`);
+      }
+
+      console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered, ${pawsEarned} paws earned`);
+    } catch (error) {
+      console.error('Error ending walk:', error);
+      // Reset current walk state on error
+      setCurrentWalkPoints([]);
+      setCurrentPolygon(null);
+      setCurrentWalkSessionId(null);
+    }
+  };
+
+  // Extract renderable polygons for the map
+  const renderablePolygons = extractPolygonCoordinates(territoryGeoJSON);
+
+  const value: TerritoryContextType = {
+    territory: renderablePolygons, // For backward compatibility with existing map rendering
+    territoryGeoJSON,
+    territorySize,
+    totalDistance,
+    currentWalkPoints,
+    currentPolygon,
+    currentWalkSessionId,
+    startWalk,
+    addWalkPoint,
+    endWalk,
+  };
+
+  return <TerritoryContext.Provider value={value}>{children}</TerritoryContext.Provider>;
+}
+
+export const useTerritory = () => {
+  const context = useContext(TerritoryContext);
+  if (!context) throw new Error("useTerritory must be used inside TerritoryProvider");
+  return context;
+};
