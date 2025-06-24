@@ -40,7 +40,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
   const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
   const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
-  const [isWalking, setIsWalking] = useState(false);
   
   const { user } = useAuth();
   const { addPaws } = usePaws();
@@ -116,7 +115,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const startWalk = () => {
     setCurrentWalkPoints([]);
     setCurrentPolygon(null);
-    setIsWalking(true);
     // Generate a unique session ID for this walk
     setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   };
