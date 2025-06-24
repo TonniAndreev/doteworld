@@ -1,401 +1,294 @@
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Image,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import { Camera, ChevronDown, AlertCircle, Check } from 'lucide-react-native';
-import { COLORS } from '@/constants/theme';
-import { useAuth } from '@/contexts/AuthContext';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from './AuthContext';
+import { usePaws } from './PawsContext';
+import { supabase } from '@/utils/supabase';
+import { 
+  calculatePolygonArea, 
+  isValidPolygon, 
+  createConvexHull,
+  coordinatesToTurfPolygon,
+  mergePolygons,
+  extractPolygonCoordinates
+} from '@/utils/locationUtils';
+import * as turf from '@turf/turf';
 
-const DOG_BREEDS = [
-  'Labrador Retriever',
-  'German Shepherd',
-  'Golden Retriever',
-  'French Bulldog',
-  'Beagle',
-  'Poodle',
-  'Boxer',
-  'Dachshund',
-  'Siberian Husky',
-  'Border Collie',
-  'Mixed Breed / Other',
-];
-
-export default function DogProfileScreen() {
-  const [dogName, setDogName] = useState('');
-  const [dogBreed, setDogBreed] = useState('');
-  const [dogPhoto, setDogPhoto] = useState(null);
-  const [showBreedDropdown, setShowBreedDropdown] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
-  
-  const { updateDogProfile } = useAuth();
-  
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      alert('Sorry, we need camera roll permissions to make this work!');
-      return;
-    }
-    
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setDogPhoto(result.assets[0].uri);
-    }
-  };
-  
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
-    if (status !== 'granted') {
-      alert('Sorry, we need camera permissions to make this work!');
-      return;
-    }
-    
-    let result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setDogPhoto(result.assets[0].uri);
-    }
-  };
-  
-  const handleBreedSelect = (breed) => {
-    setDogBreed(breed);
-    setShowBreedDropdown(false);
-  };
-  
-  const handleSubmit = async () => {
-    if (!dogName) {
-      setError('Please enter your dog\'s name');
-      return;
-    }
-    
-    if (!dogBreed) {
-      setError('Please select your dog\'s breed');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError('');
-    
-    try {
-      await updateDogProfile(dogName, dogBreed, dogPhoto);
-      router.replace('/(tabs)');
-    } catch (error) {
-      setError('Failed to save dog profile. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
-      >
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>Dog Profile</Text>
-            <Text style={styles.subtitle}>Tell us about your furry friend</Text>
-          </View>
-          
-          {error ? (
-            <View style={styles.errorContainer}>
-              <AlertCircle size={20} color={COLORS.error} />
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          ) : null}
-          
-          <View style={styles.photoContainer}>
-            {dogPhoto ? (
-              <Image source={{ uri: dogPhoto }} style={styles.dogPhoto} />
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Camera size={40} color={COLORS.neutralMedium} />
-                <Text style={styles.photoPlaceholderText}>Add Photo</Text>
-              </View>
-            )}
-            
-            <View style={styles.photoButtons}>
-              <TouchableOpacity 
-                style={styles.photoButton}
-                onPress={takePhoto}
-              >
-                <Text style={styles.photoButtonText}>Take Photo</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.photoButton}
-                onPress={pickImage}
-              >
-                <Text style={styles.photoButtonText}>Choose Photo</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-          
-          <View style={styles.formContainer}>
-            <Text style={styles.inputLabel}>Dog's Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="E.g., Max, Bella, etc."
-              value={dogName}
-              onChangeText={setDogName}
-              placeholderTextColor={COLORS.neutralMedium}
-            />
-            
-            <Text style={styles.inputLabel}>Dog's Breed</Text>
-            <TouchableOpacity 
-              style={styles.breedSelector}
-              onPress={() => setShowBreedDropdown(!showBreedDropdown)}
-            >
-              <Text style={dogBreed ? styles.breedText : styles.breedPlaceholder}>
-                {dogBreed || 'Select breed'}
-              </Text>
-              <ChevronDown size={20} color={COLORS.neutralDark} />
-            </TouchableOpacity>
-            
-            {showBreedDropdown && (
-              <View style={styles.dropdownContainer}>
-                <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
-                  {DOG_BREEDS.map((breed, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.dropdownItem}
-                      onPress={() => handleBreedSelect(breed)}
-                    >
-                      <Text style={styles.dropdownItemText}>{breed}</Text>
-                      {breed === dogBreed && (
-                        <Check size={16} color={COLORS.primary} />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-          
-          <TouchableOpacity 
-            style={styles.saveButton}
-            onPress={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={styles.saveButtonText}>Save & Continue</Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.skipButton}
-            onPress={() => router.replace('/(tabs)')}
-          >
-            <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+interface Coordinate {
+  latitude: number;
+  longitude: number;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 24,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  title: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 28,
-    color: COLORS.neutralDark,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 16,
-    color: COLORS.neutralMedium,
-    textAlign: 'center',
-  },
-  errorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.errorLight,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  errorText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 14,
-    color: COLORS.error,
-    marginLeft: 8,
-  },
-  photoContainer: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  dogPhoto: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    marginBottom: 16,
-  },
-  photoPlaceholder: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: COLORS.neutralLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  photoPlaceholderText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 16,
-    color: COLORS.neutralMedium,
-    marginTop: 8,
-  },
-  photoButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  photoButton: {
-    backgroundColor: COLORS.primaryLight,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    width: '48%',
-    alignItems: 'center',
-  },
-  photoButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 14,
-    color: COLORS.primary,
-  },
-  formContainer: {
-    marginBottom: 32,
-  },
-  inputLabel: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-    marginBottom: 8,
-  },
-  input: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    backgroundColor: COLORS.neutralLight,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 24,
-  },
-  breedSelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: COLORS.neutralLight,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  breedText: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-  },
-  breedPlaceholder: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 16,
-    color: COLORS.neutralMedium,
-  },
-  dropdownContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.neutralLight,
-    marginBottom: 24,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  dropdown: {
-    maxHeight: 200,
-  },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.neutralLight,
-  },
-  dropdownItemText: {
-    fontFamily: 'SF-Pro-Display-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-  },
-  saveButton: {
-    backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  saveButtonText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 16,
-    color: COLORS.white,
-  },
-  skipButton: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  skipButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-  },
-});
+interface TerritoryContextType {
+  territory: Coordinate[][];
+  territoryGeoJSON: turf.Feature<turf.Polygon | turf.MultiPolygon> | null;
+  territorySize: number;
+  totalDistance: number;
+  currentWalkPoints: Coordinate[];
+  currentPolygon: Coordinate[] | null;
+  currentWalkSessionId: string | null;
+  startWalk: () => void;
+  addWalkPoint: (coordinates: Coordinate) => void;
+  endWalk: () => Promise<void>;
+}
+
+const TerritoryContext = createContext<TerritoryContextType | undefined>(undefined);
+
+export function TerritoryProvider({ children }: { children: ReactNode }) {
+  const [territoryGeoJSON, setTerritoryGeoJSON] = useState<turf.Feature<turf.Polygon | turf.MultiPolygon> | null>(null);
+  const [territorySize, setTerritorySize] = useState(0);
+  const [totalDistance, setTotalDistance] = useState(0);
+  const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
+  const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
+  const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
+  const [isWalking, setIsWalking] = useState(false);
+  
+  const { user } = useAuth();
+  const { addPaws } = usePaws();
+
+  useEffect(() => {
+    const loadTerritoryData = async () => {
+      if (user && user.dogs.length > 0) {
+        try {
+          const dogId = user.dogs[0].id; // Use first dog for now
+          
+          // Load territory data from database
+          const { data: territoryPoints, error } = await supabase
+            .from('territory')
+            .select(`
+              walk_points (
+                latitude,
+                longitude
+              )
+            `)
+            .eq('dog_id', dogId);
+
+          if (error) {
+            console.error('Error loading territory data:', error);
+            return;
+          }
+
+          // Convert territory points to polygons and calculate total area
+          if (territoryPoints && territoryPoints.length > 0) {
+            // This is a simplified approach - in reality you'd need to reconstruct
+            // the actual territory polygons from the stored walk points
+            const allPoints = territoryPoints.map(tp => tp.walk_points).filter(Boolean);
+            
+            if (allPoints.length >= 3) {
+              const hull = createConvexHull(allPoints);
+              if (hull && isValidPolygon(hull)) {
+                const polygon = coordinatesToTurfPolygon(hull);
+                if (polygon) {
+                  setTerritoryGeoJSON(polygon);
+                  setTerritorySize(calculatePolygonArea(hull));
+                }
+              }
+            }
+          }
+
+          // Load from local storage as fallback
+          const [savedTerritoryGeoJSON, savedTerritorySize, savedTotalDistance] = await Promise.all([
+            AsyncStorage.getItem(`dote_territory_geojson_${user.uid}`),
+            AsyncStorage.getItem(`dote_territory_size_${user.uid}`),
+            AsyncStorage.getItem(`dote_total_distance_${user.uid}`),
+          ]);
+
+          if (savedTerritoryGeoJSON && !territoryGeoJSON) {
+            const parsedGeoJSON = JSON.parse(savedTerritoryGeoJSON);
+            setTerritoryGeoJSON(parsedGeoJSON);
+          }
+
+          if (savedTerritorySize && territorySize === 0) {
+            setTerritorySize(parseFloat(savedTerritorySize));
+          }
+
+          if (savedTotalDistance) {
+            setTotalDistance(parseFloat(savedTotalDistance));
+          }
+        } catch (error) {
+          console.error('Error loading territory data:', error);
+        }
+      }
+    };
+
+    loadTerritoryData();
+  }, [user]);
+
+  const startWalk = () => {
+    setCurrentWalkPoints([]);
+    setCurrentPolygon(null);
+    setIsWalking(true);
+    // Generate a unique session ID for this walk
+    setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  };
+
+  const addWalkPoint = async (coordinates: Coordinate) => {
+    if (!user || !user.dogs.length || !currentWalkSessionId) return;
+
+    const newPoints = [...currentWalkPoints, coordinates];
+    setCurrentWalkPoints(newPoints);
+
+    try {
+      // Save walk point to database
+      const { error } = await supabase
+        .from('walk_points')
+        .insert({
+          dog_id: user.dogs[0].id, // Use first dog for now
+          walk_session_id: currentWalkSessionId,
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        });
+
+      if (error) {
+        console.error('Error saving walk point:', error);
+      }
+    } catch (error) {
+      console.error('Error saving walk point:', error);
+    }
+
+    // Only try to form a polygon if we have at least 3 points
+    if (newPoints.length >= 3) {
+      const hull = createConvexHull(newPoints);
+      if (hull && isValidPolygon(hull)) {
+        setCurrentPolygon(hull);
+      } else {
+        setCurrentPolygon(null);
+      }
+    } else {
+      setCurrentPolygon(null);
+    }
+  };
+
+  const endWalk = async () => {
+    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user || !user.dogs.length || !currentWalkSessionId) {
+      console.log('Cannot end walk: insufficient points, no user, or no session');
+      return;
+    }
+
+    try {
+      // Create final polygon from all walk points
+      const finalHull = createConvexHull(currentWalkPoints);
+      if (!finalHull || !isValidPolygon(finalHull)) {
+        console.log('Cannot create valid polygon from walk points');
+        setCurrentWalkPoints([]);
+        setCurrentPolygon(null);
+        setCurrentWalkSessionId(null);
+        return;
+      }
+
+      // Calculate area of the new polygon before merging
+      const newPolygonArea = calculatePolygonArea(finalHull);
+      
+      // Convert to turf polygon
+      const newTurfPolygon = coordinatesToTurfPolygon(finalHull);
+      if (!newTurfPolygon) {
+        console.log('Failed to convert coordinates to turf polygon');
+        return;
+      }
+
+      let updatedTerritoryGeoJSON;
+      let newTerritorySize;
+
+      if (territoryGeoJSON) {
+        // Merge with existing territory
+        const mergedPolygon = mergePolygons(territoryGeoJSON, newTurfPolygon);
+        if (mergedPolygon) {
+          updatedTerritoryGeoJSON = mergedPolygon;
+          // Calculate total area of merged territory
+          const totalArea = turf.area(mergedPolygon) / 1000000; // Convert to km²
+          newTerritorySize = totalArea;
+        } else {
+          // If merge fails, keep existing territory
+          updatedTerritoryGeoJSON = territoryGeoJSON;
+          newTerritorySize = territorySize;
+        }
+      } else {
+        // First territory
+        updatedTerritoryGeoJSON = newTurfPolygon;
+        newTerritorySize = newPolygonArea;
+      }
+
+      // Save territory points to database
+      try {
+        const dogId = user.dogs[0].id;
+        
+        // Get all walk points from this session
+        const { data: walkPoints, error: walkPointsError } = await supabase
+          .from('walk_points')
+          .select('id')
+          .eq('dog_id', dogId)
+          .eq('walk_session_id', currentWalkSessionId);
+
+        if (walkPointsError) {
+          console.error('Error fetching walk points:', walkPointsError);
+        } else if (walkPoints) {
+          // Add territory entries for each walk point
+          const territoryEntries = walkPoints.map(wp => ({
+            walk_point_id: wp.id,
+            dog_id: dogId,
+          }));
+
+          const { error: territoryError } = await supabase
+            .from('territory')
+            .insert(territoryEntries);
+
+          if (territoryError) {
+            console.error('Error saving territory:', territoryError);
+          }
+        }
+      } catch (error) {
+        console.error('Error saving territory to database:', error);
+      }
+
+      // Update state
+      setTerritoryGeoJSON(updatedTerritoryGeoJSON);
+      setTerritorySize(newTerritorySize);
+      setCurrentWalkPoints([]);
+      setCurrentPolygon(null);
+      setCurrentWalkSessionId(null);
+
+      // Save to storage
+      await Promise.all([
+        AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
+        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
+      ]);
+
+      // Award paws based on the NEW polygon area only (not total territory)
+      const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
+      if (pawsEarned > 0) {
+        addPaws(pawsEarned, `Territory conquered: ${(newPolygonArea * 1000000).toFixed(0)} m²`);
+      }
+
+      console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered, ${pawsEarned} paws earned`);
+    } catch (error) {
+      console.error('Error ending walk:', error);
+      // Reset current walk state on error
+      setCurrentWalkPoints([]);
+      setCurrentPolygon(null);
+      setCurrentWalkSessionId(null);
+    }
+  };
+
+  // Extract renderable polygons for the map
+  const renderablePolygons = extractPolygonCoordinates(territoryGeoJSON);
+
+  const value: TerritoryContextType = {
+    territory: renderablePolygons, // For backward compatibility with existing map rendering
+    territoryGeoJSON,
+    territorySize,
+    totalDistance,
+    currentWalkPoints,
+    currentPolygon,
+    currentWalkSessionId,
+    startWalk,
+    addWalkPoint,
+    endWalk,
+  };
+
+  return <TerritoryContext.Provider value={value}>{children}</TerritoryContext.Provider>;
+}
+
+export const useTerritory = () => {
+  const context = useContext(TerritoryContext);
+  if (!context) throw new Error("useTerritory must be used inside TerritoryProvider");
+  return context;
+};
