@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, View, Text, StyleSheet, ImageStyle, ViewStyle, TextStyle } from 'react-native';
 import { COLORS } from '@/constants/theme';
 import { getAvatarSource } from '@/utils/avatarUtils';
@@ -6,24 +6,25 @@ import { getAvatarSource } from '@/utils/avatarUtils';
 interface UserAvatarProps {
   userId: string;
   photoURL?: string | null;
+  userName?: string;
   size?: number;
   showFallback?: boolean;
   style?: ImageStyle;
   containerStyle?: ViewStyle;
   fallbackTextStyle?: TextStyle;
-  userName?: string;
 }
 
 export default function UserAvatar({
   userId,
   photoURL,
+  userName = 'User',
   size = 50,
   showFallback = true,
   style,
   containerStyle,
   fallbackTextStyle,
-  userName
 }: UserAvatarProps) {
+  const [imageError, setImageError] = useState(false);
   const avatarSource = getAvatarSource(userId, photoURL);
   
   const avatarStyle = [
@@ -45,50 +46,39 @@ export default function UserAvatar({
     containerStyle
   ];
 
+  // If image failed to load and we want to show fallback
+  if (imageError && showFallback) {
+    return (
+      <View style={[
+        containerStyles,
+        {
+          backgroundColor: COLORS.primaryLight,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }
+      ]}>
+        <Text style={[
+          {
+            fontFamily: 'Inter-Bold',
+            fontSize: size * 0.4,
+            color: COLORS.primary,
+          },
+          fallbackTextStyle
+        ]}>
+          {userName.charAt(0).toUpperCase()}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={containerStyles}>
       <Image
         source={avatarSource}
         style={avatarStyle}
-        onError={() => {
-          // If image fails to load and we want to show fallback
-          if (showFallback && userName) {
-            return (
-              <View style={[
-                avatarStyle,
-                {
-                  backgroundColor: COLORS.primaryLight,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                }
-              ]}>
-                <Text style={[
-                  {
-                    fontFamily: 'Inter-Bold',
-                    fontSize: size * 0.4,
-                    color: COLORS.primary,
-                  },
-                  fallbackTextStyle
-                ]}>
-                  {userName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            );
-          }
-        }}
+        onError={() => setImageError(true)}
+        resizeMode="cover"
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  fallbackContainer: {
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fallbackText: {
-    fontFamily: 'Inter-Bold',
-    color: COLORS.primary,
-  },
-});
