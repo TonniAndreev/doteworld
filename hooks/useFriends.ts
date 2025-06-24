@@ -188,9 +188,76 @@ export function useFriends() {
   const searchUsers = (query: string) => {
     if (!query.trim()) return [];
 
-    // This would be implemented with a proper search endpoint
-    // For now, return empty array as we need to implement user search
-    return [];
+    // Implement user search
+    return searchUsersInDatabase(query);
+  };
+
+  const searchUsersInDatabase = async (query: string): Promise<User[]> => {
+    if (!user || !query.trim()) return [];
+
+    try {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          first_name,
+          last_name,
+          avatar_url,
+          profile_dogs (
+            dogs (
+              name,
+              breed
+            )
+          )
+        `)
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
+        .neq('id', user.id) // Exclude current user
+        .limit(20);
+
+      if (error) {
+        console.error('Error searching users:', error);
+        return [];
+      }
+
+      const searchResults: User[] = [];
+
+      for (const profile of profiles || []) {
+        // Check if already friends or request exists
+        const { data: existingRelation } = await supabase
+          .from('friendships')
+          .select('status')
+          .or(`and(requester_id.eq.${user.id},receiver_id.eq.${profile.id}),and(requester_id.eq.${profile.id},receiver_id.eq.${user.id})`)
+          .single();
+
+        const firstDog = profile.profile_dogs?.[0]?.dogs;
+        const isFriend = existingRelation?.status === 'accepted';
+        const requestSent = existingRelation?.status === 'pending';
+
+        // Get achievement count
+        const { count: achievementCount } = await supabase
+          .from('profile_achievements')
+          .select('*', { count: 'exact', head: true })
+          .eq('profile_id', profile.id);
+
+        searchResults.push({
+          id: profile.id,
+          name: `${profile.first_name} ${profile.last_name}`.trim(),
+          dogName: firstDog?.name || 'No dog',
+          dogBreed: firstDog?.breed || '',
+          photoURL: profile.avatar_url,
+          territorySize: 0, // Would be calculated from territory data
+          achievementCount: achievementCount || 0,
+          totalDistance: 0, // Would be calculated from walk data
+          isFriend,
+          requestSent,
+        });
+      }
+
+      return searchResults;
+    } catch (error) {
+      console.error('Error searching users:', error);
+      return [];
+    }
   };
 
   const sendFriendRequest = async (userId: string) => {
