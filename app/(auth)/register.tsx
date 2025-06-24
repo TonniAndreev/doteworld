@@ -12,15 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  Lock, 
-  AlertCircle, 
-  ChevronLeft,
-  ChevronRight
-} from 'lucide-react-native';
+import { User, Mail, Phone, Lock, CircleAlert as AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -28,6 +20,7 @@ export default function RegisterScreen() {
   const [step, setStep] = useState(1);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -40,6 +33,10 @@ export default function RegisterScreen() {
   const validateStep1 = () => {
     if (!firstName || !lastName) {
       setError('Please enter your first and last name');
+      return false;
+    }
+    if (!username) {
+      setError('Please choose a username');
       return false;
     }
     if (!email) {
