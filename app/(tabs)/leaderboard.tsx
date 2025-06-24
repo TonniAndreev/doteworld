@@ -61,6 +61,82 @@ export default function LeaderboardScreen() {
         item.dogName.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
+  const renderTopThree = () => {
+    if (!leaderboardData || leaderboardData.length < 3) return null;
+
+    const [first, second, third] = leaderboardData.slice(0, 3);
+
+    const getValue = (user) => {
+      switch (activeTab) {
+        case 'territory':
+          return `${user.territorySize} km²`;
+        case 'distance':
+          return `${user.totalDistance} km`;
+        case 'achievements':
+          return `${user.achievementCount}`;
+        case 'paws':
+          return `${user.pawsBalance}`;
+        default:
+          return '';
+      }
+    };
+
+    return (
+      <View style={styles.top3Container}>
+        {/* Second Place - Left */}
+        <View style={[styles.topUser, styles.top2]}>
+          <View style={styles.crownContainer}>
+            {/* Empty space for alignment */}
+          </View>
+          <View style={[styles.avatar, styles.avatar2]}>
+            <Text style={styles.avatarText}>{second.name.charAt(0)}</Text>
+          </View>
+          <View style={styles.nameAndDogContainer}>
+            <Text style={styles.topUserName} numberOfLines={1}>{second.name}</Text>
+            <Text style={styles.topDogName} numberOfLines={1}>{second.dogName}</Text>
+          </View>
+          <Text style={styles.topUserScore}>
+            {getValue(second)}
+          </Text>
+        </View>
+
+        {/* First Place - Center */}
+        <View style={[styles.topUser, styles.top1, styles.highlightedTop1]}>
+          <View style={styles.crownContainer}>
+            <Crown size={28} color={COLORS.accent} />
+          </View>
+          <View style={[styles.avatar, styles.avatar1, styles.highlightedAvatar1]}>
+            <Text style={[styles.avatarText, styles.firstPlaceAvatarText]}>{first.name.charAt(0)}</Text>
+          </View>
+          <View style={styles.nameAndDogContainer}>
+            <Text style={[styles.topUserName, styles.firstPlaceName]} numberOfLines={1}>{first.name}</Text>
+            <Text style={[styles.topDogName, styles.firstPlaceDogName]} numberOfLines={1}>{first.dogName}</Text>
+          </View>
+          <Text style={[styles.topUserScore, styles.firstPlaceScore]}>
+            {getValue(first)}
+          </Text>
+        </View>
+
+        {/* Third Place - Right */}
+        <View style={[styles.topUser, styles.top3]}>
+          <View style={styles.crownContainer}>
+            {/* Empty space for alignment */}
+          </View>
+          <View style={[styles.avatar, styles.avatar3]}>
+            <Text style={styles.avatarText}>{third.name.charAt(0)}</Text>
+          </View>
+          <View style={styles.nameAndDogContainer}>
+            <Text style={styles.topUserName} numberOfLines={1}>{third.name}</Text>
+            <Text style={styles.topDogName} numberOfLines={1}>{third.dogName}</Text>
+          </View>
+          <Text style={styles.topUserScore}>
+            {getValue(third)}
+          </Text>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -113,27 +189,7 @@ export default function LeaderboardScreen() {
       </View>
 
       <View style={styles.topRankContainer}>
-        {!isLoading && leaderboardData.length > 0 && (
-          <View style={styles.top3Container}>
-            {leaderboardData.slice(0, 3).map((user, index) => (
-              <View key={user.id} style={[styles.topUser, styles[`top${index + 1}`]]}>
-                <View style={styles.crownContainer}>
-                  {index === 0 && <Crown size={24} color={COLORS.gold} />}
-                </View>
-                <View style={[styles.avatar, styles[`avatar${index + 1}`]]}>
-                  <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
-                </View>
-                <Text style={styles.topUserName} numberOfLines={1}>{user.name}</Text>
-                <Text style={styles.topUserScore}>
-                  {activeTab === 'territory' ? `${user.territorySize} km²` : 
-                   activeTab === 'distance' ? `${user.totalDistance} km` : 
-                   activeTab === 'achievements' ? `${user.achievementCount}` : 
-                   `${user.pawsBalance}`}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
+        {!isLoading && leaderboardData.length > 0 && renderTopThree()}
       </View>
 
       {isLoading ? (
@@ -175,7 +231,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: COLORS.neutralDark,
   },
@@ -193,7 +249,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     padding: 10,
@@ -217,7 +273,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
   },
   tabText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 13,
     marginLeft: 4,
     color: COLORS.neutralDark,
@@ -231,66 +287,121 @@ const styles = StyleSheet.create({
   },
   top3Container: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-around',
     alignItems: 'flex-end',
-    height: 140,
+    height: 200,
+    paddingHorizontal: 8,
   },
   topUser: {
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
+    paddingHorizontal: 8,
+    paddingTop: 16,
+    backgroundColor: COLORS.neutralExtraLight,
+    borderRadius: 16,
     marginHorizontal: 4,
+    width: 100,
   },
   top1: {
-    height: 140,
+    height: 180,
     zIndex: 3,
+    backgroundColor: COLORS.primaryExtraLight,
   },
   top2: {
-    height: 110,
+    height: 150,
     zIndex: 2,
   },
   top3: {
-    height: 90,
+    height: 130,
     zIndex: 1,
   },
+  highlightedTop1: {
+    borderWidth: 2,
+    borderColor: COLORS.accent,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   crownContainer: {
-    height: 24,
-    marginBottom: 4,
+    height: 32,
+    marginBottom: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatar: {
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 40,
     backgroundColor: COLORS.primaryLight,
+    marginBottom: 8,
   },
   avatar1: {
-    width: 80,
-    height: 80,
+    width: 64,
+    height: 64,
   },
   avatar2: {
-    width: 60,
-    height: 60,
+    width: 52,
+    height: 52,
   },
   avatar3: {
-    width: 50,
-    height: 50,
+    width: 44,
+    height: 44,
+  },
+  highlightedAvatar1: {
+    borderWidth: 3,
+    borderColor: COLORS.accent,
+    backgroundColor: COLORS.accentLight,
   },
   avatarText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
     color: COLORS.primary,
+  },
+  firstPlaceAvatarText: {
+    fontSize: 24,
+    color: COLORS.accent,
+  },
+  nameAndDogContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
+    minHeight: 40,
+    justifyContent: 'center',
   },
   topUserName: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
     color: COLORS.neutralDark,
-    marginTop: 8,
-    width: 80,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  firstPlaceName: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: COLORS.accent,
+  },
+  topDogName: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 10,
+    color: COLORS.neutralMedium,
     textAlign: 'center',
   },
+  firstPlaceDogName: {
+    fontSize: 11,
+    color: COLORS.accentDark,
+    fontFamily: 'Inter-Medium',
+  },
   topUserScore: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 14,
+    fontFamily: 'Inter-Bold',
+    fontSize: 11,
     color: COLORS.primary,
-    marginTop: 4,
+    textAlign: 'center',
+  },
+  firstPlaceScore: {
+    fontSize: 13,
+    color: COLORS.accent,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -306,7 +417,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.neutralMedium,
   },
