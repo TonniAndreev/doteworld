@@ -5,22 +5,12 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
   Modal,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import {
-  Settings,
-  Award,
-  Users,
-  Map,
-  Route,
-  PawPrint,
-  LogOut,
-  Edit,
-} from 'lucide-react-native';
+import { Settings, Award, Users, Map, Route, PawPrint, LogOut, CreditCard as Edit } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -28,6 +18,7 @@ import { useTerritory } from '@/contexts/TerritoryContext';
 import StatsCard from '@/components/profile/StatsCard';
 import AchievementsRow from '@/components/profile/AchievementsRow';
 import NotificationsButton from '@/components/common/NotificationsButton';
+import UserAvatar from '@/components/common/UserAvatar';
 
 export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -80,18 +71,12 @@ export default function ProfileScreen() {
       >
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            {user.photoURL ? (
-              <Image 
-                source={{ uri: user.photoURL }} 
-                style={styles.profileImage} 
-              />
-            ) : (
-              <View style={styles.profileImagePlaceholder}>
-                <Text style={styles.profileImagePlaceholderText}>
-                  {user.displayName.charAt(0)}
-                </Text>
-              </View>
-            )}
+            <UserAvatar
+              userId={user.id}
+              photoURL={user.photoURL}
+              userName={user.displayName}
+              size={100}
+            />
             
             <TouchableOpacity 
               style={styles.editProfileButton}
@@ -163,12 +148,15 @@ export default function ProfileScreen() {
           </View>
           
           <View style={styles.friendsPreviewContainer}>
-            {user.friends.length > 0 ? (
+            {user.friends && user.friends.length > 0 ? (
               user.friends.slice(0, 3).map((friend) => (
                 <View key={friend.id} style={styles.friendItem}>
-                  <View style={styles.friendAvatar}>
-                    <Text style={styles.friendAvatarText}>{friend.name.charAt(0)}</Text>
-                  </View>
+                  <UserAvatar
+                    userId={friend.id}
+                    photoURL={friend.photoURL}
+                    userName={friend.name}
+                    size={60}
+                  />
                   <Text style={styles.friendName} numberOfLines={1}>{friend.name}</Text>
                 </View>
               ))
@@ -226,7 +214,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: COLORS.neutralDark,
   },
@@ -251,24 +239,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 16,
   },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  profileImagePlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileImagePlaceholderText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 40,
-    color: COLORS.primary,
-  },
   editProfileButton: {
     position: 'absolute',
     bottom: 0,
@@ -283,7 +253,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.white,
   },
   userName: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 24,
     color: COLORS.neutralDark,
     marginBottom: 4,
@@ -292,12 +262,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   dogName: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 18,
     color: COLORS.primary,
   },
   dogBreed: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
   },
@@ -321,7 +291,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 18,
     color: COLORS.neutralDark,
   },
@@ -330,7 +300,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   seeAllText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
@@ -343,28 +313,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 80,
   },
-  friendAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  friendAvatarText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 24,
-    color: COLORS.primary,
-  },
   friendName: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
     textAlign: 'center',
+    marginTop: 8,
   },
   noFriendsText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
     textAlign: 'center',
@@ -381,7 +338,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   logoutText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.error,
     marginLeft: 8,
@@ -405,13 +362,13 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   modalTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
     marginBottom: 16,
   },
   modalText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     textAlign: 'center',
@@ -424,7 +381,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   modalButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.white,
   },

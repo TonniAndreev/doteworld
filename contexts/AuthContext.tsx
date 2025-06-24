@@ -13,7 +13,7 @@ interface DoteUser {
   achievement_count?: number;
   created_at?: string;
   displayName?: string;
-  photoURL?: string;
+  photoURL?: string | null;
   dogName?: string;
   dogBreed?: string;
   friends?: any[];
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const fullUser: DoteUser = {
             ...basicProfile,
             displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || basicProfile.username || 'User',
-            photoURL: null,
+            photoURL: null, // Will use random avatar
             dogName: '',
             dogBreed: '',
             friends: [],
@@ -159,7 +159,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: supaUser.email,
           ...profile,
           displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username || 'User',
-          photoURL: profile.avatar_url || null,
+          photoURL: profile.avatar_url || null, // Will use random avatar if null
           dogName: profile.dog_name || '',
           dogBreed: profile.dog_breed || '',
           friends: [], // This would be fetched separately in a real app
@@ -301,7 +301,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ...user,
         dogName,
         dogBreed,
-        photoURL: dogPhoto || user.photoURL,
+        photoURL: dogPhoto || user.photoURL, // Keep existing avatar if no new photo
       };
 
       setUser(updatedUser);

@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
     marginLeft: 8,
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewAllText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
     marginRight: 4,
@@ -177,17 +177,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   challengeTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.neutralDark,
   },
   rewardText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
   challengeDescription: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralDark,
     marginBottom: 16,
@@ -208,7 +208,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   progressText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 12,
     color: COLORS.neutralMedium,
   },
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   timeText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 12,
     color: COLORS.primary,
   },

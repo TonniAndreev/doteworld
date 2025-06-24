@@ -1,12 +1,15 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { UserCheck } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import UserAvatar from '@/components/common/UserAvatar';
 
 interface UserCardProps {
   user: {
+    id: string;
     name: string;
     dogName: string;
     dogBreed: string;
+    photoURL?: string | null;
     territorySize: number;
     achievementCount: number;
   };
@@ -17,9 +20,13 @@ interface UserCardProps {
 export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
-      </View>
+      <UserAvatar
+        userId={user.id}
+        photoURL={user.photoURL}
+        userName={user.name}
+        size={50}
+        style={styles.avatar}
+      />
       
       <View style={styles.info}>
         <View style={styles.nameContainer}>
@@ -55,18 +62,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
-  },
-  avatarText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 20,
-    color: COLORS.primary,
   },
   info: {
     flex: 1,
@@ -77,7 +73,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   name: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.neutralDark,
     marginRight: 4,
@@ -86,7 +82,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   dogInfo: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
     marginBottom: 4,
@@ -96,7 +92,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stat: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: COLORS.neutralDark,
   },

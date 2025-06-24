@@ -1,12 +1,15 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Check, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import UserAvatar from '@/components/common/UserAvatar';
 
 type FriendRequestItemProps = {
   request: {
     id: string;
+    senderId: string;
     senderName: string;
     senderDogName: string;
+    senderPhotoURL?: string | null;
     timestamp: string;
   };
   onAccept: () => void;
@@ -17,9 +20,13 @@ export default function FriendRequestItem({ request, onAccept, onDecline }: Frie
   return (
     <View style={styles.container}>
       <View style={styles.userInfo}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{request.senderName.charAt(0)}</Text>
-        </View>
+        <UserAvatar
+          userId={request.senderId}
+          photoURL={request.senderPhotoURL}
+          userName={request.senderName}
+          size={50}
+          style={styles.avatar}
+        />
 
         <View style={styles.details}>
           <Text style={styles.name}>{request.senderName}</Text>
@@ -70,36 +77,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
-  },
-  avatarText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 20,
-    color: COLORS.primary,
   },
   details: {
     flex: 1,
   },
   name: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.neutralDark,
     marginBottom: 2,
   },
   dogName: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
     marginBottom: 2,
   },
   timestamp: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: COLORS.neutralMedium,
   },

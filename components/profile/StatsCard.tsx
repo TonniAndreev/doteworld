@@ -47,13 +47,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   value: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
     marginBottom: 2,
   },
   label: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
   },

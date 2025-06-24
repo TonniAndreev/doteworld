@@ -12,7 +12,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Crown, Map, Route, Award, Coins } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import LeaderboardItem from '@/components/leaderboard/LeaderboardItem';
+import UserAvatar from '@/components/common/UserAvatar';
+import UserProfileModal from '@/components/leaderboard/UserProfileModal';
 import { fetchLeaderboard } from '@/services/leaderboardService';
+import { useAuth } from '@/contexts/AuthContext';
 
 type LeaderboardTab = 'territory' | 'distance' | 'achievements' | 'paws';
 
@@ -22,6 +25,9 @@ export default function LeaderboardScreen() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userModalVisible, setUserModalVisible] = useState(false);
+  const { user } = useAuth();
 
   // Load leaderboard data
   useEffect(() => {
@@ -54,12 +60,210 @@ export default function LeaderboardScreen() {
     setSearchQuery(text);
   };
 
-  const filteredData = searchQuery.trim() === ''
-    ? leaderboardData
-    : leaderboardData.filter(item => 
+  const handleUserPress = (userData) => {
+    setSelectedUser(userData);
+    setUserModalVisible(true);
+  };
+
+  const closeUserModal = () => {
+    setUserModalVisible(false);
+    setSelectedUser(null);
+  };
+
+  // Find current user's position in the full leaderboard
+  const currentUserRank = leaderboardData.findIndex(item => item.id === user?.id) + 1;
+  const currentUserData = leaderboardData.find(item => item.id === user?.id);
+
+  // Filter data based on search query
+  const getFilteredData = () => {
+    if (searchQuery.trim() === '') {
+      // No search - show top 10
+      return leaderboardData.slice(0, 10);
+    } else {
+      // Search mode - show all matching results
+      return leaderboardData.filter(item => 
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.dogName.toLowerCase().includes(searchQuery.toLowerCase())
       );
+    }
+  };
+
+  const filteredData = getFilteredData();
+
+  // Check if current user is in the visible list
+  const isCurrentUserVisible = filteredData.some(item => item.id === user?.id);
+
+  const renderTopThree = () => {
+    if (!leaderboardData || leaderboardData.length < 3 || searchQuery.trim() !== '') return null;
+
+    const [first, second, third] = leaderboardData.slice(0, 3);
+
+    const getValue = (user) => {
+      switch (activeTab) {
+        case 'territory':
+          return `${user.territorySize} km²`;
+        case 'distance':
+          return `${user.totalDistance} km`;
+        case 'achievements':
+          return `${user.achievementCount}`;
+        case 'paws':
+          return `${user.pawsBalance}`;
+        default:
+          return '';
+      }
+    };
+
+    const isCurrentUser = (userId) => userId === user?.id;
+
+    return (
+      <View style={styles.top3Container}>
+        {/* Second Place - Left */}
+        <TouchableOpacity 
+          style={[
+            styles.topUser, 
+            styles.top2,
+            isCurrentUser(second.id) && styles.highlightedUser
+          ]}
+          onPress={() => handleUserPress(second)}
+        >
+          <View style={styles.crownContainer}>
+            {/* Empty space for alignment */}
+          </View>
+          <UserAvatar
+            userId={second.id}
+            photoURL={second.photoURL}
+            userName={second.name}
+            size={52}
+            style={[
+              styles.avatarImage,
+              isCurrentUser(second.id) && styles.highlightedAvatar
+            ]}
+          />
+          <View style={styles.nameAndDogContainer}>
+            <Text style={[
+              styles.topUserName,
+              isCurrentUser(second.id) && styles.highlightedText
+            ]} numberOfLines={1}>{second.name}</Text>
+            <Text style={[
+              styles.topDogName,
+              isCurrentUser(second.id) && styles.highlightedDogText
+            ]} numberOfLines={1}>{second.dogName}</Text>
+          </View>
+          <Text style={[
+            styles.topUserScore,
+            isCurrentUser(second.id) && styles.highlightedScore
+          ]}>
+            {getValue(second)}
+          </Text>
+        </TouchableOpacity>
+
+        {/* First Place - Center */}
+        <TouchableOpacity 
+          style={[
+            styles.topUser, 
+            styles.top1, 
+            styles.highlightedTop1,
+            isCurrentUser(first.id) && styles.highlightedUser
+          ]}
+          onPress={() => handleUserPress(first)}
+        >
+          <View style={styles.crownContainer}>
+            <Crown size={28} color={COLORS.accentDark} />
+          </View>
+          <UserAvatar
+            userId={first.id}
+            photoURL={first.photoURL}
+            userName={first.name}
+            size={64}
+            style={[
+              styles.avatarImage, 
+              styles.highlightedAvatar1,
+              isCurrentUser(first.id) && styles.highlightedAvatar
+            ]}
+          />
+          <View style={styles.nameAndDogContainer}>
+            <Text style={[
+              styles.topUserName, 
+              styles.firstPlaceName,
+              isCurrentUser(first.id) && styles.highlightedText
+            ]} numberOfLines={1}>{first.name}</Text>
+            <Text style={[
+              styles.topDogName, 
+              styles.firstPlaceDogName,
+              isCurrentUser(first.id) && styles.highlightedDogText
+            ]} numberOfLines={1}>{first.dogName}</Text>
+          </View>
+          <Text style={[
+            styles.topUserScore, 
+            styles.firstPlaceScore,
+            isCurrentUser(first.id) && styles.highlightedScore
+          ]}>
+            {getValue(first)}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Third Place - Right */}
+        <TouchableOpacity 
+          style={[
+            styles.topUser, 
+            styles.top3,
+            isCurrentUser(third.id) && styles.highlightedUser
+          ]}
+          onPress={() => handleUserPress(third)}
+        >
+          <View style={styles.crownContainer}>
+            {/* Empty space for alignment */}
+          </View>
+          <UserAvatar
+            userId={third.id}
+            photoURL={third.photoURL}
+            userName={third.name}
+            size={44}
+            style={[
+              styles.avatarImage,
+              isCurrentUser(third.id) && styles.highlightedAvatar
+            ]}
+          />
+          <View style={styles.nameAndDogContainer}>
+            <Text style={[
+              styles.topUserName,
+              isCurrentUser(third.id) && styles.highlightedText
+            ]} numberOfLines={1}>{third.name}</Text>
+            <Text style={[
+              styles.topDogName,
+              isCurrentUser(third.id) && styles.highlightedDogText
+            ]} numberOfLines={1}>{third.dogName}</Text>
+          </View>
+          <Text style={[
+            styles.topUserScore,
+            isCurrentUser(third.id) && styles.highlightedScore
+          ]}>
+            {getValue(third)}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  const renderCurrentUserPosition = () => {
+    // Only show if user is not in top 10 and not searching
+    if (searchQuery.trim() !== '' || !currentUserData || currentUserRank <= 10) {
+      return null;
+    }
+
+    return (
+      <View style={styles.currentUserSection}>
+        <Text style={styles.currentUserLabel}>Your Position</Text>
+        <LeaderboardItem 
+          rank={currentUserRank}
+          user={currentUserData} 
+          category={activeTab}
+          isCurrentUser={true}
+          onPress={() => handleUserPress(currentUserData)}
+        />
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -113,27 +317,7 @@ export default function LeaderboardScreen() {
       </View>
 
       <View style={styles.topRankContainer}>
-        {!isLoading && leaderboardData.length > 0 && (
-          <View style={styles.top3Container}>
-            {leaderboardData.slice(0, 3).map((user, index) => (
-              <View key={user.id} style={[styles.topUser, styles[`top${index + 1}`]]}>
-                <View style={styles.crownContainer}>
-                  {index === 0 && <Crown size={24} color={COLORS.gold} />}
-                </View>
-                <View style={[styles.avatar, styles[`avatar${index + 1}`]]}>
-                  <Text style={styles.avatarText}>{user.name.charAt(0)}</Text>
-                </View>
-                <Text style={styles.topUserName} numberOfLines={1}>{user.name}</Text>
-                <Text style={styles.topUserScore}>
-                  {activeTab === 'territory' ? `${user.territorySize} km²` : 
-                   activeTab === 'distance' ? `${user.totalDistance} km` : 
-                   activeTab === 'achievements' ? `${user.achievementCount}` : 
-                   `${user.pawsBalance}`}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
+        {!isLoading && leaderboardData.length > 0 && renderTopThree()}
       </View>
 
       {isLoading ? (
@@ -141,26 +325,42 @@ export default function LeaderboardScreen() {
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : (
-        <FlatList
-          data={filteredData.slice(3)} // Skip the top 3
-          keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            <LeaderboardItem 
-              rank={index + 4} // +4 because we skipped the top 3
-              user={item} 
-              category={activeTab}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshing={isRefreshing}
-          onRefresh={handleRefresh}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No results found</Text>
-            </View>
-          }
-        />
+        <>
+          <FlatList
+            data={searchQuery.trim() === '' ? filteredData.slice(3) : filteredData}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item, index }) => {
+              const rank = searchQuery.trim() === '' ? index + 4 : leaderboardData.findIndex(u => u.id === item.id) + 1;
+              return (
+                <LeaderboardItem 
+                  rank={rank}
+                  user={item} 
+                  category={activeTab}
+                  isCurrentUser={item.id === user?.id}
+                  onPress={() => handleUserPress(item)}
+                />
+              );
+            }}
+            contentContainerStyle={styles.listContent}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  {searchQuery.trim() !== '' ? 'No results found' : 'No leaderboard data'}
+                </Text>
+              </View>
+            }
+            ListFooterComponent={renderCurrentUserPosition}
+          />
+        </>
       )}
+
+      <UserProfileModal
+        visible={userModalVisible}
+        onClose={closeUserModal}
+        user={selectedUser}
+      />
     </SafeAreaView>
   );
 }
@@ -175,7 +375,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: COLORS.neutralDark,
   },
@@ -193,7 +393,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     padding: 10,
@@ -217,7 +417,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primaryLight,
   },
   tabText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 13,
     marginLeft: 4,
     color: COLORS.neutralDark,
@@ -231,66 +431,119 @@ const styles = StyleSheet.create({
   },
   top3Container: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-around',
     alignItems: 'flex-end',
-    height: 140,
+    height: 200,
+    paddingHorizontal: 8,
   },
   topUser: {
     alignItems: 'center',
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
+    paddingHorizontal: 8,
+    paddingTop: 16,
+    backgroundColor: COLORS.neutralExtraLight,
+    borderRadius: 16,
     marginHorizontal: 4,
+    width: 100,
   },
   top1: {
-    height: 140,
+    height: 180,
     zIndex: 3,
+    backgroundColor: COLORS.primaryExtraLight,
   },
   top2: {
-    height: 110,
+    height: 150,
     zIndex: 2,
   },
   top3: {
-    height: 90,
+    height: 130,
     zIndex: 1,
   },
-  crownContainer: {
-    height: 24,
-    marginBottom: 4,
+  highlightedTop1: {
+    borderWidth: 2,
+    borderColor: COLORS.accentDark,
+    shadowColor: COLORS.accentDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
-  avatar: {
+  highlightedUser: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryExtraLight,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  crownContainer: {
+    height: 32,
+    marginBottom: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 40,
-    backgroundColor: COLORS.primaryLight,
   },
-  avatar1: {
-    width: 80,
-    height: 80,
+  avatarImage: {
+    marginBottom: 8,
   },
-  avatar2: {
-    width: 60,
-    height: 60,
+  highlightedAvatar1: {
+    borderWidth: 3,
+    borderColor: COLORS.accentDark,
   },
-  avatar3: {
-    width: 50,
-    height: 50,
+  highlightedAvatar: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
-  avatarText: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 24,
-    color: COLORS.primary,
+  nameAndDogContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
+    minHeight: 40,
+    justifyContent: 'center',
   },
   topUserName: {
-    fontFamily: 'SF-Pro-Display-Medium',
-    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
     color: COLORS.neutralDark,
-    marginTop: 8,
-    width: 80,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  firstPlaceName: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: COLORS.accentDark, // Darkest shade of yellow
+  },
+  highlightedText: {
+    color: COLORS.primary,
+    fontFamily: 'Inter-Bold',
+  },
+  topDogName: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 10,
+    color: COLORS.neutralMedium,
     textAlign: 'center',
   },
-  topUserScore: {
-    fontFamily: 'SF-Pro-Display-Bold',
-    fontSize: 14,
+  firstPlaceDogName: {
+    fontSize: 11,
+    color: COLORS.accentDark, // Darkest shade of yellow
+    fontFamily: 'Inter-Medium',
+  },
+  highlightedDogText: {
     color: COLORS.primary,
-    marginTop: 4,
+  },
+  topUserScore: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 11,
+    color: COLORS.primary,
+    textAlign: 'center',
+  },
+  firstPlaceScore: {
+    fontSize: 13,
+    color: COLORS.accentDark, // Darkest shade of yellow
+  },
+  highlightedScore: {
+    color: COLORS.primary,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -306,8 +559,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.neutralMedium,
+  },
+  currentUserSection: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.neutralLight,
+  },
+  currentUserLabel: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    marginBottom: 12,
+    textAlign: 'center',
   },
 });
