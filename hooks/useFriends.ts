@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/utils/supabase';
 
 interface User {
   id: string;
@@ -21,6 +22,7 @@ interface FriendRequest {
   senderDogName: string;
   senderPhotoURL?: string | null;
   timestamp: string;
+  status: string;
 }
 
 export function useFriends() {
@@ -31,124 +33,241 @@ export function useFriends() {
 
   useEffect(() => {
     if (user) {
-      // Mock data - in a real app, this would fetch from your backend
-      const mockFriends: User[] = [
-        {
-          id: '1',
-          name: 'Sarah Miller',
-          dogName: 'Luna',
-          dogBreed: 'Golden Retriever',
-          territorySize: 2.5,
-          achievementCount: 15,
-          totalDistance: 45.2,
-          isFriend: true
-        },
-        {
-          id: '2',
-          name: 'John Walker',
-          dogName: 'Max',
-          dogBreed: 'German Shepherd',
-          territorySize: 3.1,
-          achievementCount: 12,
-          totalDistance: 38.7,
-          isFriend: true
-        },
-        {
-          id: '3',
-          name: 'Emma Davis',
-          dogName: 'Bella',
-          dogBreed: 'Labrador',
-          territorySize: 1.8,
-          achievementCount: 8,
-          totalDistance: 25.4,
-          isFriend: true
-        }
-      ];
-
-      const mockRequests: FriendRequest[] = [
-        {
-          id: '1',
-          senderId: '4',
-          senderName: 'Michael Brown',
-          senderDogName: 'Rocky',
-          timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() // 30 minutes ago
-        },
-        {
-          id: '2',
-          senderId: '5',
-          senderName: 'Lisa Anderson',
-          senderDogName: 'Charlie',
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() // 2 hours ago
-        }
-      ];
-
-      setFriends(mockFriends);
-      setFriendRequests(mockRequests);
-      setIsLoading(false);
+      fetchFriends();
+      fetchFriendRequests();
     }
   }, [user]);
+
+  const fetchFriends = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch accepted friendships where user is either requester or receiver
+      const { data: friendships, error } = await supabase
+        .from('friendships')
+        .select(`
+          id,
+          requester_id,
+          receiver_id,
+          status,
+          created_at,
+          requester:profiles!friendships_requester_id_fkey(
+            id,
+            first_name,
+            last_name,
+            avatar_url
+          ),
+          receiver:profiles!friendships_receiver_id_fkey(
+            id,
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('status', 'accepted')
+        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+      if (error) {
+        console.error('Error fetching friends:', error);
+        return;
+      }
+
+      const friendsData: User[] = [];
+
+      for (const friendship of friendships || []) {
+        // Determine which profile is the friend (not the current user)
+        const friendProfile = friendship.requester_id === user.id 
+          ? friendship.receiver 
+          : friendship.requester;
+
+        if (friendProfile) {
+          // Fetch friend's dogs
+          const { data: friendDogs } = await supabase
+            .from('profile_dogs')
+            .select(`
+              dogs (
+                name,
+                breed
+              )
+            `)
+            .eq('profile_id', friendProfile.id)
+            .limit(1);
+
+          const firstDog = friendDogs?.[0]?.dogs;
+
+          // Fetch friend's achievement count
+          const { count: achievementCount } = await supabase
+            .from('profile_achievements')
+            .select('*', { count: 'exact', head: true })
+            .eq('profile_id', friendProfile.id);
+
+          friendsData.push({
+            id: friendProfile.id,
+            name: `${friendProfile.first_name} ${friendProfile.last_name}`.trim(),
+            dogName: firstDog?.name || 'No dog',
+            dogBreed: firstDog?.breed || '',
+            photoURL: friendProfile.avatar_url,
+            territorySize: 0, // This would be calculated from territory data
+            achievementCount: achievementCount || 0,
+            totalDistance: 0, // This would be calculated from walk data
+            isFriend: true,
+          });
+        }
+      }
+
+      setFriends(friendsData);
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+    }
+  };
+
+  const fetchFriendRequests = async () => {
+    if (!user) return;
+
+    try {
+      // Fetch pending friend requests where current user is the receiver
+      const { data: requests, error } = await supabase
+        .from('friendships')
+        .select(`
+          id,
+          requester_id,
+          status,
+          created_at,
+          requester:profiles!friendships_requester_id_fkey(
+            id,
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('receiver_id', user.id)
+        .eq('status', 'pending');
+
+      if (error) {
+        console.error('Error fetching friend requests:', error);
+        return;
+      }
+
+      const requestsData: FriendRequest[] = [];
+
+      for (const request of requests || []) {
+        if (request.requester) {
+          // Fetch requester's first dog
+          const { data: requesterDogs } = await supabase
+            .from('profile_dogs')
+            .select(`
+              dogs (
+                name
+              )
+            `)
+            .eq('profile_id', request.requester.id)
+            .limit(1);
+
+          const firstDog = requesterDogs?.[0]?.dogs;
+
+          requestsData.push({
+            id: request.id,
+            senderId: request.requester.id,
+            senderName: `${request.requester.first_name} ${request.requester.last_name}`.trim(),
+            senderDogName: firstDog?.name || 'No dog',
+            senderPhotoURL: request.requester.avatar_url,
+            timestamp: request.created_at,
+            status: request.status,
+          });
+        }
+      }
+
+      setFriendRequests(requestsData);
+    } catch (error) {
+      console.error('Error fetching friend requests:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const searchUsers = (query: string) => {
     if (!query.trim()) return [];
 
-    // Mock user search results
-    const mockSearchResults: User[] = [
-      {
-        id: '6',
-        name: 'David Wilson',
-        dogName: 'Cooper',
-        dogBreed: 'Beagle',
-        territorySize: 1.2,
-        achievementCount: 5,
-        totalDistance: 15.8
-      },
-      {
-        id: '7',
-        name: 'Rachel Green',
-        dogName: 'Bailey',
-        dogBreed: 'Poodle',
-        territorySize: 0.8,
-        achievementCount: 3,
-        totalDistance: 10.2
-      }
-    ].filter(user => 
-      user.name.toLowerCase().includes(query.toLowerCase()) ||
-      user.dogName.toLowerCase().includes(query.toLowerCase())
-    );
-
-    return mockSearchResults;
+    // This would be implemented with a proper search endpoint
+    // For now, return empty array as we need to implement user search
+    return [];
   };
 
   const sendFriendRequest = async (userId: string) => {
-    // Mock sending friend request
-    // In a real app, this would make an API call
-    console.log('Friend request sent to:', userId);
+    if (!user) return;
+
+    try {
+      // Check if friendship already exists
+      const { data: existing, error: checkError } = await supabase
+        .from('friendships')
+        .select('id, status')
+        .or(`and(requester_id.eq.${user.id},receiver_id.eq.${userId}),and(requester_id.eq.${userId},receiver_id.eq.${user.id})`)
+        .single();
+
+      if (existing) {
+        console.log('Friendship already exists with status:', existing.status);
+        return;
+      }
+
+      // Create new friend request
+      const { error } = await supabase
+        .from('friendships')
+        .insert({
+          requester_id: user.id,
+          receiver_id: userId,
+          status: 'pending',
+        });
+
+      if (error) {
+        console.error('Error sending friend request:', error);
+        throw error;
+      }
+
+      console.log('Friend request sent successfully');
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      throw error;
+    }
   };
 
   const acceptFriendRequest = async (requestId: string) => {
-    // Mock accepting friend request
-    setFriendRequests(prev => prev.filter(req => req.id !== requestId));
-    
-    // Add the user to friends list
-    const request = friendRequests.find(req => req.id === requestId);
-    if (request) {
-      const newFriend: User = {
-        id: request.senderId,
-        name: request.senderName,
-        dogName: request.senderDogName,
-        dogBreed: 'Unknown', // In a real app, we'd have this info
-        territorySize: 0,
-        achievementCount: 0,
-        totalDistance: 0,
-        isFriend: true
-      };
-      setFriends(prev => [...prev, newFriend]);
+    try {
+      const { error } = await supabase
+        .from('friendships')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
+
+      if (error) {
+        console.error('Error accepting friend request:', error);
+        throw error;
+      }
+
+      // Refresh data
+      await Promise.all([fetchFriends(), fetchFriendRequests()]);
+    } catch (error) {
+      console.error('Error accepting friend request:', error);
+      throw error;
     }
   };
 
   const declineFriendRequest = async (requestId: string) => {
-    // Mock declining friend request
-    setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+    try {
+      const { error } = await supabase
+        .from('friendships')
+        .update({ status: 'rejected' })
+        .eq('id', requestId);
+
+      if (error) {
+        console.error('Error declining friend request:', error);
+        throw error;
+      }
+
+      // Refresh data
+      await fetchFriendRequests();
+    } catch (error) {
+      console.error('Error declining friend request:', error);
+      throw error;
+    }
   };
 
   return {
@@ -158,6 +277,7 @@ export function useFriends() {
     searchUsers,
     sendFriendRequest,
     acceptFriendRequest,
-    declineFriendRequest
+    declineFriendRequest,
+    refetch: () => Promise.all([fetchFriends(), fetchFriendRequests()]),
   };
 }

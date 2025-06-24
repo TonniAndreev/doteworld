@@ -5,20 +5,26 @@ import { supabase } from '../utils/supabase';
 interface DoteUser {
   id: string;
   email: string | null;
-  first_name?: string;
-  last_name?: string;
-  username?: string;
+  first_name: string;
+  last_name: string;
   avatar_url?: string;
   phone?: string;
-  achievement_count?: number;
   created_at?: string;
-  displayName?: string;
+  updated_at?: string;
+  displayName: string;
   photoURL?: string;
-  dogName?: string;
-  dogBreed?: string;
-  friends?: any[];
-  achievementCount?: number;
-  uid?: string;
+  dogs: Dog[];
+  friends: any[];
+  achievementCount: number;
+  uid: string;
+}
+
+interface Dog {
+  id: string;
+  name: string;
+  breed: string;
+  photo_url?: string;
+  created_at: string;
 }
 
 interface AuthContextType {
@@ -29,7 +35,6 @@ interface AuthContextType {
   register: (
     email: string,
     password: string,
-    username: string,
     first_name: string,
     last_name: string,
     phone: string
@@ -38,6 +43,8 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>; 
   loginWithFacebook: () => Promise<void>;
   updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null) => Promise<void>;
+  addDog: (name: string, breed: string, photo_url?: string) => Promise<void>;
+  updateProfile: (updates: Partial<Pick<DoteUser, 'first_name' | 'last_name' | 'phone' | 'avatar_url'>>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -118,12 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('Profile not found, creating basic profile');
           const basicProfile = {
             id: supaUser.id,
-            email: supaUser.email,
             first_name: supaUser.user_metadata?.first_name || '',
             last_name: supaUser.user_metadata?.last_name || '',
-            username: supaUser.user_metadata?.username || '',
             phone: supaUser.user_metadata?.phone || '',
-            created_at: supaUser.created_at,
+            avatar_url: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           };
 
           // Try to insert the profile
@@ -138,10 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Set user with basic profile data
           const fullUser: DoteUser = {
             ...basicProfile,
-            displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || basicProfile.username || 'User',
+            email: supaUser.email,
+            displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || 'User',
             photoURL: null,
-            dogName: '',
-            dogBreed: '',
+            dogs: [],
             friends: [],
             achievementCount: 0,
             uid: supaUser.id,
@@ -153,17 +160,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } else {
+        // Fetch user's dogs
+        const { data: userDogs, error: dogsError } = await supabase
+          .from('profile_dogs')
+          .select(`
+            dogs (
+              id,
+              name,
+              breed,
+              photo_url,
+              created_at
+            )
+          `)
+          .eq('profile_id', userId);
+
+        const dogs = dogsError ? [] : (userDogs?.map(pd => pd.dogs).filter(Boolean) || []);
+
+        // Fetch user's achievements count
+        const { count: achievementCount } = await supabase
+          .from('profile_achievements')
+          .select('*', { count: 'exact', head: true })
+          .eq('profile_id', userId);
+
         // Profile exists, create full user object
         const fullUser: DoteUser = {
           id: supaUser.id,
           email: supaUser.email,
           ...profile,
-          displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username || 'User',
+          displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
           photoURL: profile.avatar_url || null,
-          dogName: profile.dog_name || '',
-          dogBreed: profile.dog_breed || '',
+          dogs: dogs || [],
           friends: [], // This would be fetched separately in a real app
-          achievementCount: profile.achievement_count || 0,
+          achievementCount: achievementCount || 0,
           uid: supaUser.id,
         };
 
@@ -210,7 +238,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (
     email: string,
     password: string,
-    username: string,
     first_name: string,
     last_name: string,
     phone: string
@@ -223,7 +250,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         password: password,
         options: {
           data: {
-            username: username.trim(),
             first_name: first_name.trim(),
             last_name: last_name.trim(),
             phone: phone.trim(),
@@ -282,33 +308,121 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          dog_name: dogName,
-          dog_breed: dogBreed,
-          dog_photo_url: dogPhoto,
-        })
-        .eq('id', user.id);
+      // Check if user already has a dog
+      if (user.dogs.length > 0) {
+        // Update existing dog
+        const dogId = user.dogs[0].id;
+        const { error } = await supabase
+          .from('dogs')
+          .update({
+            name: dogName,
+            breed: dogBreed,
+            photo_url: dogPhoto,
+          })
+          .eq('id', dogId);
 
-      if (error) {
-        console.error('Error updating dog profile:', error);
-        throw error;
+        if (error) {
+          console.error('Error updating dog:', error);
+          throw error;
+        }
+      } else {
+        // Create new dog
+        await addDog(dogName, dogBreed, dogPhoto || undefined);
+      }
+
+      // Refresh user profile
+      await fetchUserProfile(user.id);
+      
+    } catch (error) {
+      console.error('Error updating dog profile:', error);
+      throw error;
+    }
+  };
+
+  const addDog = async (name: string, breed: string, photo_url?: string) => {
+    if (!user) {
+      throw new Error('No user logged in');
+    }
+
+    try {
+      // Create the dog
+      const { data: dog, error: dogError } = await supabase
+        .from('dogs')
+        .insert({
+          name,
+          breed,
+          photo_url,
+        })
+        .select()
+        .single();
+
+      if (dogError) {
+        console.error('Error creating dog:', dogError);
+        throw dogError;
+      }
+
+      // Link dog to user profile
+      const { error: linkError } = await supabase
+        .from('profile_dogs')
+        .insert({
+          profile_id: user.id,
+          dog_id: dog.id,
+        });
+
+      if (linkError) {
+        console.error('Error linking dog to profile:', linkError);
+        throw linkError;
       }
 
       // Update local user state
       const updatedUser = {
         ...user,
-        dogName,
-        dogBreed,
-        photoURL: dogPhoto || user.photoURL,
+        dogs: [...user.dogs, dog],
       };
 
       setUser(updatedUser);
       await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
       
     } catch (error) {
-      console.error('Error updating dog profile:', error);
+      console.error('Error adding dog:', error);
+      throw error;
+    }
+  };
+
+  const updateProfile = async (updates: Partial<Pick<DoteUser, 'first_name' | 'last_name' | 'phone' | 'avatar_url'>>) => {
+    if (!user) {
+      throw new Error('No user logged in');
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        throw error;
+      }
+
+      // Update local user state
+      const updatedUser = {
+        ...user,
+        ...updates,
+        displayName: updates.first_name || updates.last_name 
+          ? `${updates.first_name || user.first_name} ${updates.last_name || user.last_name}`.trim()
+          : user.displayName,
+        photoURL: updates.avatar_url !== undefined ? updates.avatar_url : user.photoURL,
+      };
+
+      setUser(updatedUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+      
+    } catch (error) {
+      console.error('Error updating profile:', error);
       throw error;
     }
   };
@@ -340,6 +454,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     loginWithFacebook,
     updateDogProfile,
+    addDog,
+    updateProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

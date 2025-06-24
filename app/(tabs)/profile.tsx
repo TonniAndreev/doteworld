@@ -103,10 +103,12 @@ export default function ProfileScreen() {
           
           <Text style={styles.userName}>{user.displayName}</Text>
           
-          <View style={styles.dogInfoContainer}>
-            <Text style={styles.dogName}>{user.dogName}</Text>
-            <Text style={styles.dogBreed}>{user.dogBreed}</Text>
-          </View>
+          {user.dogs.length > 0 && (
+            <View style={styles.dogInfoContainer}>
+              <Text style={styles.dogName}>{user.dogs[0].name}</Text>
+              <Text style={styles.dogBreed}>{user.dogs[0].breed}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.statsSection}>

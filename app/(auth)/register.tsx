@@ -28,7 +28,6 @@ export default function RegisterScreen() {
   const [step, setStep] = useState(1);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -41,10 +40,6 @@ export default function RegisterScreen() {
   const validateStep1 = () => {
     if (!firstName || !lastName) {
       setError('Please enter your first and last name');
-      return false;
-    }
-    if (!username) {
-      setError('Please choose a username');
       return false;
     }
     if (!email) {
@@ -99,7 +94,7 @@ export default function RegisterScreen() {
     setError('');
     
     try {
-      await register(email, password, username, firstName, lastName, phone);
+      await register(email, password, firstName, lastName, phone);
       router.push('/(auth)/dog-profile');
     } catch (error) {
       console.error(error);
@@ -163,18 +158,6 @@ export default function RegisterScreen() {
                   placeholder="Last Name"
                   value={lastName}
                   onChangeText={setLastName}
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Username"
-                  value={username}
-                  onChangeText={setUsername}
-                  autoCapitalize="none"
                   placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>

@@ -73,9 +73,9 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.avatarContainer, focused && styles.avatarContainerActive]}>
-              {user?.photoURL ? (
+              {user?.avatar_url ? (
                 <Image 
-                  source={{ uri: user.photoURL }} 
+                  source={{ uri: user.avatar_url }} 
                   style={styles.avatar} 
                 />
               ) : (
