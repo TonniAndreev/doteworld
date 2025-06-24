@@ -13,6 +13,7 @@ import { Search, Crown, Map, Route, Award, Coins } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import LeaderboardItem from '@/components/leaderboard/LeaderboardItem';
 import UserAvatar from '@/components/common/UserAvatar';
+import UserProfileModal from '@/components/leaderboard/UserProfileModal';
 import { fetchLeaderboard } from '@/services/leaderboardService';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,6 +25,8 @@ export default function LeaderboardScreen() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [userModalVisible, setUserModalVisible] = useState(false);
   const { user } = useAuth();
 
   // Load leaderboard data
@@ -55,6 +58,16 @@ export default function LeaderboardScreen() {
 
   const handleSearch = (text: string) => {
     setSearchQuery(text);
+  };
+
+  const handleUserPress = (userData) => {
+    setSelectedUser(userData);
+    setUserModalVisible(true);
+  };
+
+  const closeUserModal = () => {
+    setUserModalVisible(false);
+    setSelectedUser(null);
   };
 
   // Find current user's position in the full leaderboard
@@ -105,11 +118,14 @@ export default function LeaderboardScreen() {
     return (
       <View style={styles.top3Container}>
         {/* Second Place - Left */}
-        <View style={[
-          styles.topUser, 
-          styles.top2,
-          isCurrentUser(second.id) && styles.highlightedUser
-        ]}>
+        <TouchableOpacity 
+          style={[
+            styles.topUser, 
+            styles.top2,
+            isCurrentUser(second.id) && styles.highlightedUser
+          ]}
+          onPress={() => handleUserPress(second)}
+        >
           <View style={styles.crownContainer}>
             {/* Empty space for alignment */}
           </View>
@@ -139,15 +155,18 @@ export default function LeaderboardScreen() {
           ]}>
             {getValue(second)}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* First Place - Center */}
-        <View style={[
-          styles.topUser, 
-          styles.top1, 
-          styles.highlightedTop1,
-          isCurrentUser(first.id) && styles.highlightedUser
-        ]}>
+        <TouchableOpacity 
+          style={[
+            styles.topUser, 
+            styles.top1, 
+            styles.highlightedTop1,
+            isCurrentUser(first.id) && styles.highlightedUser
+          ]}
+          onPress={() => handleUserPress(first)}
+        >
           <View style={styles.crownContainer}>
             <Crown size={28} color={COLORS.accentDark} />
           </View>
@@ -181,14 +200,17 @@ export default function LeaderboardScreen() {
           ]}>
             {getValue(first)}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Third Place - Right */}
-        <View style={[
-          styles.topUser, 
-          styles.top3,
-          isCurrentUser(third.id) && styles.highlightedUser
-        ]}>
+        <TouchableOpacity 
+          style={[
+            styles.topUser, 
+            styles.top3,
+            isCurrentUser(third.id) && styles.highlightedUser
+          ]}
+          onPress={() => handleUserPress(third)}
+        >
           <View style={styles.crownContainer}>
             {/* Empty space for alignment */}
           </View>
@@ -218,7 +240,7 @@ export default function LeaderboardScreen() {
           ]}>
             {getValue(third)}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -237,6 +259,7 @@ export default function LeaderboardScreen() {
           user={currentUserData} 
           category={activeTab}
           isCurrentUser={true}
+          onPress={() => handleUserPress(currentUserData)}
         />
       </View>
     );
@@ -314,6 +337,7 @@ export default function LeaderboardScreen() {
                   user={item} 
                   category={activeTab}
                   isCurrentUser={item.id === user?.id}
+                  onPress={() => handleUserPress(item)}
                 />
               );
             }}
@@ -331,6 +355,12 @@ export default function LeaderboardScreen() {
           />
         </>
       )}
+
+      <UserProfileModal
+        visible={userModalVisible}
+        onClose={closeUserModal}
+        user={selectedUser}
+      />
     </SafeAreaView>
   );
 }

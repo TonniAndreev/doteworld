@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { COLORS } from '@/constants/theme';
 import UserAvatar from '@/components/common/UserAvatar';
 
@@ -16,9 +16,16 @@ type LeaderboardItemProps = {
   };
   category: 'territory' | 'distance' | 'achievements' | 'paws';
   isCurrentUser?: boolean;
+  onPress?: () => void;
 };
 
-export default function LeaderboardItem({ rank, user, category, isCurrentUser = false }: LeaderboardItemProps) {
+export default function LeaderboardItem({ 
+  rank, 
+  user, 
+  category, 
+  isCurrentUser = false,
+  onPress 
+}: LeaderboardItemProps) {
   const getValue = () => {
     switch (category) {
       case 'territory':
@@ -34,11 +41,17 @@ export default function LeaderboardItem({ rank, user, category, isCurrentUser = 
     }
   };
 
+  const ItemComponent = onPress ? TouchableOpacity : View;
+
   return (
-    <View style={[
-      styles.container,
-      isCurrentUser && styles.highlightedContainer
-    ]}>
+    <ItemComponent 
+      style={[
+        styles.container,
+        isCurrentUser && styles.highlightedContainer
+      ]}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+    >
       <View style={[
         styles.rankContainer,
         isCurrentUser && styles.highlightedRankContainer
@@ -77,7 +90,7 @@ export default function LeaderboardItem({ rank, user, category, isCurrentUser = 
           isCurrentUser && styles.highlightedScoreText
         ]}>{getValue()}</Text>
       </View>
-    </View>
+    </ItemComponent>
   );
 }
 
