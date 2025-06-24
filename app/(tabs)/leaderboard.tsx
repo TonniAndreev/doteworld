@@ -14,6 +14,7 @@ import { COLORS } from '@/constants/theme';
 import LeaderboardItem from '@/components/leaderboard/LeaderboardItem';
 import UserAvatar from '@/components/common/UserAvatar';
 import { fetchLeaderboard } from '@/services/leaderboardService';
+import { useAuth } from '@/contexts/AuthContext';
 
 type LeaderboardTab = 'territory' | 'distance' | 'achievements' | 'paws';
 
@@ -23,6 +24,7 @@ export default function LeaderboardScreen() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { user } = useAuth();
 
   // Load leaderboard data
   useEffect(() => {
@@ -55,15 +57,31 @@ export default function LeaderboardScreen() {
     setSearchQuery(text);
   };
 
-  const filteredData = searchQuery.trim() === ''
-    ? leaderboardData
-    : leaderboardData.filter(item => 
+  // Find current user's position in the full leaderboard
+  const currentUserRank = leaderboardData.findIndex(item => item.id === user?.id) + 1;
+  const currentUserData = leaderboardData.find(item => item.id === user?.id);
+
+  // Filter data based on search query
+  const getFilteredData = () => {
+    if (searchQuery.trim() === '') {
+      // No search - show top 10
+      return leaderboardData.slice(0, 10);
+    } else {
+      // Search mode - show all matching results
+      return leaderboardData.filter(item => 
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.dogName.toLowerCase().includes(searchQuery.toLowerCase())
       );
+    }
+  };
+
+  const filteredData = getFilteredData();
+
+  // Check if current user is in the visible list
+  const isCurrentUserVisible = filteredData.some(item => item.id === user?.id);
 
   const renderTopThree = () => {
-    if (!leaderboardData || leaderboardData.length < 3) return null;
+    if (!leaderboardData || leaderboardData.length < 3 || searchQuery.trim() !== '') return null;
 
     const [first, second, third] = leaderboardData.slice(0, 3);
 
@@ -82,10 +100,16 @@ export default function LeaderboardScreen() {
       }
     };
 
+    const isCurrentUser = (userId) => userId === user?.id;
+
     return (
       <View style={styles.top3Container}>
         {/* Second Place - Left */}
-        <View style={[styles.topUser, styles.top2]}>
+        <View style={[
+          styles.topUser, 
+          styles.top2,
+          isCurrentUser(second.id) && styles.highlightedUser
+        ]}>
           <View style={styles.crownContainer}>
             {/* Empty space for alignment */}
           </View>
@@ -94,40 +118,77 @@ export default function LeaderboardScreen() {
             photoURL={second.photoURL}
             userName={second.name}
             size={52}
-            style={styles.avatarImage}
+            style={[
+              styles.avatarImage,
+              isCurrentUser(second.id) && styles.highlightedAvatar
+            ]}
           />
           <View style={styles.nameAndDogContainer}>
-            <Text style={styles.topUserName} numberOfLines={1}>{second.name}</Text>
-            <Text style={styles.topDogName} numberOfLines={1}>{second.dogName}</Text>
+            <Text style={[
+              styles.topUserName,
+              isCurrentUser(second.id) && styles.highlightedText
+            ]} numberOfLines={1}>{second.name}</Text>
+            <Text style={[
+              styles.topDogName,
+              isCurrentUser(second.id) && styles.highlightedDogText
+            ]} numberOfLines={1}>{second.dogName}</Text>
           </View>
-          <Text style={styles.topUserScore}>
+          <Text style={[
+            styles.topUserScore,
+            isCurrentUser(second.id) && styles.highlightedScore
+          ]}>
             {getValue(second)}
           </Text>
         </View>
 
         {/* First Place - Center */}
-        <View style={[styles.topUser, styles.top1, styles.highlightedTop1]}>
+        <View style={[
+          styles.topUser, 
+          styles.top1, 
+          styles.highlightedTop1,
+          isCurrentUser(first.id) && styles.highlightedUser
+        ]}>
           <View style={styles.crownContainer}>
-            <Crown size={28} color={COLORS.accent} />
+            <Crown size={28} color={COLORS.accentDark} />
           </View>
           <UserAvatar
             userId={first.id}
             photoURL={first.photoURL}
             userName={first.name}
             size={64}
-            style={[styles.avatarImage, styles.highlightedAvatar1]}
+            style={[
+              styles.avatarImage, 
+              styles.highlightedAvatar1,
+              isCurrentUser(first.id) && styles.highlightedAvatar
+            ]}
           />
           <View style={styles.nameAndDogContainer}>
-            <Text style={[styles.topUserName, styles.firstPlaceName]} numberOfLines={1}>{first.name}</Text>
-            <Text style={[styles.topDogName, styles.firstPlaceDogName]} numberOfLines={1}>{first.dogName}</Text>
+            <Text style={[
+              styles.topUserName, 
+              styles.firstPlaceName,
+              isCurrentUser(first.id) && styles.highlightedText
+            ]} numberOfLines={1}>{first.name}</Text>
+            <Text style={[
+              styles.topDogName, 
+              styles.firstPlaceDogName,
+              isCurrentUser(first.id) && styles.highlightedDogText
+            ]} numberOfLines={1}>{first.dogName}</Text>
           </View>
-          <Text style={[styles.topUserScore, styles.firstPlaceScore]}>
+          <Text style={[
+            styles.topUserScore, 
+            styles.firstPlaceScore,
+            isCurrentUser(first.id) && styles.highlightedScore
+          ]}>
             {getValue(first)}
           </Text>
         </View>
 
         {/* Third Place - Right */}
-        <View style={[styles.topUser, styles.top3]}>
+        <View style={[
+          styles.topUser, 
+          styles.top3,
+          isCurrentUser(third.id) && styles.highlightedUser
+        ]}>
           <View style={styles.crownContainer}>
             {/* Empty space for alignment */}
           </View>
@@ -136,16 +197,47 @@ export default function LeaderboardScreen() {
             photoURL={third.photoURL}
             userName={third.name}
             size={44}
-            style={styles.avatarImage}
+            style={[
+              styles.avatarImage,
+              isCurrentUser(third.id) && styles.highlightedAvatar
+            ]}
           />
           <View style={styles.nameAndDogContainer}>
-            <Text style={styles.topUserName} numberOfLines={1}>{third.name}</Text>
-            <Text style={styles.topDogName} numberOfLines={1}>{third.dogName}</Text>
+            <Text style={[
+              styles.topUserName,
+              isCurrentUser(third.id) && styles.highlightedText
+            ]} numberOfLines={1}>{third.name}</Text>
+            <Text style={[
+              styles.topDogName,
+              isCurrentUser(third.id) && styles.highlightedDogText
+            ]} numberOfLines={1}>{third.dogName}</Text>
           </View>
-          <Text style={styles.topUserScore}>
+          <Text style={[
+            styles.topUserScore,
+            isCurrentUser(third.id) && styles.highlightedScore
+          ]}>
             {getValue(third)}
           </Text>
         </View>
+      </View>
+    );
+  };
+
+  const renderCurrentUserPosition = () => {
+    // Only show if user is not in top 10 and not searching
+    if (searchQuery.trim() !== '' || !currentUserData || currentUserRank <= 10) {
+      return null;
+    }
+
+    return (
+      <View style={styles.currentUserSection}>
+        <Text style={styles.currentUserLabel}>Your Position</Text>
+        <LeaderboardItem 
+          rank={currentUserRank}
+          user={currentUserData} 
+          category={activeTab}
+          isCurrentUser={true}
+        />
       </View>
     );
   };
@@ -210,25 +302,34 @@ export default function LeaderboardScreen() {
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : (
-        <FlatList
-          data={filteredData.slice(3)} // Skip the top 3
-          keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            <LeaderboardItem 
-              rank={index + 4} // +4 because we skipped the top 3
-              user={item} 
-              category={activeTab}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshing={isRefreshing}
-          onRefresh={handleRefresh}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No results found</Text>
-            </View>
-          }
-        />
+        <>
+          <FlatList
+            data={searchQuery.trim() === '' ? filteredData.slice(3) : filteredData}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item, index }) => {
+              const rank = searchQuery.trim() === '' ? index + 4 : leaderboardData.findIndex(u => u.id === item.id) + 1;
+              return (
+                <LeaderboardItem 
+                  rank={rank}
+                  user={item} 
+                  category={activeTab}
+                  isCurrentUser={item.id === user?.id}
+                />
+              );
+            }}
+            contentContainerStyle={styles.listContent}
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>
+                  {searchQuery.trim() !== '' ? 'No results found' : 'No leaderboard data'}
+                </Text>
+              </View>
+            }
+            ListFooterComponent={renderCurrentUserPosition}
+          />
+        </>
       )}
     </SafeAreaView>
   );
@@ -331,12 +432,22 @@ const styles = StyleSheet.create({
   },
   highlightedTop1: {
     borderWidth: 2,
-    borderColor: COLORS.accent,
-    shadowColor: COLORS.accent,
+    borderColor: COLORS.accentDark,
+    shadowColor: COLORS.accentDark,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  highlightedUser: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryExtraLight,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
   },
   crownContainer: {
     height: 32,
@@ -349,7 +460,11 @@ const styles = StyleSheet.create({
   },
   highlightedAvatar1: {
     borderWidth: 3,
-    borderColor: COLORS.accent,
+    borderColor: COLORS.accentDark,
+  },
+  highlightedAvatar: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
   nameAndDogContainer: {
     alignItems: 'center',
@@ -367,7 +482,11 @@ const styles = StyleSheet.create({
   firstPlaceName: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
-    color: COLORS.accent,
+    color: COLORS.accentDark, // Darkest shade of yellow
+  },
+  highlightedText: {
+    color: COLORS.primary,
+    fontFamily: 'Inter-Bold',
   },
   topDogName: {
     fontFamily: 'Inter-Regular',
@@ -377,8 +496,11 @@ const styles = StyleSheet.create({
   },
   firstPlaceDogName: {
     fontSize: 11,
-    color: COLORS.accentDark,
+    color: COLORS.accentDark, // Darkest shade of yellow
     fontFamily: 'Inter-Medium',
+  },
+  highlightedDogText: {
+    color: COLORS.primary,
   },
   topUserScore: {
     fontFamily: 'Inter-Bold',
@@ -388,7 +510,10 @@ const styles = StyleSheet.create({
   },
   firstPlaceScore: {
     fontSize: 13,
-    color: COLORS.accent,
+    color: COLORS.accentDark, // Darkest shade of yellow
+  },
+  highlightedScore: {
+    color: COLORS.primary,
   },
   listContent: {
     paddingHorizontal: 16,
@@ -407,5 +532,18 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.neutralMedium,
+  },
+  currentUserSection: {
+    marginTop: 24,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.neutralLight,
+  },
+  currentUserLabel: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    marginBottom: 12,
+    textAlign: 'center',
   },
 });
