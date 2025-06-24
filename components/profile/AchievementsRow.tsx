@@ -1,294 +1,121 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from './AuthContext';
-import { usePaws } from './PawsContext';
-import { supabase } from '@/utils/supabase';
-import { 
-  calculatePolygonArea, 
-  isValidPolygon, 
-  createConvexHull,
-  coordinatesToTurfPolygon,
-  mergePolygons,
-  extractPolygonCoordinates
-} from '@/utils/locationUtils';
-import * as turf from '@turf/turf';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { router } from 'expo-router';
+import { Award } from 'lucide-react-native';
+import { COLORS } from '@/constants/theme';
+import { useAchievements } from '@/hooks/useAchievements';
 
-interface Coordinate {
-  latitude: number;
-  longitude: number;
+export default function AchievementsRow() {
+  const { achievements } = useAchievements();
+  const recentAchievements = achievements.slice(0, 3);
+
+  if (recentAchievements.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Award size={32} color={COLORS.neutralMedium} />
+        <Text style={styles.emptyText}>No achievements yet</Text>
+        <TouchableOpacity 
+          style={styles.exploreButton}
+          onPress={() => router.push('/(tabs)/achievements')}
+        >
+          <Text style={styles.exploreButtonText}>Explore Achievements</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView 
+      horizontal 
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.container}
+    >
+      {recentAchievements.map((achievement) => (
+        <TouchableOpacity
+          key={achievement.id}
+          style={styles.achievementCard}
+          onPress={() => router.push('/(tabs)/achievements')}
+        >
+          <Image 
+            source={{ uri: achievement.icon_url }}
+            style={styles.achievementImage}
+          />
+          <View style={styles.achievementInfo}>
+            <Text style={styles.achievementTitle} numberOfLines={1}>
+              {achievement.title}
+            </Text>
+            <View style={styles.rewardContainer}>
+              <Text style={styles.rewardText}>{achievement.pawsReward} Paws</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  );
 }
 
-interface TerritoryContextType {
-  territory: Coordinate[][];
-  territoryGeoJSON: turf.Feature<turf.Polygon | turf.MultiPolygon> | null;
-  territorySize: number;
-  totalDistance: number;
-  currentWalkPoints: Coordinate[];
-  currentPolygon: Coordinate[] | null;
-  currentWalkSessionId: string | null;
-  startWalk: () => void;
-  addWalkPoint: (coordinates: Coordinate) => void;
-  endWalk: () => Promise<void>;
-}
-
-const TerritoryContext = createContext<TerritoryContextType | undefined>(undefined);
-
-export function TerritoryProvider({ children }: { children: ReactNode }) {
-  const [territoryGeoJSON, setTerritoryGeoJSON] = useState<turf.Feature<turf.Polygon | turf.MultiPolygon> | null>(null);
-  const [territorySize, setTerritorySize] = useState(0);
-  const [totalDistance, setTotalDistance] = useState(0);
-  const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
-  const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
-  const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
-  const [isWalking, setIsWalking] = useState(false);
-  
-  const { user } = useAuth();
-  const { addPaws } = usePaws();
-
-  useEffect(() => {
-    const loadTerritoryData = async () => {
-      if (user && user.dogs.length > 0) {
-        try {
-          const dogId = user.dogs[0].id; // Use first dog for now
-          
-          // Load territory data from database
-          const { data: territoryPoints, error } = await supabase
-            .from('territory')
-            .select(`
-              walk_points (
-                latitude,
-                longitude
-              )
-            `)
-            .eq('dog_id', dogId);
-
-          if (error) {
-            console.error('Error loading territory data:', error);
-            return;
-          }
-
-          // Convert territory points to polygons and calculate total area
-          if (territoryPoints && territoryPoints.length > 0) {
-            // This is a simplified approach - in reality you'd need to reconstruct
-            // the actual territory polygons from the stored walk points
-            const allPoints = territoryPoints.map(tp => tp.walk_points).filter(Boolean);
-            
-            if (allPoints.length >= 3) {
-              const hull = createConvexHull(allPoints);
-              if (hull && isValidPolygon(hull)) {
-                const polygon = coordinatesToTurfPolygon(hull);
-                if (polygon) {
-                  setTerritoryGeoJSON(polygon);
-                  setTerritorySize(calculatePolygonArea(hull));
-                }
-              }
-            }
-          }
-
-          // Load from local storage as fallback
-          const [savedTerritoryGeoJSON, savedTerritorySize, savedTotalDistance] = await Promise.all([
-            AsyncStorage.getItem(`dote_territory_geojson_${user.uid}`),
-            AsyncStorage.getItem(`dote_territory_size_${user.uid}`),
-            AsyncStorage.getItem(`dote_total_distance_${user.uid}`),
-          ]);
-
-          if (savedTerritoryGeoJSON && !territoryGeoJSON) {
-            const parsedGeoJSON = JSON.parse(savedTerritoryGeoJSON);
-            setTerritoryGeoJSON(parsedGeoJSON);
-          }
-
-          if (savedTerritorySize && territorySize === 0) {
-            setTerritorySize(parseFloat(savedTerritorySize));
-          }
-
-          if (savedTotalDistance) {
-            setTotalDistance(parseFloat(savedTotalDistance));
-          }
-        } catch (error) {
-          console.error('Error loading territory data:', error);
-        }
-      }
-    };
-
-    loadTerritoryData();
-  }, [user]);
-
-  const startWalk = () => {
-    setCurrentWalkPoints([]);
-    setCurrentPolygon(null);
-    setIsWalking(true);
-    // Generate a unique session ID for this walk
-    setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-  };
-
-  const addWalkPoint = async (coordinates: Coordinate) => {
-    if (!user || !user.dogs.length || !currentWalkSessionId) return;
-
-    const newPoints = [...currentWalkPoints, coordinates];
-    setCurrentWalkPoints(newPoints);
-
-    try {
-      // Save walk point to database
-      const { error } = await supabase
-        .from('walk_points')
-        .insert({
-          dog_id: user.dogs[0].id, // Use first dog for now
-          walk_session_id: currentWalkSessionId,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-        });
-
-      if (error) {
-        console.error('Error saving walk point:', error);
-      }
-    } catch (error) {
-      console.error('Error saving walk point:', error);
-    }
-
-    // Only try to form a polygon if we have at least 3 points
-    if (newPoints.length >= 3) {
-      const hull = createConvexHull(newPoints);
-      if (hull && isValidPolygon(hull)) {
-        setCurrentPolygon(hull);
-      } else {
-        setCurrentPolygon(null);
-      }
-    } else {
-      setCurrentPolygon(null);
-    }
-  };
-
-  const endWalk = async () => {
-    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user || !user.dogs.length || !currentWalkSessionId) {
-      console.log('Cannot end walk: insufficient points, no user, or no session');
-      return;
-    }
-
-    try {
-      // Create final polygon from all walk points
-      const finalHull = createConvexHull(currentWalkPoints);
-      if (!finalHull || !isValidPolygon(finalHull)) {
-        console.log('Cannot create valid polygon from walk points');
-        setCurrentWalkPoints([]);
-        setCurrentPolygon(null);
-        setCurrentWalkSessionId(null);
-        return;
-      }
-
-      // Calculate area of the new polygon before merging
-      const newPolygonArea = calculatePolygonArea(finalHull);
-      
-      // Convert to turf polygon
-      const newTurfPolygon = coordinatesToTurfPolygon(finalHull);
-      if (!newTurfPolygon) {
-        console.log('Failed to convert coordinates to turf polygon');
-        return;
-      }
-
-      let updatedTerritoryGeoJSON;
-      let newTerritorySize;
-
-      if (territoryGeoJSON) {
-        // Merge with existing territory
-        const mergedPolygon = mergePolygons(territoryGeoJSON, newTurfPolygon);
-        if (mergedPolygon) {
-          updatedTerritoryGeoJSON = mergedPolygon;
-          // Calculate total area of merged territory
-          const totalArea = turf.area(mergedPolygon) / 1000000; // Convert to km²
-          newTerritorySize = totalArea;
-        } else {
-          // If merge fails, keep existing territory
-          updatedTerritoryGeoJSON = territoryGeoJSON;
-          newTerritorySize = territorySize;
-        }
-      } else {
-        // First territory
-        updatedTerritoryGeoJSON = newTurfPolygon;
-        newTerritorySize = newPolygonArea;
-      }
-
-      // Save territory points to database
-      try {
-        const dogId = user.dogs[0].id;
-        
-        // Get all walk points from this session
-        const { data: walkPoints, error: walkPointsError } = await supabase
-          .from('walk_points')
-          .select('id')
-          .eq('dog_id', dogId)
-          .eq('walk_session_id', currentWalkSessionId);
-
-        if (walkPointsError) {
-          console.error('Error fetching walk points:', walkPointsError);
-        } else if (walkPoints) {
-          // Add territory entries for each walk point
-          const territoryEntries = walkPoints.map(wp => ({
-            walk_point_id: wp.id,
-            dog_id: dogId,
-          }));
-
-          const { error: territoryError } = await supabase
-            .from('territory')
-            .insert(territoryEntries);
-
-          if (territoryError) {
-            console.error('Error saving territory:', territoryError);
-          }
-        }
-      } catch (error) {
-        console.error('Error saving territory to database:', error);
-      }
-
-      // Update state
-      setTerritoryGeoJSON(updatedTerritoryGeoJSON);
-      setTerritorySize(newTerritorySize);
-      setCurrentWalkPoints([]);
-      setCurrentPolygon(null);
-      setCurrentWalkSessionId(null);
-
-      // Save to storage
-      await Promise.all([
-        AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
-        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
-      ]);
-
-      // Award paws based on the NEW polygon area only (not total territory)
-      const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
-      if (pawsEarned > 0) {
-        addPaws(pawsEarned, `Territory conquered: ${(newPolygonArea * 1000000).toFixed(0)} m²`);
-      }
-
-      console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered, ${pawsEarned} paws earned`);
-    } catch (error) {
-      console.error('Error ending walk:', error);
-      // Reset current walk state on error
-      setCurrentWalkPoints([]);
-      setCurrentPolygon(null);
-      setCurrentWalkSessionId(null);
-    }
-  };
-
-  // Extract renderable polygons for the map
-  const renderablePolygons = extractPolygonCoordinates(territoryGeoJSON);
-
-  const value: TerritoryContextType = {
-    territory: renderablePolygons, // For backward compatibility with existing map rendering
-    territoryGeoJSON,
-    territorySize,
-    totalDistance,
-    currentWalkPoints,
-    currentPolygon,
-    currentWalkSessionId,
-    startWalk,
-    addWalkPoint,
-    endWalk,
-  };
-
-  return <TerritoryContext.Provider value={value}>{children}</TerritoryContext.Provider>;
-}
-
-export const useTerritory = () => {
-  const context = useContext(TerritoryContext);
-  if (!context) throw new Error("useTerritory must be used inside TerritoryProvider");
-  return context;
-};
+const styles = StyleSheet.create({
+  container: {
+    paddingVertical: 8,
+  },
+  achievementCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 12,
+    marginRight: 12,
+    width: 140,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  achievementImage: {
+    width: '100%',
+    height: 100,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  achievementInfo: {
+    flex: 1,
+  },
+  achievementTitle: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 4,
+  },
+  rewardContainer: {
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+  },
+  rewardText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.primary,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  emptyText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  exploreButton: {
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  exploreButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+  },
+});

@@ -1,292 +1,401 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from './AuthContext';
-import { usePaws } from './PawsContext';
-import { supabase } from '@/utils/supabase';
+import { useState } from 'react';
 import { 
-  calculatePolygonArea, 
-  isValidPolygon, 
-  createConvexHull,
-  coordinatesToTurfPolygon,
-  mergePolygons,
-  extractPolygonCoordinates
-} from '@/utils/locationUtils';
-import * as turf from '@turf/turf';
+  View, 
+  Text, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  Modal, 
+  Share, 
+  Image,
+  TextInput
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Search, X, Share2 } from 'lucide-react-native';
+import { COLORS } from '@/constants/theme';
+import { useAchievements } from '@/hooks/useAchievements';
 
-interface Coordinate {
-  latitude: number;
-  longitude: number;
-}
+type AchievementCategory = 'available' | 'completed';
 
-interface TerritoryContextType {
-  territory: Coordinate[][];
-  territoryGeoJSON: turf.Feature<turf.Polygon | turf.MultiPolygon> | null;
-  territorySize: number;
-  totalDistance: number;
-  currentWalkPoints: Coordinate[];
-  currentPolygon: Coordinate[] | null;
-  currentWalkSessionId: string | null;
-  startWalk: () => void;
-  addWalkPoint: (coordinates: Coordinate) => void;
-  endWalk: () => Promise<void>;
-}
-
-const TerritoryContext = createContext<TerritoryContextType | undefined>(undefined);
-
-export function TerritoryProvider({ children }: { children: ReactNode }) {
-  const [territoryGeoJSON, setTerritoryGeoJSON] = useState<turf.Feature<turf.Polygon | turf.MultiPolygon> | null>(null);
-  const [territorySize, setTerritorySize] = useState(0);
-  const [totalDistance, setTotalDistance] = useState(0);
-  const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
-  const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
-  const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
+export default function AchievementsScreen() {
+  const [category, setCategory] = useState<AchievementCategory>('available');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedAchievement, setSelectedAchievement] = useState<any>(null);
+  const [modalVisible, setModalVisible] = useState(false);
   
-  const { user } = useAuth();
-  const { addPaws } = usePaws();
+  const { achievements, isLoading } = useAchievements();
 
-  useEffect(() => {
-    const loadTerritoryData = async () => {
-      if (user && user.dogs.length > 0) {
-        try {
-          const dogId = user.dogs[0].id; // Use first dog for now
-          
-          // Load territory data from database
-          const { data: territoryPoints, error } = await supabase
-            .from('territory')
-            .select(`
-              walk_points (
-                latitude,
-                longitude
-              )
-            `)
-            .eq('dog_id', dogId);
+  const filteredAchievements = achievements
+    .filter(achievement => 
+      (category === 'completed' ? achievement.completed : !achievement.completed) &&
+      (achievement.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       achievement.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    );
 
-          if (error) {
-            console.error('Error loading territory data:', error);
-            return;
-          }
-
-          // Convert territory points to polygons and calculate total area
-          if (territoryPoints && territoryPoints.length > 0) {
-            // This is a simplified approach - in reality you'd need to reconstruct
-            // the actual territory polygons from the stored walk points
-            const allPoints = territoryPoints.map(tp => tp.walk_points).filter(Boolean);
-            
-            if (allPoints.length >= 3) {
-              const hull = createConvexHull(allPoints);
-              if (hull && isValidPolygon(hull)) {
-                const polygon = coordinatesToTurfPolygon(hull);
-                if (polygon) {
-                  setTerritoryGeoJSON(polygon);
-                  setTerritorySize(calculatePolygonArea(hull));
-                }
-              }
-            }
-          }
-
-          // Load from local storage as fallback
-          const [savedTerritoryGeoJSON, savedTerritorySize, savedTotalDistance] = await Promise.all([
-            AsyncStorage.getItem(`dote_territory_geojson_${user.uid}`),
-            AsyncStorage.getItem(`dote_territory_size_${user.uid}`),
-            AsyncStorage.getItem(`dote_total_distance_${user.uid}`),
-          ]);
-
-          if (savedTerritoryGeoJSON && !territoryGeoJSON) {
-            const parsedGeoJSON = JSON.parse(savedTerritoryGeoJSON);
-            setTerritoryGeoJSON(parsedGeoJSON);
-          }
-
-          if (savedTerritorySize && territorySize === 0) {
-            setTerritorySize(parseFloat(savedTerritorySize));
-          }
-
-          if (savedTotalDistance) {
-            setTotalDistance(parseFloat(savedTotalDistance));
-          }
-        } catch (error) {
-          console.error('Error loading territory data:', error);
-        }
-      }
-    };
-
-    loadTerritoryData();
-  }, [user]);
-
-  const startWalk = () => {
-    setCurrentWalkPoints([]);
-    setCurrentPolygon(null);
-    // Generate a unique session ID for this walk
-    setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const handleAchievementPress = (achievement: any) => {
+    setSelectedAchievement(achievement);
+    setModalVisible(true);
   };
 
-  const addWalkPoint = async (coordinates: Coordinate) => {
-    if (!user || !user.dogs.length || !currentWalkSessionId) return;
-
-    const newPoints = [...currentWalkPoints, coordinates];
-    setCurrentWalkPoints(newPoints);
-
-    try {
-      // Save walk point to database
-      const { error } = await supabase
-        .from('walk_points')
-        .insert({
-          dog_id: user.dogs[0].id, // Use first dog for now
-          walk_session_id: currentWalkSessionId,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-        });
-
-      if (error) {
-        console.error('Error saving walk point:', error);
-      }
-    } catch (error) {
-      console.error('Error saving walk point:', error);
-    }
-
-    // Only try to form a polygon if we have at least 3 points
-    if (newPoints.length >= 3) {
-      const hull = createConvexHull(newPoints);
-      if (hull && isValidPolygon(hull)) {
-        setCurrentPolygon(hull);
-      } else {
-        setCurrentPolygon(null);
-      }
-    } else {
-      setCurrentPolygon(null);
-    }
-  };
-
-  const endWalk = async () => {
-    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user || !user.dogs.length || !currentWalkSessionId) {
-      console.log('Cannot end walk: insufficient points, no user, or no session');
-      return;
-    }
-
-    try {
-      // Create final polygon from all walk points
-      const finalHull = createConvexHull(currentWalkPoints);
-      if (!finalHull || !isValidPolygon(finalHull)) {
-        console.log('Cannot create valid polygon from walk points');
-        setCurrentWalkPoints([]);
-        setCurrentPolygon(null);
-        setCurrentWalkSessionId(null);
-        return;
-      }
-
-      // Calculate area of the new polygon before merging
-      const newPolygonArea = calculatePolygonArea(finalHull);
-      
-      // Convert to turf polygon
-      const newTurfPolygon = coordinatesToTurfPolygon(finalHull);
-      if (!newTurfPolygon) {
-        console.log('Failed to convert coordinates to turf polygon');
-        return;
-      }
-
-      let updatedTerritoryGeoJSON;
-      let newTerritorySize;
-
-      if (territoryGeoJSON) {
-        // Merge with existing territory
-        const mergedPolygon = mergePolygons(territoryGeoJSON, newTurfPolygon);
-        if (mergedPolygon) {
-          updatedTerritoryGeoJSON = mergedPolygon;
-          // Calculate total area of merged territory
-          const totalArea = turf.area(mergedPolygon) / 1000000; // Convert to km²
-          newTerritorySize = totalArea;
-        } else {
-          // If merge fails, keep existing territory
-          updatedTerritoryGeoJSON = territoryGeoJSON;
-          newTerritorySize = territorySize;
-        }
-      } else {
-        // First territory
-        updatedTerritoryGeoJSON = newTurfPolygon;
-        newTerritorySize = newPolygonArea;
-      }
-
-      // Save territory points to database
+  const shareAchievement = async () => {
+    if (selectedAchievement && selectedAchievement.completed) {
       try {
-        const dogId = user.dogs[0].id;
-        
-        // Get all walk points from this session
-        const { data: walkPoints, error: walkPointsError } = await supabase
-          .from('walk_points')
-          .select('id')
-          .eq('dog_id', dogId)
-          .eq('walk_session_id', currentWalkSessionId);
-
-        if (walkPointsError) {
-          console.error('Error fetching walk points:', walkPointsError);
-        } else if (walkPoints) {
-          // Add territory entries for each walk point
-          const territoryEntries = walkPoints.map(wp => ({
-            walk_point_id: wp.id,
-            dog_id: dogId,
-          }));
-
-          const { error: territoryError } = await supabase
-            .from('territory')
-            .insert(territoryEntries);
-
-          if (territoryError) {
-            console.error('Error saving territory:', territoryError);
-          }
-        }
+        await Share.share({
+          message: `I just earned the "${selectedAchievement.title}" badge on Dote! Walking my dog has never been more fun.`,
+        });
       } catch (error) {
-        console.error('Error saving territory to database:', error);
+        console.log('Error sharing:', error);
       }
-
-      // Update state
-      setTerritoryGeoJSON(updatedTerritoryGeoJSON);
-      setTerritorySize(newTerritorySize);
-      setCurrentWalkPoints([]);
-      setCurrentPolygon(null);
-      setCurrentWalkSessionId(null);
-
-      // Save to storage
-      await Promise.all([
-        AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
-        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
-      ]);
-
-      // Award paws based on the NEW polygon area only (not total territory)
-      const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
-      if (pawsEarned > 0) {
-        addPaws(pawsEarned, `Territory conquered: ${(newPolygonArea * 1000000).toFixed(0)} m²`);
-      }
-
-      console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered, ${pawsEarned} paws earned`);
-    } catch (error) {
-      console.error('Error ending walk:', error);
-      // Reset current walk state on error
-      setCurrentWalkPoints([]);
-      setCurrentPolygon(null);
-      setCurrentWalkSessionId(null);
     }
   };
 
-  // Extract renderable polygons for the map
-  const renderablePolygons = extractPolygonCoordinates(territoryGeoJSON);
-
-  const value: TerritoryContextType = {
-    territory: renderablePolygons, // For backward compatibility with existing map rendering
-    territoryGeoJSON,
-    territorySize,
-    totalDistance,
-    currentWalkPoints,
-    currentPolygon,
-    currentWalkSessionId,
-    startWalk,
-    addWalkPoint,
-    endWalk,
+  const closeModal = () => {
+    setModalVisible(false);
+    setSelectedAchievement(null);
   };
 
-  return <TerritoryContext.Provider value={value}>{children}</TerritoryContext.Provider>;
+  const renderAchievementItem = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      style={[
+        styles.achievementCard,
+        item.completed && styles.completedCard
+      ]} 
+      onPress={() => handleAchievementPress(item)}
+    >
+      <Image source={{ uri: item.icon_url }} style={styles.achievementImage} />
+      <Text style={styles.achievementTitle} numberOfLines={1}>{item.title}</Text>
+      <View style={styles.progressContainer}>
+        <View 
+          style={[
+            styles.progressBar, 
+            { width: `${Math.min(100, (item.currentValue / item.targetValue) * 100)}%` }
+          ]} 
+        />
+      </View>
+      <Text style={styles.progressText}>
+        {item.completed ? 'Completed!' : `${item.currentValue}/${item.targetValue}`}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Achievements</Text>
+      </View>
+
+      <View style={styles.searchContainer}>
+        <Search size={20} color={COLORS.neutralDark} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search achievements..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor={COLORS.neutralMedium}
+        />
+      </View>
+
+      <View style={styles.categoryContainer}>
+        <TouchableOpacity 
+          style={[styles.categoryTab, category === 'available' && styles.activeCategory]}
+          onPress={() => setCategory('available')}
+        >
+          <Text style={[styles.categoryText, category === 'available' && styles.activeCategoryText]}>
+            Available
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.categoryTab, category === 'completed' && styles.activeCategory]}
+          onPress={() => setCategory('completed')}
+        >
+          <Text style={[styles.categoryText, category === 'completed' && styles.activeCategoryText]}>
+            Completed
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={filteredAchievements}
+        renderItem={renderAchievementItem}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        contentContainerStyle={styles.achievementsList}
+        columnWrapperStyle={styles.row}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {isLoading 
+                ? 'Loading achievements...' 
+                : 'No achievements found'}
+            </Text>
+          </View>
+        }
+      />
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={closeModal}
+      >
+        {selectedAchievement && (
+          <View style={styles.modalContainer}>
+            <View style={styles.modalContent}>
+              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                <X size={24} color={COLORS.neutralDark} />
+              </TouchableOpacity>
+              
+              <Image 
+                source={{ uri: selectedAchievement.icon_url }} 
+                style={styles.modalImage} 
+              />
+              
+              <Text style={styles.modalTitle}>{selectedAchievement.title}</Text>
+              <Text style={styles.modalDescription}>{selectedAchievement.description}</Text>
+              
+              <View style={styles.modalProgressContainer}>
+                <View 
+                  style={[
+                    styles.modalProgressBar, 
+                    { 
+                      width: `${Math.min(100, (selectedAchievement.currentValue / selectedAchievement.targetValue) * 100)}%` 
+                    }
+                  ]} 
+                />
+              </View>
+              
+              <Text style={styles.modalProgressText}>
+                {selectedAchievement.completed 
+                  ? 'Completed!' 
+                  : `${selectedAchievement.currentValue}/${selectedAchievement.targetValue} ${selectedAchievement.unit}`}
+              </Text>
+              
+              <Text style={styles.rewardText}>
+                Reward: {selectedAchievement.pawsReward} Paws
+              </Text>
+              
+              {selectedAchievement.completed && (
+                <TouchableOpacity style={styles.shareButton} onPress={shareAchievement}>
+                  <Share2 size={20} color={COLORS.white} />
+                  <Text style={styles.shareButtonText}>Share</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+      </Modal>
+    </SafeAreaView>
+  );
 }
 
-export const useTerritory = () => {
-  const context = useContext(TerritoryContext);
-  if (!context) throw new Error("useTerritory must be used inside TerritoryProvider");
-  return context;
-};
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  title: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 28,
+    color: COLORS.neutralDark,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralLight,
+    marginHorizontal: 16,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    padding: 10,
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.neutralLight,
+    padding: 4,
+  },
+  categoryTab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  activeCategory: {
+    backgroundColor: COLORS.white,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  categoryText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+  },
+  activeCategoryText: {
+    color: COLORS.primary,
+  },
+  achievementsList: {
+    padding: 8,
+  },
+  row: {
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  achievementCard: {
+    width: '48%',
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  completedCard: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  achievementImage: {
+    width: 80,
+    height: 80,
+    marginBottom: 12,
+    borderRadius: 40,
+  },
+  achievementTitle: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  progressContainer: {
+    width: '100%',
+    height: 6,
+    backgroundColor: COLORS.white,
+    borderRadius: 3,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+  },
+  progressText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: COLORS.neutralDark,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  emptyText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 1,
+  },
+  modalImage: {
+    width: 120,
+    height: 120,
+    marginBottom: 16,
+    borderRadius: 60,
+  },
+  modalTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: COLORS.neutralDark,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalDescription: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  modalProgressContainer: {
+    width: '100%',
+    height: 8,
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  modalProgressBar: {
+    height: '100%',
+    backgroundColor: COLORS.primary,
+  },
+  modalProgressText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 16,
+  },
+  rewardText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.secondary,
+    marginBottom: 24,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  shareButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.white,
+    marginLeft: 8,
+  },
+});
