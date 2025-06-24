@@ -10,16 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import {
-  Settings,
-  Award,
-  Users,
-  Map,
-  Route,
-  PawPrint,
-  LogOut,
-  Edit,
-} from 'lucide-react-native';
+import { Settings, Award, Users, Map, Route, PawPrint, LogOut, CreditCard as Edit } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePaws } from '@/contexts/PawsContext';
