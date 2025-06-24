@@ -38,7 +38,9 @@ export default function RegisterScreen() {
       setError('Please enter your email address');
       return false;
     }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');
       return false;
     }
@@ -88,9 +90,9 @@ export default function RegisterScreen() {
     try {
       await register(email, password, firstName, lastName, phone);
       router.replace('/(auth)/dog-profile');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      setError('Registration failed. Please try again.');
+      setError(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

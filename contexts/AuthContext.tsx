@@ -16,7 +16,6 @@ interface DoteUser {
   last_name?: string;
   avatar_url?: string;
   phone?: string;
-  achievement_count?: number;
   created_at?: string;
   displayName?: string;
   dogs: Dog[];
@@ -44,6 +43,12 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Email validation function
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DoteUser | null>(null);
@@ -203,6 +208,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
+      // Validate email format
+      if (!isValidEmail(email)) {
+        throw new Error('Please enter a valid email address');
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password: password,
@@ -238,6 +248,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
+      // Validate email format
+      if (!isValidEmail(email)) {
+        throw new Error('Please enter a valid email address');
+      }
+
+      // Validate password length
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password: password,
@@ -247,6 +267,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             last_name: last_name.trim(),
             phone: phone.trim(),
           },
+          // Disable email confirmation
+          emailRedirectTo: undefined,
         },
       });
 
