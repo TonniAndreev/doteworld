@@ -181,7 +181,8 @@ export function useFriends() {
   const searchUsers = (query: string): User[] => {
     if (!user || !query.trim()) return [];
 
-    // Return empty array for now - real search will be implemented with async function
+    // This function is kept for backward compatibility but now returns empty
+    // The real search is handled by searchUsersAsync
     return [];
   };
 
@@ -336,6 +337,7 @@ export function useFriends() {
     friendRequests,
     isLoading,
     searchUsers,
+    searchUsersAsync,
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,

@@ -38,7 +38,7 @@ export default function FriendsScreen() {
   const { 
     friends, 
     friendRequests, 
-    searchUsersAsync,
+    searchUsersAsync, 
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
@@ -47,8 +47,14 @@ export default function FriendsScreen() {
 
   // Handle search with debouncing
   useEffect(() => {
+    if (activeTab !== 'discover') {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
     const searchTimeout = setTimeout(async () => {
-      if (activeTab === 'discover' && searchQuery.trim()) {
+      if (searchQuery.trim()) {
         setIsSearching(true);
         try {
           const results = await searchUsersAsync(searchQuery);
@@ -61,11 +67,12 @@ export default function FriendsScreen() {
         }
       } else {
         setSearchResults([]);
+        setIsSearching(false);
       }
     }, 500); // 500ms debounce
 
     return () => clearTimeout(searchTimeout);
-  }, [searchQuery, activeTab, searchUsersAsync]);
+  }, [searchQuery, activeTab]);
 
   // Filtered friends list based on search query
   const filteredFriends = searchQuery.trim() === ''
@@ -209,6 +216,7 @@ export default function FriendsScreen() {
                 />
               )}
               contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>
