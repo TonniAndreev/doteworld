@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, ChevronDown, AlertCircle, Check } from 'lucide-react-native';
+import { Camera, ChevronDown, CircleAlert as AlertCircle, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -103,8 +103,8 @@ export default function DogProfileScreen() {
     try {
       await updateDogProfile(dogName, dogBreed, dogPhoto);
       router.replace('/(tabs)');
-    } catch (error) {
-      setError('Failed to save dog profile. Please try again.');
+    } catch (error: any) {
+      setError(error.message || 'Failed to save dog profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -273,6 +273,22 @@ const styles = StyleSheet.create({
   dogPhoto: {
     marginBottom: 16,
   },
+  photoPlaceholder: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: COLORS.neutralLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  photoPlaceholderText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    marginTop: 8,
+  },
+
   photoButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',

@@ -1,5 +1,10 @@
 import * as turf from '@turf/turf';
 
+interface Coordinate {
+  latitude: number;
+  longitude: number;
+}
+
 // Existing distance calculation function
 export function calculateDistance(
   lat1: number,
@@ -28,7 +33,7 @@ function toRad(degrees: number): number {
 }
 
 // Calculate polygon area in square kilometers using turf.js
-export function calculatePolygonArea(coordinates: Array<{ latitude: number; longitude: number }>): number {
+export function calculatePolygonArea(coordinates: Coordinate[]): number {
   if (coordinates.length < 3) return 0;
 
   try {
@@ -47,7 +52,7 @@ export function calculatePolygonArea(coordinates: Array<{ latitude: number; long
 }
 
 // Check if points can form a valid polygon
-export function isValidPolygon(coordinates: Array<{ latitude: number; longitude: number }>): boolean {
+export function isValidPolygon(coordinates: Coordinate[]): boolean {
   if (coordinates.length < 3) return false;
 
   try {
@@ -61,9 +66,7 @@ export function isValidPolygon(coordinates: Array<{ latitude: number; longitude:
 }
 
 // Create a convex hull from points using turf.js
-export function createConvexHull(
-  coordinates: Array<{ latitude: number; longitude: number }>
-): Array<{ latitude: number; longitude: number }> | null {
+export function createConvexHull(coordinates: Coordinate[]): Coordinate[] | null {
   if (coordinates.length < 3) return null;
 
   try {
@@ -88,7 +91,7 @@ export function createConvexHull(
 // Extract polygon coordinates from GeoJSON for react-native-maps rendering
 export function extractPolygonCoordinates(
   territoryGeoJSON: turf.Feature<turf.Polygon | turf.MultiPolygon> | null
-): Array<Array<{ latitude: number; longitude: number }>> {
+): Coordinate[][] {
   if (!territoryGeoJSON || !territoryGeoJSON.geometry) return [];
 
   try {
@@ -119,9 +122,7 @@ export function extractPolygonCoordinates(
 }
 
 // Convert coordinates to turf polygon
-export function coordinatesToTurfPolygon(
-  coordinates: Array<{ latitude: number; longitude: number }>
-): turf.Feature<turf.Polygon> | null {
+export function coordinatesToTurfPolygon(coordinates: Coordinate[]): turf.Feature<turf.Polygon> | null {
   if (coordinates.length < 3) return null;
 
   try {

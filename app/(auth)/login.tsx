@@ -38,8 +38,8 @@ export default function LoginScreen() {
     try {
       await login(email, password);
       router.replace('/(tabs)');
-    } catch (error) {
-      setError('Invalid email or password');
+    } catch (error: any) {
+      setError(error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
@@ -52,8 +52,8 @@ export default function LoginScreen() {
     try {
       await loginWithGoogle();
       router.replace('/(tabs)');
-    } catch (error) {
-      setError('Google login failed');
+    } catch (error: any) {
+      setError(error.message || 'Google login failed');
     } finally {
       setIsLoading(false);
     }
@@ -66,8 +66,8 @@ export default function LoginScreen() {
     try {
       await loginWithFacebook();
       router.replace('/(tabs)');
-    } catch (error) {
-      setError('Facebook login failed');
+    } catch (error: any) {
+      setError(error.message || 'Facebook login failed');
     } finally {
       setIsLoading(false);
     }

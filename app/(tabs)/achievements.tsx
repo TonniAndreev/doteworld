@@ -20,7 +20,7 @@ type AchievementCategory = 'available' | 'completed';
 export default function AchievementsScreen() {
   const [category, setCategory] = useState<AchievementCategory>('available');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAchievement, setSelectedAchievement] = useState(null);
+  const [selectedAchievement, setSelectedAchievement] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
   
   const { achievements, isLoading } = useAchievements();
@@ -32,7 +32,7 @@ export default function AchievementsScreen() {
        achievement.description.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-  const handleAchievementPress = (achievement) => {
+  const handleAchievementPress = (achievement: any) => {
     setSelectedAchievement(achievement);
     setModalVisible(true);
   };
@@ -54,7 +54,7 @@ export default function AchievementsScreen() {
     setSelectedAchievement(null);
   };
 
-  const renderAchievementItem = ({ item }) => (
+  const renderAchievementItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={[
         styles.achievementCard,
@@ -62,7 +62,7 @@ export default function AchievementsScreen() {
       ]} 
       onPress={() => handleAchievementPress(item)}
     >
-      <Image source={{ uri: item.imageUrl }} style={styles.achievementImage} />
+      <Image source={{ uri: item.icon_url }} style={styles.achievementImage} />
       <Text style={styles.achievementTitle} numberOfLines={1}>{item.title}</Text>
       <View style={styles.progressContainer}>
         <View 
@@ -146,7 +146,7 @@ export default function AchievementsScreen() {
               </TouchableOpacity>
               
               <Image 
-                source={{ uri: selectedAchievement.imageUrl }} 
+                source={{ uri: selectedAchievement.icon_url }} 
                 style={styles.modalImage} 
               />
               
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   title: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 28,
     color: COLORS.neutralDark,
   },
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     padding: 10,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   categoryText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
   },
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     borderRadius: 40,
   },
   achievementTitle: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
     marginBottom: 8,
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   progressText: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: COLORS.neutralDark,
   },
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   emptyText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.neutralMedium,
     textAlign: 'center',
@@ -346,14 +346,14 @@ const styles = StyleSheet.create({
     borderRadius: 60,
   },
   modalTitle: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 20,
     color: COLORS.neutralDark,
     marginBottom: 8,
     textAlign: 'center',
   },
   modalDescription: {
-    fontFamily: 'SF-Pro-Display-Regular',
+    fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
     textAlign: 'center',
@@ -372,13 +372,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   modalProgressText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
     marginBottom: 16,
   },
   rewardText: {
-    fontFamily: 'SF-Pro-Display-Bold',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.secondary,
     marginBottom: 24,
@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   shareButtonText: {
-    fontFamily: 'SF-Pro-Display-Medium',
+    fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.white,
     marginLeft: 8,

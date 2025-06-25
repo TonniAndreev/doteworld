@@ -74,12 +74,18 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.avatarContainer, focused && styles.avatarContainerActive]}>
-              <UserAvatar
-                userId={user?.id || 'default'}
-                photoURL={user?.photoURL}
-                userName={user?.displayName || 'User'}
-                size={32}
-              />
+              {user?.avatar_url ? (
+                <Image 
+                  source={{ uri: user.avatar_url }} 
+                  style={styles.avatar} 
+                />
+              ) : (
+                <View style={[styles.avatarPlaceholder, focused && styles.avatarPlaceholderActive]}>
+                  <Text style={[styles.avatarText, focused && styles.avatarTextActive]}>
+                    {user?.displayName?.charAt(0) || 'U'}
+                  </Text>
+                </View>
+              )}
             </View>
           ),
         }}

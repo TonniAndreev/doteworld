@@ -7,6 +7,7 @@ import {
   ScrollView,
   Modal,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -26,6 +27,16 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { pawsBalance } = usePaws();
   const { territorySize, totalDistance } = useTerritory();
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const handleLogout = () => {
     Alert.alert(
@@ -47,6 +58,8 @@ export default function ProfileScreen() {
       ]
     );
   };
+
+  const firstDog = user.dogs?.[0];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -71,12 +84,18 @@ export default function ProfileScreen() {
       >
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            <UserAvatar
-              userId={user.id}
-              photoURL={user.photoURL}
-              userName={user.displayName}
-              size={100}
-            />
+            {user.avatar_url ? (
+              <Image 
+                source={{ uri: user.avatar_url }} 
+                style={styles.profileImage} 
+              />
+            ) : (
+              <View style={styles.profileImagePlaceholder}>
+                <Text style={styles.profileImagePlaceholderText}>
+                  {user.displayName?.charAt(0) || 'U'}
+                </Text>
+              </View>
+            )}
             
             <TouchableOpacity 
               style={styles.editProfileButton}
@@ -89,8 +108,8 @@ export default function ProfileScreen() {
           <Text style={styles.userName}>{user.displayName}</Text>
           
           <View style={styles.dogInfoContainer}>
-            <Text style={styles.dogName}>{user.dogName}</Text>
-            <Text style={styles.dogBreed}>{user.dogBreed}</Text>
+            <Text style={styles.dogName}>{firstDog?.name || 'No dog'}</Text>
+            <Text style={styles.dogBreed}>{firstDog?.breed || ''}</Text>
           </View>
         </View>
 
@@ -116,48 +135,63 @@ export default function ProfileScreen() {
             />
             <StatsCard
               icon={<Award size={24} color={COLORS.primary} />}
-              value={user.achievementCount.toString()}
+              value={(user.achievementCount || 0).toString()}
               label="Achievements"
             />
           </View>
         </View>
 
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Achievements</Text>
-            <TouchableOpacity 
-              style={styles.seeAllButton}
-              onPress={() => router.push('/(tabs)/achievements')}
-            >
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <AchievementsRow />
-        </View>
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Achievements</Text>
+              <TouchableOpacity 
+                style={styles.seeAllButton}
+                onPress={() => router.push('/(tabs)/achievements')}
+              >
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
 
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Friends</Text>
-            <TouchableOpacity 
-              style={styles.seeAllButton}
-              onPress={() => router.push('/(tabs)/friends')}
-            >
-              <Text style={styles.seeAllText}>See All</Text>
-            </TouchableOpacity>
+            <AchievementsRow />
           </View>
-          
-          <View style={styles.friendsPreviewContainer}>
-            {user.friends && user.friends.length > 0 ? (
-              user.friends.slice(0, 3).map((friend) => (
-                <View key={friend.id} style={styles.friendItem}>
-                  <UserAvatar
-                    userId={friend.id}
-                    photoURL={friend.photoURL}
-                    userName={friend.name}
-                    size={60}
-                  />
-                  <Text style={styles.friendName} numberOfLines={1}>{friend.name}</Text>
+
+          <View style={styles.sectionContainer}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Friends</Text>
+              <TouchableOpacity 
+                style={styles.seeAllButton}
+                onPress={() => router.push('/(tabs)/friends')}
+              >
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.friendsPreviewContainer}>
+              {user.friends && user.friends.length > 0 ? (
+            user.friends.slice(0, 3).map((friend: any) => (
+              <View key={friend.id} style={styles.friendItem}>
+                {friend.photoURL
+                  ? (
+                    <UserAvatar
+                      userId={friend.id}
+                      photoURL={friend.photoURL}
+                      userName={friend.name}
+                      size={60}
+                    />
+                  )
+                  : (
+                    <View style={styles.friendAvatar}>
+                      <Text style={styles.friendAvatarText}>
+                        {friend.name?.charAt(0).toUpperCase() || 'F'}
+                      </Text>
+                    </View>
+                  )
+                }
+                <Text style={styles.friendName} numberOfLines={1}>
+                  {friend.name || 'Friend'}
+                </Text>
+              </View>
+            ))
                 </View>
               ))
             ) : (
@@ -185,7 +219,6 @@ export default function ProfileScreen() {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Profile</Text>
             
-            {/* Profile editing form would go here */}
             <Text style={styles.modalText}>Profile editing functionality will be implemented in the next version.</Text>
             
             <TouchableOpacity 
@@ -205,6 +238,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
   },
   header: {
     flexDirection: 'row',
@@ -238,6 +281,24 @@ const styles = StyleSheet.create({
   profileImageContainer: {
     position: 'relative',
     marginBottom: 16,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  profileImagePlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileImagePlaceholderText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 40,
+    color: COLORS.primary,
   },
   editProfileButton: {
     position: 'absolute',
@@ -312,6 +373,20 @@ const styles = StyleSheet.create({
   friendItem: {
     alignItems: 'center',
     width: 80,
+  },
+  friendAvatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  friendAvatarText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 24,
+    color: COLORS.primary,
   },
   friendName: {
     fontFamily: 'Inter-Medium',

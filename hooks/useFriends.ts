@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/utils/supabase';
 
 interface User {
   id: string;
@@ -21,6 +22,7 @@ interface FriendRequest {
   senderDogName: string;
   senderPhotoURL?: string | null;
   timestamp: string;
+  status: string;
 }
 
 export function useFriends() {
@@ -29,134 +31,182 @@ export function useFriends() {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
 
+  // --- fetchers ---
+  const fetchFriends = async () => {
+    if (!user) return;
+
+    const { data: friendships, error: fErr } = await supabase
+      .from('friendships')
+      .select(`
+        id,
+        requester_id,
+        receiver_id,
+        status,
+        created_at,
+        requester:profiles!friendships_requester_id_fkey(
+          id, first_name, last_name, avatar_url
+        ),
+        receiver:profiles!friendships_receiver_id_fkey(
+          id, first_name, last_name, avatar_url
+        )
+      `)
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+    if (fErr) {
+      console.error('Error fetching friends:', fErr);
+      return;
+    }
+
+    const friendsData: User[] = [];
+    for (const fr of friendships || []) {
+      const prof = fr.requester_id === user.id ? fr.receiver : fr.requester;
+      if (!prof) continue;
+
+      // вземаме първото куче
+      const { data: dogRows } = await supabase
+        .from('profile_dogs')
+        .select('dogs(name,breed)')
+        .eq('profile_id', prof.id)
+        .limit(1);
+      const firstDog = dogRows?.[0]?.dogs;
+
+      // броим постиженията
+      const { count: achCount } = await supabase
+        .from('profile_achievements')
+        .select('*', { count: 'exact', head: true })
+        .eq('profile_id', prof.id);
+
+      friendsData.push({
+        id: prof.id,
+        name: `${prof.first_name} ${prof.last_name}`.trim(),
+        dogName: firstDog?.name || 'No dog',
+        dogBreed: firstDog?.breed || '',
+        photoURL: prof.avatar_url,
+        territorySize: 0,        // може да изчислиш по-късно
+        totalDistance: 0,        // idem
+        achievementCount: achCount ?? 0,
+        isFriend: true,
+      });
+    }
+    setFriends(friendsData);
+  };
+
+  const fetchFriendRequests = async () => {
+    if (!user) return;
+
+    const { data: reqs, error: rErr } = await supabase
+      .from('friendships')
+      .select(`
+        id,
+        status,
+        created_at,
+        requester:profiles!friendships_requester_id_fkey(
+          id, first_name, last_name, avatar_url
+        )
+      `)
+      .eq('receiver_id', user.id)
+      .eq('status', 'pending');
+
+    if (rErr) {
+      console.error('Error fetching friend requests:', rErr);
+      return;
+    }
+
+    const requestsData: FriendRequest[] = [];
+    for (const r of reqs || []) {
+      if (!r.requester) continue;
+
+      // вземаме първото им куче
+      const { data: d } = await supabase
+        .from('profile_dogs')
+        .select('dogs(name)')
+        .eq('profile_id', r.requester.id)
+        .limit(1);
+      const firstDog = d?.[0]?.dogs;
+
+      requestsData.push({
+        id: r.id,
+        senderId: r.requester.id,
+        senderName: `${r.requester.first_name} ${r.requester.last_name}`.trim(),
+        senderDogName: firstDog?.name || 'No dog',
+        senderPhotoURL: r.requester.avatar_url,
+        timestamp: r.created_at,
+        status: r.status,
+      });
+    }
+    setFriendRequests(requestsData);
+  };
+
+  // --- effects ---
   useEffect(() => {
     if (user) {
-      // Mock data - in a real app, this would fetch from your backend
-      const mockFriends: User[] = [
-        {
-          id: 'friend1',
-          name: 'Sarah Miller',
-          dogName: 'Luna',
-          dogBreed: 'Golden Retriever',
-          photoURL: null, // Will use random avatar
-          territorySize: 2.5,
-          achievementCount: 15,
-          totalDistance: 45.2,
-          isFriend: true
-        },
-        {
-          id: 'friend2',
-          name: 'John Walker',
-          dogName: 'Max',
-          dogBreed: 'German Shepherd',
-          photoURL: null, // Will use random avatar
-          territorySize: 3.1,
-          achievementCount: 12,
-          totalDistance: 38.7,
-          isFriend: true
-        },
-        {
-          id: 'friend3',
-          name: 'Emma Davis',
-          dogName: 'Bella',
-          dogBreed: 'Labrador',
-          photoURL: null, // Will use random avatar
-          territorySize: 1.8,
-          achievementCount: 8,
-          totalDistance: 25.4,
-          isFriend: true
-        }
-      ];
-
-      const mockRequests: FriendRequest[] = [
-        {
-          id: 'req1',
-          senderId: 'sender1',
-          senderName: 'Michael Brown',
-          senderDogName: 'Rocky',
-          senderPhotoURL: null, // Will use random avatar
-          timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() // 30 minutes ago
-        },
-        {
-          id: 'req2',
-          senderId: 'sender2',
-          senderName: 'Lisa Anderson',
-          senderDogName: 'Charlie',
-          senderPhotoURL: null, // Will use random avatar
-          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() // 2 hours ago
-        }
-      ];
-
-      setFriends(mockFriends);
-      setFriendRequests(mockRequests);
-      setIsLoading(false);
+      fetchFriends();
+      fetchFriendRequests();
     }
   }, [user]);
 
-  const searchUsers = (query: string) => {
-    if (!query.trim()) return [];
+  // --- actions ---
+  const searchUsers = async (query: string): Promise<User[]> => {
+    if (!user || !query.trim()) return [];
 
-    // Mock user search results
-    const mockSearchResults: User[] = [
-      {
-        id: 'search1',
-        name: 'David Wilson',
-        dogName: 'Cooper',
-        dogBreed: 'Beagle',
-        photoURL: null, // Will use random avatar
-        territorySize: 1.2,
-        achievementCount: 5,
-        totalDistance: 15.8
-      },
-      {
-        id: 'search2',
-        name: 'Rachel Green',
-        dogName: 'Bailey',
-        dogBreed: 'Poodle',
-        photoURL: null, // Will use random avatar
-        territorySize: 0.8,
-        achievementCount: 3,
-        totalDistance: 10.2
-      }
-    ].filter(user => 
-      user.name.toLowerCase().includes(query.toLowerCase()) ||
-      user.dogName.toLowerCase().includes(query.toLowerCase())
-    );
+    const { data: profiles, error: sErr } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        first_name,
+        last_name,
+        avatar_url,
+        profile_dogs!inner(dogs(name,breed))
+      `)
+      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
+      .neq('id', user.id)
+      .limit(20);
 
-    return mockSearchResults;
-  };
-
-  const sendFriendRequest = async (userId: string) => {
-    // Mock sending friend request
-    // In a real app, this would make an API call
-    console.log('Friend request sent to:', userId);
-  };
-
-  const acceptFriendRequest = async (requestId: string) => {
-    // Mock accepting friend request
-    setFriendRequests(prev => prev.filter(req => req.id !== requestId));
-    
-    // Add the user to friends list
-    const request = friendRequests.find(req => req.id === requestId);
-    if (request) {
-      const newFriend: User = {
-        id: request.senderId,
-        name: request.senderName,
-        dogName: request.senderDogName,
-        dogBreed: 'Unknown', // In a real app, we'd have this info
-        photoURL: request.senderPhotoURL,
-        territorySize: 0,
-        achievementCount: 0,
-        totalDistance: 0,
-        isFriend: true
-      };
-      setFriends(prev => [...prev, newFriend]);
+    if (sErr) {
+      console.error('Error searching users:', sErr);
+      return [];
     }
+
+    const results: User[] = [];
+    for (const p of profiles || []) {
+      const { data: rel } = await supabase
+        .from('friendships')
+        .select('status')
+        .or(`and(requester_id.eq.${user.id},receiver_id.eq.${p.id}),and(requester_id.eq.${p.id},receiver_id.eq.${user.id})`)
+        .single();
+
+      const firstDog = (p.profile_dogs as any)?.[0]?.dogs;
+      const achCountResp = await supabase
+        .from('profile_achievements')
+        .select('*', { count: 'exact', head: true })
+        .eq('profile_id', p.id);
+
+      results.push({
+        id: p.id,
+        name: `${p.first_name} ${p.last_name}`.trim(),
+        dogName: firstDog?.name || 'No dog',
+        dogBreed: firstDog?.breed || '',
+        photoURL: p.avatar_url,
+        territorySize: 0,
+        totalDistance: 0,
+        achievementCount: achCountResp.count ?? 0,
+        isFriend: rel?.status === 'accepted',
+        requestSent: rel?.status === 'pending',
+      });
+    }
+
+    return results;
   };
 
+  const sendFriendRequest = async (userId: string) => { /* … както си го имаш */ };
+  const acceptFriendRequest = async (requestId: string) => {
+    await supabase.from('friendships').update({ status: 'accepted' }).eq('id', requestId);
+    await Promise.all([fetchFriends(), fetchFriendRequests()]);
+  };
   const declineFriendRequest = async (requestId: string) => {
-    // Mock declining friend request
-    setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+    await supabase.from('friendships').update({ status: 'rejected' }).eq('id', requestId);
+    await fetchFriendRequests();
   };
 
   return {
@@ -166,6 +216,7 @@ export function useFriends() {
     searchUsers,
     sendFriendRequest,
     acceptFriendRequest,
-    declineFriendRequest
+    declineFriendRequest,
+    refetch: () => Promise.all([fetchFriends(), fetchFriendRequests()]),
   };
 }

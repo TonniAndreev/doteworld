@@ -36,7 +36,7 @@ export default function AchievementsRow() {
           onPress={() => router.push('/(tabs)/achievements')}
         >
           <Image 
-            source={{ uri: achievement.imageUrl }}
+            source={{ uri: achievement.icon_url }}
             style={styles.achievementImage}
           />
           <View style={styles.achievementInfo}>

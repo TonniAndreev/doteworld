@@ -20,7 +20,6 @@ export default function RegisterScreen() {
   const [step, setStep] = useState(1);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -36,15 +35,13 @@ export default function RegisterScreen() {
       setError('Please enter your first and last name');
       return false;
     }
-    if (!username) {
-      setError('Please choose a username');
-      return false;
-    }
     if (!email) {
       setError('Please enter your email address');
       return false;
     }
-    if (!/^\S+@\S+\.\S+$/.test(email)) {
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');
       return false;
     }
@@ -92,10 +89,10 @@ export default function RegisterScreen() {
     setError('');
     
     try {
-      await register(email, password, username, firstName, lastName, phone);
-      setRegistrationComplete(true);
+      await register(email, password, firstName, lastName, phone);
+      router.replace('/(auth)/dog-profile');
     } catch (error: any) {
-      console.error('Registration error:', error);
+      console.error(error);
       setError(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
@@ -176,18 +173,6 @@ export default function RegisterScreen() {
                   placeholder="Last Name"
                   value={lastName}
                   onChangeText={setLastName}
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-
-              <View style={styles.inputWrapper}>
-                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Username"
-                  value={username}
-                  onChangeText={setUsername}
-                  autoCapitalize="none"
                   placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
@@ -436,4 +421,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.white,
   },
+
 });

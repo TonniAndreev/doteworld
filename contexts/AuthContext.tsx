@@ -1,21 +1,24 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../utils/supabase';
+import { supabase } from '@/utils/supabase';
+
+interface Dog {
+  id: string;
+  name: string;
+  breed: string;
+  photo_url?: string;
+}
 
 interface DoteUser {
   id: string;
   email: string | null;
   first_name?: string;
   last_name?: string;
-  username?: string;
   avatar_url?: string;
   phone?: string;
-  achievement_count?: number;
   created_at?: string;
   displayName?: string;
-  photoURL?: string | null;
-  dogName?: string;
-  dogBreed?: string;
+  dogs: Dog[];
   friends?: any[];
   achievementCount?: number;
   uid?: string;
@@ -29,7 +32,6 @@ interface AuthContextType {
   register: (
     email: string,
     password: string,
-    username: string,
     first_name: string,
     last_name: string,
     phone: string
@@ -41,6 +43,12 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Email validation function
+const isValidEmail = (email: string): boolean => {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+};
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DoteUser | null>(null);
@@ -118,10 +126,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('Profile not found, creating basic profile');
           const basicProfile = {
             id: supaUser.id,
-            email: supaUser.email,
             first_name: supaUser.user_metadata?.first_name || '',
             last_name: supaUser.user_metadata?.last_name || '',
-            username: supaUser.user_metadata?.username || '',
             phone: supaUser.user_metadata?.phone || '',
             created_at: supaUser.created_at,
           };
@@ -138,10 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Set user with basic profile data
           const fullUser: DoteUser = {
             ...basicProfile,
-            displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || basicProfile.username || 'User',
-            photoURL: null, // Will use random avatar
-            dogName: '',
-            dogBreed: '',
+            email: supaUser.email,
+            displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || 'User',
+            dogs: [],
             friends: [],
             achievementCount: 0,
             uid: supaUser.id,
@@ -153,17 +158,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } else {
-        // Profile exists, create full user object
+        // Profile exists, fetch user's dogs
+        const { data: userDogs, error: dogsError } = await supabase
+          .from('profile_dogs')
+          .select(`
+            dogs (
+              id,
+              name,
+              breed,
+              photo_url
+            )
+          `)
+          .eq('profile_id', userId);
+
+        if (dogsError) {
+          console.error('Error fetching user dogs:', dogsError);
+        }
+
+        // Get achievement count
+        const { count: achievementCount } = await supabase
+          .from('profile_achievements')
+          .select('*', { count: 'exact', head: true })
+          .eq('profile_id', userId);
+
+        // Create full user object
         const fullUser: DoteUser = {
           id: supaUser.id,
           email: supaUser.email,
           ...profile,
-          displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || profile.username || 'User',
-          photoURL: profile.avatar_url || null, // Will use random avatar if null
-          dogName: profile.dog_name || '',
-          dogBreed: profile.dog_breed || '',
+          displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
+          dogs: userDogs?.map(ud => ud.dogs).filter(Boolean) || [],
           friends: [], // This would be fetched separately in a real app
-          achievementCount: profile.achievement_count || 0,
+          achievementCount: achievementCount || 0,
           uid: supaUser.id,
         };
 
@@ -182,6 +208,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
       
+      // Validate email format
+      if (!isValidEmail(email)) {
+        throw new Error('Please enter a valid email address');
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password: password,
@@ -210,7 +241,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (
     email: string,
     password: string,
-    username: string,
     first_name: string,
     last_name: string,
     phone: string
@@ -218,16 +248,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
+      // Validate email format
+      if (!isValidEmail(email)) {
+        throw new Error('Please enter a valid email address');
+      }
+
+      // Validate password length
+      if (password.length < 6) {
+        throw new Error('Password must be at least 6 characters long');
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: email.trim().toLowerCase(),
         password: password,
         options: {
           data: {
-            username: username.trim(),
             first_name: first_name.trim(),
             last_name: last_name.trim(),
             phone: phone.trim(),
           },
+          // Disable email confirmation
+          emailRedirectTo: undefined,
         },
       });
 
@@ -282,26 +323,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          dog_name: dogName,
-          dog_breed: dogBreed,
-          dog_photo_url: dogPhoto,
+      // Create or update dog
+      const { data: dog, error: dogError } = await supabase
+        .from('dogs')
+        .insert({
+          name: dogName,
+          breed: dogBreed,
+          photo_url: dogPhoto,
         })
-        .eq('id', user.id);
+        .select()
+        .single();
 
-      if (error) {
-        console.error('Error updating dog profile:', error);
-        throw error;
+      if (dogError) {
+        console.error('Error creating dog:', dogError);
+        throw dogError;
+      }
+
+      // Link dog to user profile
+      const { error: linkError } = await supabase
+        .from('profile_dogs')
+        .insert({
+          profile_id: user.id,
+          dog_id: dog.id,
+        });
+
+      if (linkError) {
+        console.error('Error linking dog to profile:', linkError);
+        throw linkError;
       }
 
       // Update local user state
       const updatedUser = {
         ...user,
-        dogName,
-        dogBreed,
-        photoURL: dogPhoto || user.photoURL, // Keep existing avatar if no new photo
+        dogs: [...user.dogs, dog],
       };
 
       setUser(updatedUser);
