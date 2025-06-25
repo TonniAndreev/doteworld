@@ -11,7 +11,7 @@ interface Dog {
 
 interface DoteUser {
   id: string;
-  email: string | null;
+  email: string;
   first_name?: string;
   last_name?: string;
   avatar_url?: string;
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Set user with basic profile data
           const fullUser: DoteUser = {
             ...basicProfile,
-            email: supaUser.email,
+            email: supaUser.email!,
             displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || 'User',
             dogs: [],
             friends: [],
