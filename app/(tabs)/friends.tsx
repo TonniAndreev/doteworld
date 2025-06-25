@@ -32,6 +32,7 @@ export default function FriendsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [userModalVisible, setUserModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   
@@ -42,6 +43,7 @@ export default function FriendsScreen() {
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
+    refetch,
     isLoading
   } = useFriends();
 
@@ -90,6 +92,12 @@ export default function FriendsScreen() {
   const closeUserModal = () => {
     setUserModalVisible(false);
     setSelectedUser(null);
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
   };
 
   const handleSendRequest = () => {
@@ -166,6 +174,8 @@ export default function FriendsScreen() {
                 />
               )}
               contentContainerStyle={styles.listContent}
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>
@@ -196,6 +206,8 @@ export default function FriendsScreen() {
                 />
               )}
               contentContainerStyle={styles.listContent}
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>No friend requests</Text>
@@ -217,6 +229,8 @@ export default function FriendsScreen() {
               )}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>

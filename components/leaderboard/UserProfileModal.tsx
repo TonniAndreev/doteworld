@@ -92,9 +92,8 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     
     if (friendshipStatus === 'friend') {
       // Unfriend action
-      setFriendshipStatus('none');
-      // In a real app, call unfriend API
-      console.log('Unfriending user:', user.id);
+      // You can implement unfriend functionality here if needed
+      console.log('Unfriend functionality not implemented yet');
     } else if (friendshipStatus === 'none') {
       // Send friend request
       setFriendshipStatus('pending');

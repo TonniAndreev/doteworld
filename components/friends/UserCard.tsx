@@ -40,6 +40,7 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
         
         <View style={styles.stats}>
           <Text style={styles.stat}>{user.territorySize} km² territory</Text>
+          <Text style={styles.stat}>{user.territorySize.toFixed(1)} km² territory</Text>
           <Text style={styles.statDivider}>•</Text>
           <Text style={styles.stat}>{user.achievementCount} badges</Text>
         </View>
