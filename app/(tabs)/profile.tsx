@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Settings, Award, Users, Map, Route, PawPrint, LogOut, CreditCard as Edit } from 'lucide-react-native';
+import { Settings, Award, Users, Map, Route, PawPrint, LogOut, Edit } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -71,7 +71,10 @@ export default function ProfileScreen() {
           
           <TouchableOpacity 
             style={styles.settingsButton}
-            onPress={() => router.push('/settings')}
+            onPress={() => {
+              // For now, just show a placeholder
+              Alert.alert('Settings', 'Settings screen coming soon!');
+            }}
           >
             <Settings size={24} color={COLORS.neutralDark} />
           </TouchableOpacity>
@@ -84,18 +87,12 @@ export default function ProfileScreen() {
       >
         <View style={styles.profileSection}>
           <View style={styles.profileImageContainer}>
-            {user.avatar_url ? (
-              <Image 
-                source={{ uri: user.avatar_url }} 
-                style={styles.profileImage} 
-              />
-            ) : (
-              <View style={styles.profileImagePlaceholder}>
-                <Text style={styles.profileImagePlaceholderText}>
-                  {user.displayName?.charAt(0) || 'U'}
-                </Text>
-              </View>
-            )}
+            <UserAvatar
+              userId={user.id}
+              photoURL={user.avatar_url}
+              userName={user.displayName || 'User'}
+              size={100}
+            />
             
             <TouchableOpacity 
               style={styles.editProfileButton}
@@ -105,7 +102,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
           
-          <Text style={styles.userName}>{user.displayName}</Text>
+          <Text style={styles.userName}>{user.displayName || 'User'}</Text>
           
           <View style={styles.dogInfoContainer}>
             <Text style={styles.dogName}>{firstDog?.name || 'No dog'}</Text>
@@ -141,59 +138,48 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Achievements</Text>
-              <TouchableOpacity 
-                style={styles.seeAllButton}
-                onPress={() => router.push('/(tabs)/achievements')}
-              >
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-
-            <AchievementsRow />
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Achievements</Text>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push('/(tabs)/achievements')}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Friends</Text>
-              <TouchableOpacity 
-                style={styles.seeAllButton}
-                onPress={() => router.push('/(tabs)/friends')}
-              >
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
+          <AchievementsRow />
+        </View>
 
-            <View style={styles.friendsPreviewContainer}>
-              {user.friends && user.friends.length > 0 ? (
-            user.friends.slice(0, 3).map((friend: any) => (
-              <View key={friend.id} style={styles.friendItem}>
-                {friend.photoURL
-                  ? (
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Friends</Text>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push('/(tabs)/friends')}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.friendsPreviewContainer}>
+            {user.friends && user.friends.length > 0 ? (
+              <View style={styles.friendsList}>
+                {user.friends.slice(0, 3).map((friend: any) => (
+                  <View key={friend.id} style={styles.friendItem}>
                     <UserAvatar
                       userId={friend.id}
                       photoURL={friend.photoURL}
                       userName={friend.name}
                       size={60}
                     />
-                  )
-                  : (
-                    <View style={styles.friendAvatar}>
-                      <Text style={styles.friendAvatarText}>
-                        {friend.name?.charAt(0).toUpperCase() || 'F'}
-                      </Text>
-                    </View>
-                  )
-                }
-                <Text style={styles.friendName} numberOfLines={1}>
-                  {friend.name || 'Friend'}
-                </Text>
+                    <Text style={styles.friendName} numberOfLines={1}>
+                      {friend.name || 'Friend'}
+                    </Text>
+                  </View>
+                ))}
               </View>
-            ))
-                </View>
-              ))
             ) : (
               <Text style={styles.noFriendsText}>Add friends to see them here</Text>
             )}
@@ -282,24 +268,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 16,
   },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  profileImagePlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profileImagePlaceholderText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 40,
-    color: COLORS.primary,
-  },
   editProfileButton: {
     position: 'absolute',
     bottom: 0,
@@ -366,27 +334,15 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
   friendsPreviewContainer: {
+    paddingVertical: 8,
+  },
+  friendsList: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 8,
   },
   friendItem: {
     alignItems: 'center',
     width: 80,
-  },
-  friendAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  friendAvatarText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 24,
-    color: COLORS.primary,
   },
   friendName: {
     fontFamily: 'Inter-Medium',
