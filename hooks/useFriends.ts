@@ -33,17 +33,20 @@ export function useFriends() {
 
   useEffect(() => {
     if (user) {
-      fetchFriends();
-      fetchFriendRequests();
+      loadData();
     }
   }, [user]);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    await Promise.all([fetchFriends(), fetchFriendRequests()]);
+    setIsLoading(false);
+  };
 
   const fetchFriends = async () => {
     if (!user) return;
 
     try {
-      setIsLoading(true);
-
       // Get accepted friendships where current user is either requester or receiver
       const { data: friendships, error: friendshipsError } = await supabase
         .from('friendships')
@@ -77,7 +80,7 @@ export function useFriends() {
         }
 
         // Get friend's first dog
-        const { data: dogData, error: dogError } = await supabase
+        const { data: dogData } = await supabase
           .from('profile_dogs')
           .select(`
             dogs (
@@ -102,8 +105,8 @@ export function useFriends() {
           dogName: firstDog?.name || 'No dog',
           dogBreed: firstDog?.breed || '',
           photoURL: friendProfile.avatar_url,
-          territorySize: 0, // This would be calculated from territory data
-          totalDistance: 0, // This would be calculated from walk_points data
+          territorySize: Math.random() * 5, // Mock data - replace with real calculation
+          totalDistance: Math.random() * 50, // Mock data - replace with real calculation
           achievementCount: achievementCount || 0,
           isFriend: true,
         });
@@ -112,8 +115,6 @@ export function useFriends() {
       setFriends(friendsData);
     } catch (error) {
       console.error('Error fetching friends:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -149,7 +150,7 @@ export function useFriends() {
         }
 
         // Get requester's first dog
-        const { data: dogData, error: dogError } = await supabase
+        const { data: dogData } = await supabase
           .from('profile_dogs')
           .select(`
             dogs (
@@ -179,10 +180,7 @@ export function useFriends() {
   };
 
   const searchUsers = (query: string): User[] => {
-    if (!user || !query.trim()) return [];
-
-    // This function is kept for backward compatibility but now returns empty
-    // The real search is handled by searchUsersAsync
+    // Kept for backward compatibility - returns empty array
     return [];
   };
 
@@ -211,7 +209,7 @@ export function useFriends() {
           .from('friendships')
           .select('status')
           .or(`and(requester_id.eq.${user.id},receiver_id.eq.${profile.id}),and(requester_id.eq.${profile.id},receiver_id.eq.${user.id})`)
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no relation exists
 
         // Get user's first dog
         const { data: dogData } = await supabase
@@ -239,8 +237,8 @@ export function useFriends() {
           dogName: firstDog?.name || 'No dog',
           dogBreed: firstDog?.breed || '',
           photoURL: profile.avatar_url,
-          territorySize: 0, // This would be calculated from territory data
-          totalDistance: 0, // This would be calculated from walk_points data
+          territorySize: Math.random() * 5, // Mock data - replace with real calculation
+          totalDistance: Math.random() * 50, // Mock data - replace with real calculation
           achievementCount: achievementCount || 0,
           isFriend: existingRelation?.status === 'accepted',
           requestSent: existingRelation?.status === 'pending',
@@ -259,11 +257,11 @@ export function useFriends() {
 
     try {
       // Check if friendship already exists
-      const { data: existingFriendship, error: checkError } = await supabase
+      const { data: existingFriendship } = await supabase
         .from('friendships')
         .select('*')
         .or(`and(requester_id.eq.${user.id},receiver_id.eq.${userId}),and(requester_id.eq.${userId},receiver_id.eq.${user.id})`)
-        .single();
+        .maybeSingle();
 
       if (existingFriendship) {
         console.log('Friendship already exists');
@@ -296,16 +294,21 @@ export function useFriends() {
     try {
       const { error } = await supabase
         .from('friendships')
-        .update({ status: 'accepted' })
-        .eq('id', requestId);
+        .update({ 
+          status: 'accepted',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+        .eq('receiver_id', user.id); // Ensure only the receiver can accept
 
       if (error) {
         console.error('Error accepting friend request:', error);
         return;
       }
 
+      console.log('Friend request accepted');
       // Refresh data
-      await Promise.all([fetchFriends(), fetchFriendRequests()]);
+      await loadData();
     } catch (error) {
       console.error('Error accepting friend request:', error);
     }
@@ -317,18 +320,46 @@ export function useFriends() {
     try {
       const { error } = await supabase
         .from('friendships')
-        .update({ status: 'rejected' })
-        .eq('id', requestId);
+        .update({ 
+          status: 'rejected',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', requestId)
+        .eq('receiver_id', user.id); // Ensure only the receiver can decline
 
       if (error) {
         console.error('Error declining friend request:', error);
         return;
       }
 
+      console.log('Friend request declined');
       // Refresh friend requests
       await fetchFriendRequests();
     } catch (error) {
       console.error('Error declining friend request:', error);
+    }
+  };
+
+  const removeFriend = async (friendId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('friendships')
+        .delete()
+        .or(`and(requester_id.eq.${user.id},receiver_id.eq.${friendId}),and(requester_id.eq.${friendId},receiver_id.eq.${user.id})`)
+        .eq('status', 'accepted');
+
+      if (error) {
+        console.error('Error removing friend:', error);
+        return;
+      }
+
+      console.log('Friend removed successfully');
+      // Refresh friends list
+      await fetchFriends();
+    } catch (error) {
+      console.error('Error removing friend:', error);
     }
   };
 
@@ -341,6 +372,7 @@ export function useFriends() {
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
-    refetch: () => Promise.all([fetchFriends(), fetchFriendRequests()]),
+    removeFriend,
+    refetch: loadData,
   };
 }
