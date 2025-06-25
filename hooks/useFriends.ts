@@ -181,37 +181,76 @@ export function useFriends() {
   const searchUsers = (query: string): User[] => {
     if (!user || !query.trim()) return [];
 
-    // For now, return mock data since we need to implement proper search
-    // In a real implementation, you'd query the profiles table
-    const mockUsers: User[] = [
-      {
-        id: '1',
-        name: 'Sarah Miller',
-        dogName: 'Buddy',
-        dogBreed: 'Golden Retriever',
-        territorySize: 2.5,
-        achievementCount: 12,
-        totalDistance: 45.2,
-        isFriend: false,
-        requestSent: false,
-      },
-      {
-        id: '2',
-        name: 'Mike Johnson',
-        dogName: 'Luna',
-        dogBreed: 'Border Collie',
-        territorySize: 3.1,
-        achievementCount: 8,
-        totalDistance: 38.7,
-        isFriend: false,
-        requestSent: false,
-      },
-    ].filter(u => 
-      u.name.toLowerCase().includes(query.toLowerCase()) ||
-      u.dogName.toLowerCase().includes(query.toLowerCase())
-    );
+    // Return empty array for now - real search will be implemented with async function
+    return [];
+  };
 
-    return mockUsers;
+  const searchUsersAsync = async (query: string): Promise<User[]> => {
+    if (!user || !query.trim()) return [];
+
+    try {
+      // Search profiles by name
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
+        .neq('id', user.id)
+        .limit(20);
+
+      if (error) {
+        console.error('Error searching users:', error);
+        return [];
+      }
+
+      const searchResults: User[] = [];
+
+      for (const profile of profiles || []) {
+        // Check if already friends or request exists
+        const { data: existingRelation } = await supabase
+          .from('friendships')
+          .select('status')
+          .or(`and(requester_id.eq.${user.id},receiver_id.eq.${profile.id}),and(requester_id.eq.${profile.id},receiver_id.eq.${user.id})`)
+          .single();
+
+        // Get user's first dog
+        const { data: dogData } = await supabase
+          .from('profile_dogs')
+          .select(`
+            dogs (
+              name,
+              breed
+            )
+          `)
+          .eq('profile_id', profile.id)
+          .limit(1);
+
+        const firstDog = dogData?.[0]?.dogs;
+
+        // Get achievement count
+        const { count: achievementCount } = await supabase
+          .from('profile_achievements')
+          .select('*', { count: 'exact', head: true })
+          .eq('profile_id', profile.id);
+
+        searchResults.push({
+          id: profile.id,
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
+          dogName: firstDog?.name || 'No dog',
+          dogBreed: firstDog?.breed || '',
+          photoURL: profile.avatar_url,
+          territorySize: 0, // This would be calculated from territory data
+          totalDistance: 0, // This would be calculated from walk_points data
+          achievementCount: achievementCount || 0,
+          isFriend: existingRelation?.status === 'accepted',
+          requestSent: existingRelation?.status === 'pending',
+        });
+      }
+
+      return searchResults;
+    } catch (error) {
+      console.error('Error searching users:', error);
+      return [];
+    }
   };
 
   const sendFriendRequest = async (userId: string) => {

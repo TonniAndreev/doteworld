@@ -11,6 +11,7 @@ export type LeaderboardUser = {
   achievementCount: number;
   pawsBalance: number;
 };
+
 export async function fetchLeaderboard(category: 'territory' | 'distance' | 'achievements' | 'paws'): Promise<LeaderboardUser[]> {
   try {
     // Fetch profiles with their dogs and achievements
@@ -20,12 +21,8 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
         id,
         first_name,
         last_name,
-        profile_dogs (
-          dogs (
-            name,
-            breed
-          )
-        )
+        avatar_url,
+        created_at
       `)
       .limit(50);
 
@@ -37,24 +34,78 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
     const leaderboardData: LeaderboardUser[] = [];
 
     for (const profile of profiles || []) {
-      // Get achievement count
-      const { count: achievementCount } = await supabase
-        .from('profile_achievements')
-        .select('*', { count: 'exact', head: true })
-        .eq('profile_id', profile.id);
+      try {
+        // Get achievement count
+        const { count: achievementCount } = await supabase
+          .from('profile_achievements')
+          .select('*', { count: 'exact', head: true })
+          .eq('profile_id', profile.id);
 
-      // Get first dog
-      const firstDog = profile.profile_dogs?.[0]?.dogs;
+        // Get first dog
+        const { data: dogData, error: dogError } = await supabase
+          .from('profile_dogs')
+          .select(`
+            dogs (
+              name,
+              breed
+            )
+          `)
+          .eq('profile_id', profile.id)
+          .limit(1);
 
-      leaderboardData.push({
-        id: profile.id,
-        name: `${profile.first_name} ${profile.last_name}`.trim(),
-        dogName: firstDog?.name || 'No dog',
-        territorySize: Math.random() * 15, // This would be calculated from territory data
-        totalDistance: Math.random() * 100, // This would be calculated from walk_points data
-        achievementCount: achievementCount || 0,
-        pawsBalance: Math.floor(Math.random() * 1500), // This would come from a paws balance system
-      });
+        const firstDog = dogData?.[0]?.dogs;
+
+        // Calculate territory size from walk points
+        const { data: walkPoints, error: walkError } = await supabase
+          .from('walk_points')
+          .select('latitude, longitude')
+          .eq('dog_id', firstDog?.id || 'none'); // Use dog_id if available
+
+        let territorySize = 0;
+        let totalDistance = 0;
+
+        if (walkPoints && walkPoints.length > 0) {
+          // Simple calculation: assume each walk point represents ~0.001 km²
+          territorySize = walkPoints.length * 0.001;
+          
+          // Calculate total distance (simplified)
+          if (walkPoints.length > 1) {
+            for (let i = 1; i < walkPoints.length; i++) {
+              const prev = walkPoints[i - 1];
+              const curr = walkPoints[i];
+              const distance = calculateDistance(
+                prev.latitude,
+                prev.longitude,
+                curr.latitude,
+                curr.longitude
+              );
+              totalDistance += distance;
+            }
+          }
+        }
+
+        // Generate a consistent paws balance based on user activity
+        const pawsBalance = Math.floor(
+          (achievementCount || 0) * 50 + // 50 paws per achievement
+          territorySize * 100 + // 100 paws per km²
+          totalDistance * 10 // 10 paws per km walked
+        );
+
+        leaderboardData.push({
+          id: profile.id,
+          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
+          dogName: firstDog?.name || 'No dog',
+          photoURL: profile.avatar_url,
+          territorySize,
+          totalDistance,
+          achievementCount: achievementCount || 0,
+          pawsBalance,
+        });
+      } catch (profileError) {
+        console.error('Error processing profile:', profile.id, profileError);
+        // Continue with next profile if one fails
+        continue;
+      }
     }
 
     // Sort based on category
@@ -76,4 +127,26 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
     console.error('Error fetching leaderboard:', error);
     return [];
   }
+}
+
+// Helper function to calculate distance between two points
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  
+  return distance; // Returns distance in kilometers
+}
+
+// Helper function to convert degrees to radians
+function toRad(degrees: number): number {
+  return degrees * (Math.PI / 180);
 }

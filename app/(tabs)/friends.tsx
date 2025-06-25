@@ -30,18 +30,42 @@ import UserProfileModal from '@/components/leaderboard/UserProfileModal';
 export default function FriendsScreen() {
   const [activeTab, setActiveTab] = useState('friends');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [userModalVisible, setUserModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   
   const { 
     friends, 
     friendRequests, 
-    searchUsers, 
+    searchUsersAsync,
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
     isLoading
   } = useFriends();
+
+  // Handle search with debouncing
+  useEffect(() => {
+    const searchTimeout = setTimeout(async () => {
+      if (activeTab === 'discover' && searchQuery.trim()) {
+        setIsSearching(true);
+        try {
+          const results = await searchUsersAsync(searchQuery);
+          setSearchResults(results);
+        } catch (error) {
+          console.error('Search error:', error);
+          setSearchResults([]);
+        } finally {
+          setIsSearching(false);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(searchTimeout);
+  }, [searchQuery, activeTab, searchUsersAsync]);
 
   // Filtered friends list based on search query
   const filteredFriends = searchQuery.trim() === ''
@@ -175,7 +199,7 @@ export default function FriendsScreen() {
 
           {activeTab === 'discover' && (
             <FlatList
-              data={searchUsers(searchQuery)}
+              data={searchResults}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <UserCard 
@@ -188,7 +212,9 @@ export default function FriendsScreen() {
               ListEmptyComponent={
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>
-                    {searchQuery.trim() !== '' 
+                    {isSearching 
+                      ? 'Searching...'
+                      : searchQuery.trim() !== '' 
                       ? 'No users found' 
                       : 'Search for users to add as friends'}
                   </Text>
