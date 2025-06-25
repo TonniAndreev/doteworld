@@ -90,6 +90,12 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="dog-profile"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
     </Tabs>
   );
 }
@@ -121,5 +127,29 @@ const styles = StyleSheet.create({
   avatarContainerActive: {
     borderWidth: 2,
     borderColor: COLORS.primary,
+  },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  avatarPlaceholder: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.neutralLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarPlaceholderActive: {
+    backgroundColor: COLORS.primaryLight,
+  },
+  avatarText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+  },
+  avatarTextActive: {
+    color: COLORS.primary,
   },
 });

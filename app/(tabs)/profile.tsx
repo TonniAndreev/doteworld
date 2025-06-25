@@ -140,6 +140,45 @@ export default function ProfileScreen() {
 
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>My Dogs</Text>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push('/(tabs)/dog-profile')}
+            >
+              <Text style={styles.seeAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.dogPreviewContainer}>
+            {firstDog ? (
+              <TouchableOpacity 
+                style={styles.dogPreviewCard}
+                onPress={() => router.push('/(tabs)/dog-profile')}
+              >
+                <UserAvatar
+                  userId={firstDog.id}
+                  photoURL={firstDog.photo_url}
+                  userName={firstDog.name}
+                  size={60}
+                />
+                <View style={styles.dogPreviewInfo}>
+                  <Text style={styles.dogPreviewName}>{firstDog.name}</Text>
+                  <Text style={styles.dogPreviewBreed}>{firstDog.breed}</Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.addDogCard}
+                onPress={() => router.push('/(auth)/dog-profile')}
+              >
+                <Text style={styles.addDogText}>Add your first dog</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Achievements</Text>
             <TouchableOpacity 
               style={styles.seeAllButton}
@@ -331,6 +370,45 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
+    color: COLORS.primary,
+  },
+  dogPreviewContainer: {
+    paddingVertical: 8,
+  },
+  dogPreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralExtraLight,
+    padding: 16,
+    borderRadius: 12,
+  },
+  dogPreviewInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  dogPreviewName: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.neutralDark,
+    marginBottom: 4,
+  },
+  dogPreviewBreed: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+  },
+  addDogCard: {
+    backgroundColor: COLORS.primaryLight,
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
+  },
+  addDogText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
     color: COLORS.primary,
   },
   friendsPreviewContainer: {

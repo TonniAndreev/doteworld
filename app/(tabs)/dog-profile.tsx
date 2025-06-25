@@ -1,0 +1,581 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  TextInput,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import { ChevronLeft, Plus, Edit3, Calendar, Scale, Info } from 'lucide-react-native';
+import { COLORS } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/utils/supabase';
+import DogProfileCard from '@/components/profile/DogProfileCard';
+
+interface Dog {
+  id: string;
+  name: string;
+  breed: string;
+  photo_url?: string;
+  birthday?: string;
+  bio?: string;
+  weight?: number;
+  gender?: 'male' | 'female' | 'unknown';
+  created_at: string;
+}
+
+export default function DogProfileScreen() {
+  const [dogs, setDogs] = useState<Dog[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    breed: '',
+    birthday: '',
+    bio: '',
+    weight: '',
+    gender: 'unknown' as 'male' | 'female' | 'unknown',
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      fetchUserDogs();
+    }
+  }, [user]);
+
+  const fetchUserDogs = async () => {
+    if (!user) return;
+
+    try {
+      setIsLoading(true);
+
+      // Fetch user's dogs with all details
+      const { data: userDogs, error } = await supabase
+        .from('profile_dogs')
+        .select(`
+          dogs (
+            id,
+            name,
+            breed,
+            photo_url,
+            birthday,
+            bio,
+            weight,
+            gender,
+            created_at
+          )
+        `)
+        .eq('profile_id', user.id);
+
+      if (error) {
+        console.error('Error fetching user dogs:', error);
+        return;
+      }
+
+      const dogsData = userDogs?.map(ud => ud.dogs).filter(Boolean) || [];
+      setDogs(dogsData as Dog[]);
+    } catch (error) {
+      console.error('Error fetching dogs:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEditDog = (dog: Dog) => {
+    setSelectedDog(dog);
+    setEditForm({
+      name: dog.name,
+      breed: dog.breed,
+      birthday: dog.birthday || '',
+      bio: dog.bio || '',
+      weight: dog.weight?.toString() || '',
+      gender: dog.gender || 'unknown',
+    });
+    setEditModalVisible(true);
+  };
+
+  const handleSaveDog = async () => {
+    if (!selectedDog || !editForm.name.trim()) {
+      Alert.alert('Error', 'Dog name is required');
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const updateData: any = {
+        name: editForm.name.trim(),
+        breed: editForm.breed.trim(),
+        bio: editForm.bio.trim(),
+        gender: editForm.gender,
+      };
+
+      // Add birthday if provided
+      if (editForm.birthday) {
+        updateData.birthday = editForm.birthday;
+      }
+
+      // Add weight if provided and valid
+      if (editForm.weight && !isNaN(parseFloat(editForm.weight))) {
+        updateData.weight = parseFloat(editForm.weight);
+      }
+
+      const { error } = await supabase
+        .from('dogs')
+        .update(updateData)
+        .eq('id', selectedDog.id);
+
+      if (error) {
+        console.error('Error updating dog:', error);
+        Alert.alert('Error', 'Failed to update dog profile');
+        return;
+      }
+
+      // Refresh dogs list
+      await fetchUserDogs();
+      setEditModalVisible(false);
+      setSelectedDog(null);
+      
+      Alert.alert('Success', 'Dog profile updated successfully!');
+    } catch (error) {
+      console.error('Error saving dog:', error);
+      Alert.alert('Error', 'Failed to update dog profile');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddDog = () => {
+    router.push('/(auth)/dog-profile');
+  };
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading dog profiles...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <ChevronLeft size={24} color={COLORS.neutralDark} />
+        </TouchableOpacity>
+        
+        <Text style={styles.title}>Dog Profiles</Text>
+        
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={handleAddDog}
+        >
+          <Plus size={24} color={COLORS.primary} />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView 
+        style={styles.content}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {dogs.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>No Dogs Yet</Text>
+            <Text style={styles.emptyText}>
+              Add your first dog to start tracking walks and conquering territories!
+            </Text>
+            <TouchableOpacity 
+              style={styles.addFirstDogButton}
+              onPress={handleAddDog}
+            >
+              <Plus size={20} color={COLORS.white} />
+              <Text style={styles.addFirstDogText}>Add Your First Dog</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.dogsContainer}>
+            {dogs.map((dog) => (
+              <View key={dog.id} style={styles.dogCardContainer}>
+                <DogProfileCard 
+                  dog={dog} 
+                  showFullDetails={true}
+                />
+                <TouchableOpacity 
+                  style={styles.editButton}
+                  onPress={() => handleEditDog(dog)}
+                >
+                  <Edit3 size={16} color={COLORS.white} />
+                  <Text style={styles.editButtonText}>Edit Profile</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Edit Dog Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={editModalVisible}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Dog Profile</Text>
+              <TouchableOpacity 
+                onPress={() => setEditModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <Text style={styles.modalCloseText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Name */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Name *</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editForm.name}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, name: text }))}
+                  placeholder="Dog's name"
+                  placeholderTextColor={COLORS.neutralMedium}
+                />
+              </View>
+
+              {/* Breed */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Breed</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editForm.breed}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, breed: text }))}
+                  placeholder="Dog's breed"
+                  placeholderTextColor={COLORS.neutralMedium}
+                />
+              </View>
+
+              {/* Birthday */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Birthday</Text>
+                <View style={styles.inputWithIcon}>
+                  <Calendar size={20} color={COLORS.neutralMedium} />
+                  <TextInput
+                    style={styles.textInputWithIcon}
+                    value={editForm.birthday}
+                    onChangeText={(text) => setEditForm(prev => ({ ...prev, birthday: text }))}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={COLORS.neutralMedium}
+                  />
+                </View>
+              </View>
+
+              {/* Weight */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Weight (kg)</Text>
+                <View style={styles.inputWithIcon}>
+                  <Scale size={20} color={COLORS.neutralMedium} />
+                  <TextInput
+                    style={styles.textInputWithIcon}
+                    value={editForm.weight}
+                    onChangeText={(text) => setEditForm(prev => ({ ...prev, weight: text }))}
+                    placeholder="Weight in kg"
+                    placeholderTextColor={COLORS.neutralMedium}
+                    keyboardType="decimal-pad"
+                  />
+                </View>
+              </View>
+
+              {/* Gender */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Gender</Text>
+                <View style={styles.genderContainer}>
+                  {(['male', 'female', 'unknown'] as const).map((gender) => (
+                    <TouchableOpacity
+                      key={gender}
+                      style={[
+                        styles.genderOption,
+                        editForm.gender === gender && styles.genderOptionSelected
+                      ]}
+                      onPress={() => setEditForm(prev => ({ ...prev, gender }))}
+                    >
+                      <Text style={[
+                        styles.genderOptionText,
+                        editForm.gender === gender && styles.genderOptionTextSelected
+                      ]}>
+                        {gender.charAt(0).toUpperCase() + gender.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Bio */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>About</Text>
+                <View style={styles.inputWithIcon}>
+                  <Info size={20} color={COLORS.neutralMedium} />
+                  <TextInput
+                    style={[styles.textInputWithIcon, styles.bioInput]}
+                    value={editForm.bio}
+                    onChangeText={(text) => setEditForm(prev => ({ ...prev, bio: text }))}
+                    placeholder="Tell us about your dog..."
+                    placeholderTextColor={COLORS.neutralMedium}
+                    multiline
+                    numberOfLines={3}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.saveButton}
+                onPress={handleSaveDog}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    marginTop: 12,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  backButton: {
+    padding: 8,
+  },
+  title: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: COLORS.neutralDark,
+  },
+  addButton: {
+    padding: 8,
+  },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 24,
+    color: COLORS.neutralDark,
+    marginBottom: 12,
+  },
+  emptyText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  addFirstDogButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  addFirstDogText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
+    marginLeft: 8,
+  },
+  dogsContainer: {
+    gap: 16,
+  },
+  dogCardContainer: {
+    position: 'relative',
+  },
+  editButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  editButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.white,
+    marginLeft: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  modalTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: COLORS.neutralDark,
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalCloseText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.primary,
+  },
+  modalContent: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 8,
+  },
+  textInput: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    backgroundColor: COLORS.neutralLight,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  textInputWithIcon: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    flex: 1,
+    marginLeft: 12,
+  },
+  bioInput: {
+    height: 80,
+    textAlignVertical: 'top',
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  genderOption: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.neutralLight,
+    alignItems: 'center',
+  },
+  genderOptionSelected: {
+    backgroundColor: COLORS.primary,
+  },
+  genderOptionText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+  },
+  genderOptionTextSelected: {
+    color: COLORS.white,
+  },
+  modalFooter: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.neutralLight,
+  },
+  saveButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
+  },
+});

@@ -7,6 +7,11 @@ interface Dog {
   name: string;
   breed: string;
   photo_url?: string;
+  birthday?: string;
+  bio?: string;
+  weight?: number;
+  gender?: 'male' | 'female' | 'unknown';
+  created_at: string;
 }
 
 interface DoteUser {
@@ -166,7 +171,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               id,
               name,
               breed,
-              photo_url
+              photo_url,
+              birthday,
+              bio,
+              weight,
+              gender,
+              created_at
             )
           `)
           .eq('profile_id', userId);
