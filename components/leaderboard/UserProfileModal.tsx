@@ -67,6 +67,8 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
   const [territory, setTerritory] = useState<any>(null);
   const [isLoadingTerritory, setIsLoadingTerritory] = useState(false);
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending'>('none');
+  const [userDogs, setUserDogs] = useState<any[]>([]);
+  const [isLoadingDogs, setIsLoadingDogs] = useState(false);
   
   const { friends, sendFriendRequest } = useFriends();
   const { user: currentUser } = useAuth();
@@ -76,6 +78,9 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
       // Check friendship status
       const isFriend = friends.some(friend => friend.id === user.id);
       setFriendshipStatus(isFriend ? 'friend' : 'none');
+      
+      // Load user's dogs
+      loadUserDogs();
       
       // Load territory data
       setIsLoadingTerritory(true);
@@ -87,6 +92,38 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
       }, 500);
     }
   }, [visible, user, friends]);
+
+  const loadUserDogs = async () => {
+    if (!user) return;
+    
+    setIsLoadingDogs(true);
+    try {
+      const { data: dogData, error } = await supabase
+        .from('profile_dogs')
+        .select(`
+          dogs (
+            id,
+            name,
+            breed,
+            photo_url
+          )
+        `)
+        .eq('profile_id', user.id);
+
+      if (error) {
+        console.error('Error fetching user dogs:', error);
+        setUserDogs([]);
+      } else {
+        const dogs = dogData?.map(pd => pd.dogs).filter(Boolean) || [];
+        setUserDogs(dogs);
+      }
+    } catch (error) {
+      console.error('Error loading user dogs:', error);
+      setUserDogs([]);
+    } finally {
+      setIsLoadingDogs(false);
+    }
+  };
 
   const handleFriendAction = async () => {
     if (!user) return;
@@ -200,7 +237,13 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
 
             <View style={styles.userInfo}>
               <Text style={styles.userName}>{user.name}</Text>
-              <Text style={styles.dogName}>{user.dogName}</Text>
+              {isLoadingDogs ? (
+                <Text style={styles.dogName}>Loading...</Text>
+              ) : userDogs.length > 0 ? (
+                <Text style={styles.dogName}>{userDogs[0].name}</Text>
+              ) : (
+                <Text style={styles.dogName}>No dog</Text>
+              )}
             </View>
 
             {/* Stats */}
