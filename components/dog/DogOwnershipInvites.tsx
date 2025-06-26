@@ -31,7 +31,9 @@ export default function DogOwnershipInvites({ onInviteHandled }: DogOwnershipInv
   const loadInvites = async () => {
     setIsLoading(true);
     try {
+      console.log('Loading dog ownership invites...');
       const invitesData = await getMyDogInvites();
+      console.log('Loaded invites:', invitesData);
       setInvites(invitesData);
     } catch (error) {
       console.error('Error loading invites:', error);

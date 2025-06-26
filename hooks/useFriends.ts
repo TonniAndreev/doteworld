@@ -80,7 +80,7 @@ export function useFriends() {
         }
 
         // Get friend's first dog
-        const { data: dogData } = await supabase
+        const { data: dogData, error: dogError } = await supabase
           .from('profile_dogs')
           .select(`
             dogs (
@@ -90,6 +90,10 @@ export function useFriends() {
           `)
           .eq('profile_id', friendId)
           .limit(1);
+
+        if (dogError) {
+          console.error('Error fetching friend dogs:', dogError);
+        }
 
         const firstDog = dogData?.[0]?.dogs;
 
@@ -150,7 +154,7 @@ export function useFriends() {
         }
 
         // Get requester's first dog
-        const { data: dogData } = await supabase
+        const { data: dogData, error: dogError } = await supabase
           .from('profile_dogs')
           .select(`
             dogs (
@@ -159,6 +163,10 @@ export function useFriends() {
           `)
           .eq('profile_id', request.requester_id)
           .limit(1);
+
+        if (dogError) {
+          console.error('Error fetching requester dogs:', dogError);
+        }
 
         const firstDog = dogData?.[0]?.dogs;
 

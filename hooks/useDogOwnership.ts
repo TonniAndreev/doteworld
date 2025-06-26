@@ -65,6 +65,8 @@ export function useDogOwnership() {
     if (!user) return [];
 
     try {
+      console.log('Fetching dog invites for user:', user.id);
+      
       const { data, error } = await supabase
         .from('dog_ownership_invites')
         .select(`
@@ -77,10 +79,12 @@ export function useDogOwnership() {
         .gt('expires_at', new Date().toISOString());
 
       if (error) {
-        console.error('Error fetching dog invites:', error);
+        console.error('Error fetching dog invites:', error.message, error.details);
         return [];
       }
 
+      console.log('Dog invites data:', data);
+      
       return (data || []).map(invite => ({
         id: invite.id,
         dog_id: invite.dog_id,
@@ -92,8 +96,8 @@ export function useDogOwnership() {
         message: invite.message,
         created_at: invite.created_at,
         expires_at: invite.expires_at,
-        inviter_name: `${invite.inviter.first_name} ${invite.inviter.last_name}`.trim(),
-        dog_name: invite.dog.name,
+        inviter_name: `${invite.inviter?.first_name || ''} ${invite.inviter?.last_name || ''}`.trim() || 'Unknown',
+        dog_name: invite.dog?.name || 'Unknown Dog',
       }));
     } catch (error) {
       console.error('Error fetching dog invites:', error);

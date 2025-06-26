@@ -165,7 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(null);
         }
       } else {
-        // Profile exists, fetch user's dogs
+        // Profile exists, fetch user's dogs with fresh data (no cache)
+        console.log('Fetching fresh dog data for user:', userId);
         const { data: userDogs, error: dogsError } = await supabase
           .from('profile_dogs')
           .select(`
@@ -181,12 +182,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               created_at
             )
           `)
-          .eq('profile_id', userId);
+          .eq('profile_id', userId)
+          .order('created_at', { ascending: true, foreignTable: 'dogs' });
 
         if (dogsError) {
           console.error('Error fetching user dogs:', dogsError);
         }
 
+        console.log('User dogs data:', userDogs);
+        
         // Get achievement count
         const { count: achievementCount } = await supabase
           .from('profile_achievements')
@@ -205,7 +209,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           uid: supaUser.id,
         };
 
+        console.log('Final user object with dogs:', fullUser.dogs);
+        
         setUser(fullUser);
+        // Force fresh data by clearing cache and setting new data
+        await AsyncStorage.removeItem('doteUser');
         await AsyncStorage.setItem('doteUser', JSON.stringify(fullUser));
       }
     } catch (error) {

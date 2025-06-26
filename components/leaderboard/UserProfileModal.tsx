@@ -98,6 +98,8 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     
     setIsLoadingDogs(true);
     try {
+      console.log('Loading dogs for user:', user.id);
+      
       const { data: dogData, error } = await supabase
         .from('profile_dogs')
         .select(`
@@ -114,7 +116,9 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         console.error('Error fetching user dogs:', error);
         setUserDogs([]);
       } else {
+        console.log('Raw dog data:', dogData);
         const dogs = dogData?.map(pd => pd.dogs).filter(Boolean) || [];
+        console.log('Processed dogs:', dogs);
         setUserDogs(dogs);
       }
     } catch (error) {
