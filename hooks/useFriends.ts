@@ -264,7 +264,7 @@ export function useFriends() {
         .maybeSingle();
 
       if (existingFriendship) {
-        console.log('Friendship already exists');
+        console.log('Friendship already exists:', existingFriendship.status);
         return;
       }
 
@@ -283,6 +283,9 @@ export function useFriends() {
       }
 
       console.log('Friend request sent successfully');
+      
+      // Refresh data to update UI
+      await loadData();
     } catch (error) {
       console.error('Error sending friend request:', error);
     }

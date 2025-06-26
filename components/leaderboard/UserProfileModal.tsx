@@ -11,6 +11,7 @@ import {
 import { X, UserPlus, UserCheck, UserX, MapPin } from 'lucide-react-native';
 import MapView, { Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
+import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
 import { useFriends } from '@/hooks/useFriends';
 import { useAuth } from '@/contexts/AuthContext';
