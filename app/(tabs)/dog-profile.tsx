@@ -26,7 +26,7 @@ interface Dog {
   birthday?: string;
   bio?: string;
   weight?: number;
-  gender?: 'male' | 'female' | 'unknown';
+  gender?: 'male' | 'female';
   created_at: string;
 }
 
@@ -41,7 +41,7 @@ export default function DogProfileScreen() {
     birthday: '',
     bio: '',
     weight: '',
-    gender: 'unknown' as 'male' | 'female' | 'unknown',
+    gender: '' as 'male' | 'female' | '',
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -99,7 +99,7 @@ export default function DogProfileScreen() {
       birthday: dog.birthday || '',
       bio: dog.bio || '',
       weight: dog.weight?.toString() || '',
-      gender: dog.gender || 'unknown',
+      gender: dog.gender || '',
     });
     setEditModalVisible(true);
   };
@@ -117,7 +117,7 @@ export default function DogProfileScreen() {
         name: editForm.name.trim(),
         breed: editForm.breed.trim(),
         bio: editForm.bio.trim(),
-        gender: editForm.gender,
+        gender: editForm.gender || null,
       };
 
       // Add birthday if provided
@@ -309,18 +309,23 @@ export default function DogProfileScreen() {
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>Gender</Text>
                 <View style={styles.genderContainer}>
-                  {(['male', 'female', 'unknown'] as const).map((gender) => (
+                  {(['male', 'female'] as const).map((gender) => (
                     <TouchableOpacity
                       key={gender}
                       style={[
                         styles.genderOption,
-                        editForm.gender === gender && styles.genderOptionSelected
+                        editForm.gender === gender && styles.genderOptionSelected,
+                        !editForm.gender && gender === 'male' && styles.genderOptionDefault
                       ]}
-                      onPress={() => setEditForm(prev => ({ ...prev, gender }))}
+                      onPress={() => setEditForm(prev => ({ 
+                        ...prev, 
+                        gender: prev.gender === gender ? '' : gender 
+                      }))}
                     >
                       <Text style={[
                         styles.genderOptionText,
-                        editForm.gender === gender && styles.genderOptionTextSelected
+                        editForm.gender === gender && styles.genderOptionTextSelected,
+                        !editForm.gender && gender === 'male' && styles.genderOptionTextDefault
                       ]}>
                         {gender.charAt(0).toUpperCase() + gender.slice(1)}
                       </Text>
@@ -560,6 +565,12 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
   },
   genderOptionTextSelected: {
+    color: COLORS.white,
+  },
+  genderOptionDefault: {
+    backgroundColor: COLORS.neutralMedium,
+  },
+  genderOptionTextDefault: {
     color: COLORS.white,
   },
   modalFooter: {

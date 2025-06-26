@@ -160,6 +160,8 @@ export default function ProfileScreen() {
                   photoURL={firstDog.photo_url}
                   userName={firstDog.name}
                   size={60}
+                  isDogAvatar={true}
+                  dogBreed={firstDog.breed}
                 />
                 <View style={styles.dogPreviewInfo}>
                   <Text style={styles.dogPreviewName}>{firstDog.name}</Text>

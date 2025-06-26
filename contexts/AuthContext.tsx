@@ -11,6 +11,7 @@ interface Dog {
   bio?: string;
   weight?: number;
   gender?: 'male' | 'female' | 'unknown';
+  gender?: 'male' | 'female';
   created_at: string;
 }
 

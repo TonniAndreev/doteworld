@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Image, View, Text, StyleSheet, ImageStyle, ViewStyle, TextStyle } from 'react-native';
 import { COLORS } from '@/constants/theme';
 import { getAvatarSource } from '@/utils/avatarUtils';
+import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
 
 interface UserAvatarProps {
   userId: string;
@@ -12,6 +13,8 @@ interface UserAvatarProps {
   style?: ImageStyle;
   containerStyle?: ViewStyle;
   fallbackTextStyle?: TextStyle;
+  isDogAvatar?: boolean;
+  dogBreed?: string;
 }
 
 export default function UserAvatar({
@@ -23,9 +26,13 @@ export default function UserAvatar({
   style,
   containerStyle,
   fallbackTextStyle,
+  isDogAvatar = false,
+  dogBreed,
 }: UserAvatarProps) {
   const [imageError, setImageError] = useState(false);
-  const avatarSource = getAvatarSource(userId, photoURL);
+  const avatarSource = isDogAvatar 
+    ? getDogAvatarSource(userId, photoURL, dogBreed)
+    : getAvatarSource(userId, photoURL);
   
   const avatarStyle = [
     {
