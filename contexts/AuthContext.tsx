@@ -46,6 +46,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>; 
   loginWithFacebook: () => Promise<void>;
   updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null) => Promise<void>;
+  refreshUserData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -405,6 +406,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     loginWithFacebook,
     updateDogProfile,
+    refreshUserData: () => fetchUserProfile(user?.id || ''),
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -12,11 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, Info } from 'lucide-react-native';
+import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, Info, Users } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import DogProfileCard from '@/components/profile/DogProfileCard';
+import DogOwnershipManager from '@/components/dog/DogOwnershipManager';
+import { useDogOwnership } from '@/hooks/useDogOwnership';
 
 interface Dog {
   id: string;
@@ -35,6 +37,8 @@ export default function DogProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
+  const [ownershipModalVisible, setOwnershipModalVisible] = useState(false);
+  const [selectedDogForOwnership, setSelectedDogForOwnership] = useState<Dog | null>(null);
   const [editForm, setEditForm] = useState({
     name: '',
     breed: '',
@@ -45,7 +49,8 @@ export default function DogProfileScreen() {
   });
   const [isSaving, setIsSaving] = useState(false);
 
-  const { user } = useAuth();
+  const { user, refreshUserData } = useAuth();
+  const { updateDogData } = useDogOwnership();
 
   useEffect(() => {
     if (user) {
@@ -113,7 +118,7 @@ export default function DogProfileScreen() {
     try {
       setIsSaving(true);
 
-      const updateData: any = {
+      const updateData = {
         name: editForm.name.trim(),
         breed: editForm.breed.trim(),
         bio: editForm.bio.trim(),
@@ -130,14 +135,11 @@ export default function DogProfileScreen() {
         updateData.weight = parseFloat(editForm.weight);
       }
 
-      const { error } = await supabase
-        .from('dogs')
-        .update(updateData)
-        .eq('id', selectedDog.id);
+      // Use the hook to ensure proper data persistence
+      const result = await updateDogData(selectedDog.id, updateData);
 
-      if (error) {
-        console.error('Error updating dog:', error);
-        Alert.alert('Error', 'Failed to update dog profile');
+      if (!result.success) {
+        Alert.alert('Error', result.error || 'Failed to update dog profile');
         return;
       }
 
@@ -157,6 +159,11 @@ export default function DogProfileScreen() {
 
   const handleAddDog = () => {
     router.push('/(auth)/dog-profile');
+  };
+
+  const handleManageOwnership = (dog: Dog) => {
+    setSelectedDogForOwnership(dog);
+    setOwnershipModalVisible(true);
   };
 
   if (isLoading) {
@@ -223,6 +230,14 @@ export default function DogProfileScreen() {
                 >
                   <Edit3 size={16} color={COLORS.white} />
                   <Text style={styles.editButtonText}>Edit Profile</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.ownersButton}
+                  onPress={() => handleManageOwnership(dog)}
+                >
+                  <Users size={16} color={COLORS.white} />
+                  <Text style={styles.ownersButtonText}>Owners</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -369,6 +384,19 @@ export default function DogProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Dog Ownership Manager Modal */}
+      {selectedDogForOwnership && (
+        <DogOwnershipManager
+          dogId={selectedDogForOwnership.id}
+          dogName={selectedDogForOwnership.name}
+          visible={ownershipModalVisible}
+          onClose={() => {
+            setOwnershipModalVisible(false);
+            setSelectedDogForOwnership(null);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -467,6 +495,23 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   editButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.white,
+    marginLeft: 4,
+  },
+  ownersButton: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  ownersButtonText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
     color: COLORS.white,

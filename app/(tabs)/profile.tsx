@@ -19,10 +19,12 @@ import { useTerritory } from '@/contexts/TerritoryContext';
 import StatsCard from '@/components/profile/StatsCard';
 import AchievementsRow from '@/components/profile/AchievementsRow';
 import NotificationsButton from '@/components/common/NotificationsButton';
+import DogOwnershipInvites from '@/components/dog/DogOwnershipInvites';
 import UserAvatar from '@/components/common/UserAvatar';
 
 export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [showInvites, setShowInvites] = useState(false);
   
   const { user, logout } = useAuth();
   const { pawsBalance } = usePaws();
@@ -191,6 +193,16 @@ export default function ProfileScreen() {
           </View>
 
           <AchievementsRow />
+        </View>
+
+        {/* Dog Ownership Invites Section */}
+        <View style={styles.sectionContainer}>
+          <DogOwnershipInvites 
+            onInviteHandled={() => {
+              // Refresh user data when invites are handled
+              // This will update the dogs list
+            }}
+          />
         </View>
 
         <View style={styles.sectionContainer}>
