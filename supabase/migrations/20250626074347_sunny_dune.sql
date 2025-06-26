@@ -160,6 +160,22 @@ CREATE POLICY "Users can view dogs they have access to"
     )
   );
 
+CREATE POLICY "Friends can view dog relationships"
+  ON profile_dogs
+  FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM friendships f
+      WHERE f.status = 'accepted'
+        AND (
+          (f.requester_id = auth.uid() AND f.receiver_id = profile_dogs.profile_id) OR
+          (f.receiver_id = auth.uid() AND f.requester_id = profile_dogs.profile_id)
+        )
+    )
+  );
+
 CREATE POLICY "Users can unlink their own dog relationships"
   ON profile_dogs
   FOR DELETE
