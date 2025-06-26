@@ -19,9 +19,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
 
 const DOG_BREEDS = [
+  // Popular breeds
   'Labrador Retriever',
-  'German Shepherd',
   'Golden Retriever',
+  'German Shepherd',
   'French Bulldog',
   'Beagle',
   'Poodle',
@@ -29,7 +30,73 @@ const DOG_BREEDS = [
   'Dachshund',
   'Siberian Husky',
   'Border Collie',
-  'Mixed Breed / Other',
+  
+  // Small breeds
+  'Chihuahua',
+  'Pomeranian',
+  'Yorkshire Terrier',
+  'Maltese',
+  'Pug',
+  'Shih Tzu',
+  'Cavalier King Charles Spaniel',
+  'Boston Terrier',
+  'Cocker Spaniel',
+  'Jack Russell Terrier',
+  'West Highland White Terrier',
+  'Corgi (Pembroke Welsh)',
+  
+  // Medium breeds
+  'Australian Shepherd',
+  'Brittany',
+  'English Springer Spaniel',
+  'American Staffordshire Terrier',
+  'Whippet',
+  'Australian Cattle Dog',
+  'Basenji',
+  'Basset Hound',
+  'Bichon Frise',
+  'Dalmatian',
+  'English Bulldog',
+  'Portuguese Water Dog',
+  'Samoyed',
+  'Shiba Inu',
+  
+  // Large breeds
+  'Rottweiler',
+  'Doberman Pinscher',
+  'Weimaraner',
+  'Vizsla',
+  'Rhodesian Ridgeback',
+  'Akita',
+  'Alaskan Malamute',
+  'Bloodhound',
+  'Greyhound',
+  'Old English Sheepdog',
+  'Pointer',
+  
+  // Giant breeds
+  'Great Dane',
+  'Saint Bernard',
+  'Mastiff',
+  'Newfoundland',
+  'Irish Wolfhound',
+  'Great Pyrenees',
+  'Bernese Mountain Dog',
+  'Leonberger',
+  
+  // Designer/Mixed breeds
+  'Labradoodle',
+  'Goldendoodle',
+  'Cockapoo',
+  'Schnoodle',
+  'Puggle',
+  'Bernedoodle',
+  'Aussiedoodle',
+  'Sheepadoodle',
+  
+  // Catch-all
+  'Mixed Breed',
+  'Other',
 ];
 
 export default function DogProfileScreen() {

@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { Calendar, Heart, Scale, Info } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
 
 interface Dog {
   id: string;
@@ -12,6 +13,7 @@ interface Dog {
   bio?: string;
   weight?: number;
   gender?: 'male' | 'female' | 'unknown';
+  gender?: 'male' | 'female';
   created_at: string;
 }
 
@@ -57,7 +59,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
       case 'female':
         return '♀';
       default:
-        return '';
+        return null;
     }
   };
 
@@ -82,19 +84,13 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
     >
       {/* Dog Photo */}
       <View style={styles.photoContainer}>
-        {dog.photo_url ? (
-          <Image 
-            source={{ uri: dog.photo_url }} 
-            style={styles.dogPhoto}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.photoPlaceholder}>
-            <Heart size={32} color={COLORS.primary} />
-          </View>
-        )}
+        <Image 
+          source={getDogAvatarSource(dog.id, dog.photo_url, dog.breed)}
+          style={styles.dogPhoto}
+          resizeMode="cover"
+        />
         
-        {dog.gender && dog.gender !== 'unknown' && (
+        {dog.gender && getGenderIcon(dog.gender) && (
           <View style={[styles.genderBadge, { backgroundColor: getGenderColor(dog.gender) }]}>
             <Text style={styles.genderText}>{getGenderIcon(dog.gender)}</Text>
           </View>
