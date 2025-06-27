@@ -73,6 +73,7 @@ const DOG_BREEDS = [
   'Greyhound',
   'Old English Sheepdog',
   'Pointer',
+  'Swiss Shepherd',
   
   // Giant breeds
   'Great Dane',
