@@ -63,10 +63,6 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
 
         let territorySize = 0;
         let totalDistance = 0;
-            
-        console.log('Walk sessions for user:', profile.id, Object.keys(sessionGroups).length);
-            
-        // Calculate total distance and territory across all sessions
 
         if (walkPoints && walkPoints.length > 0) {
           // Simple calculation: assume each walk point represents ~0.001 km²
@@ -75,15 +71,12 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           // Calculate total distance (simplified)
           if (walkPoints.length > 1) {
             for (let i = 1; i < walkPoints.length; i++) {
-                // Each session with 3+ points contributes to territory
-                if (sessionPoints.length >= 3) {
-                  totalDistance += calculateDistance(
-                    walkPoints[i-1].latitude,
-                    walkPoints[i-1].longitude,
-                    walkPoints[i].latitude,
-                    walkPoints[i].longitude
-                  );
-                }
+              totalDistance += calculateDistance(
+                walkPoints[i-1].latitude,
+                walkPoints[i-1].longitude,
+                walkPoints[i].latitude,
+                walkPoints[i].longitude
+              );
             }
           }
         }
