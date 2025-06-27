@@ -320,8 +320,11 @@ export function useFriends() {
       console.log('Friend request accepted');
       // Refresh data
       await loadData();
+      
+      return true; // Return success indicator
     } catch (error) {
       console.error('Error accepting friend request:', error);
+      return false;
     }
   };
 
@@ -346,8 +349,11 @@ export function useFriends() {
       console.log('Friend request declined');
       // Refresh friend requests
       await fetchFriendRequests();
+      
+      return true; // Return success indicator
     } catch (error) {
       console.error('Error declining friend request:', error);
+      return false;
     }
   };
 

@@ -1,13 +1,18 @@
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { Bell } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function NotificationsButton() {
   const { unreadCount } = useNotifications();
 
+  const handlePress = () => {
+    router.push('/notifications');
+  };
+
   return (
-    <TouchableOpacity style={styles.container}>
+    <TouchableOpacity style={styles.container} onPress={handlePress}>
       <Bell size={24} color={COLORS.neutralDark} />
       {unreadCount > 0 && (
         <View style={styles.badge}>
