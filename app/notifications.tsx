@@ -10,17 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { 
-  ChevronLeft, 
-  UserPlus, 
-  UserCheck, 
-  Award, 
-  MapPin, 
-  Crown,
-  X,
-  Check,
-  MoreHorizontal
-} from 'lucide-react-native';
+import { ChevronLeft, UserPlus, UserCheck, Award, MapPin, Crown, X, Check, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useNotifications, Notification } from '@/contexts/NotificationContext';
 import { useFriends } from '@/hooks/useFriends';
