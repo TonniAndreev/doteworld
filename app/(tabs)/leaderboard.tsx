@@ -43,10 +43,13 @@ export default function LeaderboardScreen() {
     }
 
     try {
+      console.log('Loading leaderboard data for category:', activeTab);
       const data = await fetchLeaderboard(activeTab);
+      console.log('Received leaderboard data:', data.length, 'users');
       setLeaderboardData(data);
     } catch (error) {
       console.error('Error fetching leaderboard data:', error);
+      setLeaderboardData([]);
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

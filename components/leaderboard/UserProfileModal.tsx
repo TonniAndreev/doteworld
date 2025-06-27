@@ -112,71 +112,11 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         .select('*', { count: 'exact', head: true })
         .eq('profile_id', user.id);
 
-      // Calculate territory size and distance from walk points
-      let territorySize = 0;
-      let totalDistance = 0;
-
-      if (dogData && dogData.length > 0) {
-        const dogIds = dogData.map(pd => pd.dogs?.id).filter(Boolean);
-        
-        if (dogIds.length > 0) {
-          console.log('Fetching walk points for dogs:', dogIds);
-          
-          // Get walk points for all user's dogs
-          const { data: walkPoints, error: walkError } = await supabase
-            .from('walk_points')
-            .select('latitude, longitude, walk_session_id, timestamp')
-            .in('dog_id', dogIds)
-            .order('timestamp', { ascending: true });
-
-          if (walkPoints && walkPoints.length > 0) {
-            console.log('Walk points found:', walkPoints.length);
-            
-            // Group by walk session to calculate distances properly
-            const sessionGroups = walkPoints.reduce((groups, point) => {
-              if (!groups[point.walk_session_id]) {
-                groups[point.walk_session_id] = [];
-              }
-              groups[point.walk_session_id].push(point);
-              return groups;
-            }, {} as Record<string, any[]>);
-
-            console.log('Walk sessions found:', Object.keys(sessionGroups).length);
-
-            // Calculate total distance across all sessions
-            Object.values(sessionGroups).forEach(sessionPoints => {
-              if (sessionPoints.length > 1) {
-                for (let i = 1; i < sessionPoints.length; i++) {
-                  const prev = sessionPoints[i - 1];
-                  const curr = sessionPoints[i];
-                  const distance = calculateDistance(
-                    prev.latitude,
-                    prev.longitude,
-                    curr.latitude,
-                    curr.longitude
-                  );
-                  totalDistance += distance;
-                }
-                
-                // Calculate territory for this session
-                if (sessionPoints.length >= 3) {
-                  // Simple area calculation: each session with 3+ points contributes ~0.01 km²
-                  territorySize += 0.01;
-                }
-              }
-            });
-          } else {
-            console.log('No walk points found for user:', user.id);
-          }
-        }
-      }
-
-      console.log('Calculated stats for user:', user.id, { territorySize, totalDistance, achievementCount });
 
       setUserStats({
-        territorySize,
+        territorySize: user.territorySize || 0,
         achievementCount: achievementCount || 0,
-        totalDistance,
+        totalDistance: user.totalDistance || 0,
       });
 
     } catch (error) {
@@ -312,27 +252,6 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     }
   };
 
-  // Helper function to calculate distance between two points
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Earth's radius in kilometers
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-    
-    return distance;
-  };
-
-  const toRad = (degrees: number): number => {
-    return degrees * (Math.PI / 180);
-  };
-
   if (!user) {
     console.log('No user provided to modal');
     return null;
@@ -355,7 +274,6 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
-      statusBarTranslucent={false}
     >
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
