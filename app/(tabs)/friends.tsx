@@ -22,6 +22,7 @@ import {
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useFriends } from '@/hooks/useFriends';
+import NotificationsButton from '@/components/common/NotificationsButton';
 import UserCard from '@/components/friends/UserCard';
 import FriendRequestItem from '@/components/friends/FriendRequestItem';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -111,6 +112,7 @@ export default function FriendsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Friends</Text>
+        <NotificationsButton />
       </View>
 
       <View style={styles.searchContainer}>
@@ -262,6 +264,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },

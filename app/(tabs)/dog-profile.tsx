@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, Info, Users } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import DogProfileCard from '@/components/profile/DogProfileCard';
@@ -189,12 +190,15 @@ export default function DogProfileScreen() {
         
         <Text style={styles.title}>Dog Profiles</Text>
         
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={handleAddDog}
-        >
-          <Plus size={24} color={COLORS.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <NotificationsButton />
+          <TouchableOpacity 
+            style={styles.addButton}
+            onPress={handleAddDog}
+          >
+            <Plus size={24} color={COLORS.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
@@ -436,6 +440,11 @@ const styles = StyleSheet.create({
   },
   addButton: {
     padding: 8,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   content: {
     flex: 1,

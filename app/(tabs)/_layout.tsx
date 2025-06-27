@@ -90,6 +90,12 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="dog-profile"
+        options={{
+          href: null, // Hide from tab bar
+        }}
+      />
     </Tabs>
   );
 }

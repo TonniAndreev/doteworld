@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, X, Share2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAchievements } from '@/hooks/useAchievements';
 
 type AchievementCategory = 'available' | 'completed';
@@ -82,6 +83,7 @@ export default function AchievementsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Achievements</Text>
+        <NotificationsButton />
       </View>
 
       <View style={styles.searchContainer}>
@@ -194,6 +196,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },

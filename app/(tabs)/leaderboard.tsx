@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Crown, Map, Route, Award, Coins } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import NotificationsButton from '@/components/common/NotificationsButton';
 import LeaderboardItem from '@/components/leaderboard/LeaderboardItem';
 import UserAvatar from '@/components/common/UserAvatar';
 import UserProfileModal from '@/components/leaderboard/UserProfileModal';
@@ -269,6 +270,7 @@ export default function LeaderboardScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Leaderboard</Text>
+        <NotificationsButton />
       </View>
 
       <View style={styles.searchContainer}>
@@ -371,6 +373,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },

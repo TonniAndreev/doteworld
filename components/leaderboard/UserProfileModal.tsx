@@ -32,26 +32,25 @@ interface UserProfileModalProps {
   } | null;
 }
 
-// Mock territory data - in a real app, this would be fetched from your backend
+// Generate mock territory data based on user ID for consistent display
 const generateMockTerritory = (userId: string) => {
-  // Generate a consistent territory based on user ID
   const hash = userId.split('').reduce((a, b) => {
     a = ((a << 5) - a) + b.charCodeAt(0);
     return a & a;
   }, 0);
   
-  // Base coordinates (you can adjust these for your area)
+  // Base coordinates around San Francisco area
   const baseLat = 37.7749 + (Math.abs(hash) % 1000) / 10000;
   const baseLng = -122.4194 + (Math.abs(hash * 2) % 1000) / 10000;
   
   // Generate a polygon around the base coordinates
-  const radius = 0.002; // Adjust size as needed
+  const radius = 0.002;
   const points = [];
-  const numPoints = 6 + (Math.abs(hash) % 4); // 6-9 points
+  const numPoints = 6 + (Math.abs(hash) % 4);
   
   for (let i = 0; i < numPoints; i++) {
     const angle = (i / numPoints) * 2 * Math.PI;
-    const variance = 0.3 + (Math.abs(hash * (i + 1)) % 100) / 200; // 0.3-0.8
+    const variance = 0.3 + (Math.abs(hash * (i + 1)) % 100) / 200;
     const lat = baseLat + Math.cos(angle) * radius * variance;
     const lng = baseLng + Math.sin(angle) * radius * variance;
     points.push({ latitude: lat, longitude: lng });
@@ -66,41 +65,47 @@ const generateMockTerritory = (userId: string) => {
 export default function UserProfileModal({ visible, onClose, user }: UserProfileModalProps) {
   const [territory, setTerritory] = useState<any>(null);
   const [isLoadingTerritory, setIsLoadingTerritory] = useState(false);
-  const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending'>('none');
+  const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending' | 'sent'>('none');
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [userDogs, setUserDogs] = useState<any[]>([]);
-  const [isLoadingDogs, setIsLoadingDogs] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [userStats, setUserStats] = useState({
+    territorySize: 0,
+    achievementCount: 0,
+    totalDistance: 0,
+  });
   
   const { friends, sendFriendRequest } = useFriends();
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
     if (visible && user) {
-      // Check friendship status
-      const isFriend = friends.some(friend => friend.id === user.id);
-      setFriendshipStatus(isFriend ? 'friend' : 'none');
-      
-      // Load user's dogs
-      loadUserDogs();
-      
-      // Load territory data
-      setIsLoadingTerritory(true);
-      // Simulate API call
-      setTimeout(() => {
-        const mockTerritory = generateMockTerritory(user.id);
-        setTerritory(mockTerritory);
-        setIsLoadingTerritory(false);
-      }, 500);
+      loadUserData();
+      loadTerritory();
+      checkFriendshipStatus();
     }
   }, [visible, user, friends]);
 
-  const loadUserDogs = async () => {
+  const loadUserData = async () => {
     if (!user) return;
     
-    setIsLoadingDogs(true);
+    setIsLoadingProfile(true);
     try {
-      console.log('Loading dogs for user:', user.id);
-      
-      const { data: dogData, error } = await supabase
+      // Get user profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+      } else {
+        setUserProfile(profile);
+      }
+
+      // Get user's dogs
+      const { data: dogData, error: dogError } = await supabase
         .from('profile_dogs')
         .select(`
           dogs (
@@ -112,35 +117,127 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         `)
         .eq('profile_id', user.id);
 
-      if (error) {
-        console.error('Error fetching user dogs:', error);
+      if (dogError) {
+        console.error('Error fetching user dogs:', dogError);
         setUserDogs([]);
       } else {
-        console.log('Raw dog data:', dogData);
         const dogs = dogData?.map(pd => pd.dogs).filter(Boolean) || [];
-        console.log('Processed dogs:', dogs);
         setUserDogs(dogs);
       }
+
+      // Get achievement count
+      const { count: achievementCount } = await supabase
+        .from('profile_achievements')
+        .select('*', { count: 'exact', head: true })
+        .eq('profile_id', user.id);
+
+      // Calculate territory size from walk points (simplified calculation)
+      let territorySize = 0;
+      let totalDistance = 0;
+
+      if (dogs.length > 0) {
+        const { data: walkPoints, error: walkError } = await supabase
+          .from('walk_points')
+          .select('latitude, longitude')
+          .eq('dog_id', dogs[0].id);
+
+        if (walkPoints && walkPoints.length > 0) {
+          // Simple calculation: assume each walk point represents ~0.001 km²
+          territorySize = walkPoints.length * 0.001;
+          
+          // Calculate total distance (simplified)
+          if (walkPoints.length > 1) {
+            for (let i = 1; i < walkPoints.length; i++) {
+              const prev = walkPoints[i - 1];
+              const curr = walkPoints[i];
+              const distance = calculateDistance(
+                prev.latitude,
+                prev.longitude,
+                curr.latitude,
+                curr.longitude
+              );
+              totalDistance += distance;
+            }
+          }
+        }
+      }
+
+      setUserStats({
+        territorySize,
+        achievementCount: achievementCount || 0,
+        totalDistance,
+      });
+
     } catch (error) {
-      console.error('Error loading user dogs:', error);
-      setUserDogs([]);
+      console.error('Error loading user data:', error);
     } finally {
-      setIsLoadingDogs(false);
+      setIsLoadingProfile(false);
+    }
+  };
+
+  const loadTerritory = () => {
+    if (!user) return;
+    
+    setIsLoadingTerritory(true);
+    // Simulate loading time for territory
+    setTimeout(() => {
+      const mockTerritory = generateMockTerritory(user.id);
+      setTerritory(mockTerritory);
+      setIsLoadingTerritory(false);
+    }, 500);
+  };
+
+  const checkFriendshipStatus = async () => {
+    if (!user || !currentUser) return;
+
+    // Check if already friends
+    const isFriend = friends.some(friend => friend.id === user.id);
+    if (isFriend) {
+      setFriendshipStatus('friend');
+      return;
+    }
+
+    // Check if there's a pending request
+    try {
+      const { data: existingRequest, error } = await supabase
+        .from('friendships')
+        .select('status, requester_id, receiver_id')
+        .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${user.id}),and(requester_id.eq.${user.id},receiver_id.eq.${currentUser.id})`)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking friendship status:', error);
+        setFriendshipStatus('none');
+        return;
+      }
+
+      if (existingRequest) {
+        if (existingRequest.status === 'pending') {
+          // Check if current user sent the request
+          if (existingRequest.requester_id === currentUser.id) {
+            setFriendshipStatus('sent');
+          } else {
+            setFriendshipStatus('pending');
+          }
+        } else {
+          setFriendshipStatus('none');
+        }
+      } else {
+        setFriendshipStatus('none');
+      }
+    } catch (error) {
+      console.error('Error checking friendship status:', error);
+      setFriendshipStatus('none');
     }
   };
 
   const handleFriendAction = async () => {
-    if (!user) return;
+    if (!user || !currentUser) return;
     
-    if (friendshipStatus === 'friend') {
-      // Unfriend action
-      // You can implement unfriend functionality here if needed
-      console.log('Unfriend functionality not implemented yet');
-    } else if (friendshipStatus === 'none') {
+    if (friendshipStatus === 'none') {
       // Send friend request
-      setFriendshipStatus('pending');
+      setFriendshipStatus('sent');
       await sendFriendRequest(user.id);
-      console.log('Friend request sent to:', user.id);
     }
   };
 
@@ -148,29 +245,64 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     switch (friendshipStatus) {
       case 'friend':
         return {
-          icon: <UserX size={20} color={COLORS.white} />,
-          text: 'Unfriend',
-          style: styles.unfriendButton,
+          icon: <UserCheck size={20} color={COLORS.success} />,
+          text: 'Friends',
+          style: [styles.actionButton, styles.friendButton],
+          disabled: true,
         };
       case 'pending':
         return {
           icon: <UserCheck size={20} color={COLORS.neutralDark} />,
+          text: 'Request Received',
+          style: [styles.actionButton, styles.pendingButton],
+          disabled: true,
+        };
+      case 'sent':
+        return {
+          icon: <UserCheck size={20} color={COLORS.neutralDark} />,
           text: 'Request Sent',
-          style: styles.pendingButton,
+          style: [styles.actionButton, styles.pendingButton],
+          disabled: true,
         };
       default:
         return {
           icon: <UserPlus size={20} color={COLORS.white} />,
           text: 'Add Friend',
-          style: styles.addFriendButton,
+          style: [styles.actionButton, styles.addFriendButton],
+          disabled: false,
         };
     }
+  };
+
+  // Helper function to calculate distance between two points
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    
+    return distance;
+  };
+
+  const toRad = (degrees: number): number => {
+    return degrees * (Math.PI / 180);
   };
 
   if (!user) return null;
 
   const friendButton = getFriendButtonContent();
   const isCurrentUserProfile = user.id === currentUser?.id;
+  const displayName = userProfile ? 
+    `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || user.name :
+    user.name;
+  const displayDogName = userDogs.length > 0 ? userDogs[0].name : user.dogName;
 
   return (
     <Modal
@@ -230,63 +362,66 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
 
           {/* User Info Section */}
           <View style={styles.userSection}>
-            <View style={styles.avatarContainer}>
-              <UserAvatar
-                userId={user.id}
-                photoURL={user.photoURL}
-                userName={user.name}
-                size={80}
-              />
-            </View>
-
-            <View style={styles.userInfo}>
-              <Text style={styles.userName}>{user.name}</Text>
-              {isLoadingDogs ? (
-                <Text style={styles.dogName}>Loading...</Text>
-              ) : userDogs.length > 0 ? (
-                <Text style={styles.dogName}>{userDogs[0].name}</Text>
-              ) : (
-                <Text style={styles.dogName}>No dog</Text>
-              )}
-            </View>
-
-            {/* Stats */}
-            <View style={styles.statsContainer}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user.territorySize.toFixed(1)} km²</Text>
-                <Text style={styles.statLabel}>Territory</Text>
+            {isLoadingProfile ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={COLORS.primary} />
+                <Text style={styles.loadingText}>Loading profile...</Text>
               </View>
-              
-              <View style={styles.statDivider} />
-              
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user.achievementCount}</Text>
-                <Text style={styles.statLabel}>Badges</Text>
-              </View>
-              
-              <View style={styles.statDivider} />
-              
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>{user.totalDistance.toFixed(1)} km</Text>
-                <Text style={styles.statLabel}>Distance</Text>
-              </View>
-            </View>
+            ) : (
+              <>
+                <View style={styles.avatarContainer}>
+                  <UserAvatar
+                    userId={user.id}
+                    photoURL={userProfile?.avatar_url || user.photoURL}
+                    userName={displayName}
+                    size={80}
+                  />
+                </View>
 
-            {/* Friend Action Button */}
-            {!isCurrentUserProfile && (
-              <TouchableOpacity 
-                style={[styles.actionButton, friendButton.style]}
-                onPress={handleFriendAction}
-                disabled={friendshipStatus === 'pending'}
-              >
-                {friendButton.icon}
-                <Text style={[
-                  styles.actionButtonText,
-                  friendshipStatus === 'pending' && styles.pendingButtonText
-                ]}>
-                  {friendButton.text}
-                </Text>
-              </TouchableOpacity>
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>{displayName}</Text>
+                  <Text style={styles.dogName}>{displayDogName}</Text>
+                </View>
+
+                {/* Stats */}
+                <View style={styles.statsContainer}>
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{userStats.territorySize.toFixed(1)} km²</Text>
+                    <Text style={styles.statLabel}>Territory</Text>
+                  </View>
+                  
+                  <View style={styles.statDivider} />
+                  
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{userStats.achievementCount}</Text>
+                    <Text style={styles.statLabel}>Badges</Text>
+                  </View>
+                  
+                  <View style={styles.statDivider} />
+                  
+                  <View style={styles.statItem}>
+                    <Text style={styles.statValue}>{userStats.totalDistance.toFixed(1)} km</Text>
+                    <Text style={styles.statLabel}>Distance</Text>
+                  </View>
+                </View>
+
+                {/* Friend Action Button */}
+                {!isCurrentUserProfile && (
+                  <TouchableOpacity 
+                    style={friendButton.style}
+                    onPress={handleFriendAction}
+                    disabled={friendButton.disabled}
+                  >
+                    {friendButton.icon}
+                    <Text style={[
+                      styles.actionButtonText,
+                      friendButton.disabled && styles.disabledButtonText
+                    ]}>
+                      {friendButton.text}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -362,6 +497,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: COLORS.neutralExtraLight,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   loadingText: {
     fontFamily: 'Inter-Regular',
@@ -446,8 +586,8 @@ const styles = StyleSheet.create({
   addFriendButton: {
     backgroundColor: COLORS.primary,
   },
-  unfriendButton: {
-    backgroundColor: COLORS.error,
+  friendButton: {
+    backgroundColor: COLORS.success,
   },
   pendingButton: {
     backgroundColor: COLORS.neutralLight,
@@ -460,7 +600,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginLeft: 8,
   },
-  pendingButtonText: {
+  disabledButtonText: {
     color: COLORS.neutralDark,
   },
 });
