@@ -49,6 +49,13 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
       console.log('Modal opened for user:', user.name, user.id);
       loadUserData();
       checkFriendshipStatus();
+    } else {
+      // Reset state when modal closes
+      setUserProfile(null);
+      setUserDogs([]);
+      setFriendshipStatus('none');
+      setIsLoadingProfile(false);
+      setIsProcessingFriend(false);
     }
   }, [visible, user, friends]);
 
@@ -284,10 +291,12 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
                     )}
                   </View>
 
-                  {/* Stats - Use the data passed from leaderboard */}
+                  {/* Stats - Use the REAL data passed from leaderboard */}
                   <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{user.territorySize.toFixed(1)} km²</Text>
+                      <Text style={styles.statValue}>
+                        {user.territorySize > 0 ? `${(user.territorySize * 1000000).toFixed(0)} m²` : '0 m²'}
+                      </Text>
                       <Text style={styles.statLabel}>Territory</Text>
                     </View>
                     
@@ -301,7 +310,9 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
                     <View style={styles.statDivider} />
                     
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{user.totalDistance.toFixed(1)} km</Text>
+                      <Text style={styles.statValue}>
+                        {user.totalDistance > 0 ? `${(user.totalDistance * 1000).toFixed(0)} m` : '0 m'}
+                      </Text>
                       <Text style={styles.statLabel}>Distance</Text>
                     </View>
                   </View>

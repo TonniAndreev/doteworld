@@ -350,7 +350,7 @@ export default function LeaderboardScreen() {
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
             ListEmptyComponent={
-              leaderboardData.length === 0 ? (
+              !isLoading && leaderboardData.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>
                     {searchQuery.trim() !== '' ? 'No results found' : 'No leaderboard data'}

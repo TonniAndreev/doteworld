@@ -34,8 +34,8 @@ function toRad(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
-// Calculate territory size from walk points using convex hull approximation
-function calculateTerritoryFromWalkPoints(walkPoints: any[]): number {
+// Calculate REAL territory size from walk points using proper polygon area calculation
+function calculateRealTerritoryFromWalkPoints(walkPoints: any[]): number {
   if (walkPoints.length < 3) return 0;
 
   // Group points by walk session
@@ -49,31 +49,87 @@ function calculateTerritoryFromWalkPoints(walkPoints: any[]): number {
 
   let totalTerritory = 0;
 
-  // Calculate territory for each session
+  // Calculate territory for each session using REAL polygon area calculation
   Object.values(sessionGroups).forEach(sessionPoints => {
     if (sessionPoints.length >= 3) {
-      // Simple polygon area calculation using shoelace formula
+      // Sort points by timestamp to get proper order
+      sessionPoints.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      
+      // Use shoelace formula for polygon area calculation
       let area = 0;
       const n = sessionPoints.length;
       
       for (let i = 0; i < n; i++) {
         const j = (i + 1) % n;
-        area += sessionPoints[i].latitude * sessionPoints[j].longitude;
-        area -= sessionPoints[j].latitude * sessionPoints[i].longitude;
+        const xi = sessionPoints[i].longitude;
+        const yi = sessionPoints[i].latitude;
+        const xj = sessionPoints[j].longitude;
+        const yj = sessionPoints[j].latitude;
+        
+        area += (xi * yj - xj * yi);
       }
       
       area = Math.abs(area) / 2;
       
-      // Convert from degrees to km² (rough approximation)
-      // 1 degree ≈ 111 km at equator
-      const areaInKm2 = area * 111 * 111;
+      // Convert from degrees² to km² using proper conversion
+      // At equator: 1 degree latitude ≈ 111.32 km, 1 degree longitude ≈ 111.32 km * cos(latitude)
+      // For simplicity, we'll use average latitude for the conversion
+      const avgLat = sessionPoints.reduce((sum, p) => sum + p.latitude, 0) / sessionPoints.length;
+      const latConversion = 111.32; // km per degree latitude
+      const lonConversion = 111.32 * Math.cos(toRad(avgLat)); // km per degree longitude
       
-      // Cap individual session territory to reasonable size (max 1 km²)
-      totalTerritory += Math.min(areaInKm2, 1.0);
+      const areaInKm2 = area * latConversion * lonConversion;
+      
+      // Only add reasonable territory sizes (filter out GPS noise)
+      if (areaInKm2 > 0.0001 && areaInKm2 < 10) { // Between 100m² and 10km²
+        totalTerritory += areaInKm2;
+      }
     }
   });
 
   return totalTerritory;
+}
+
+// Calculate REAL total distance from walk points
+function calculateRealDistanceFromWalkPoints(walkPoints: any[]): number {
+  if (walkPoints.length < 2) return 0;
+
+  // Group by walk session
+  const sessionGroups = walkPoints.reduce((groups, point) => {
+    if (!groups[point.walk_session_id]) {
+      groups[point.walk_session_id] = [];
+    }
+    groups[point.walk_session_id].push(point);
+    return groups;
+  }, {} as Record<string, any[]>);
+
+  let totalDistance = 0;
+
+  // Calculate distance for each session
+  Object.values(sessionGroups).forEach(sessionPoints => {
+    if (sessionPoints.length > 1) {
+      // Sort by timestamp to get proper order
+      sessionPoints.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      
+      for (let i = 1; i < sessionPoints.length; i++) {
+        const prev = sessionPoints[i - 1];
+        const curr = sessionPoints[i];
+        const distance = calculateDistance(
+          prev.latitude,
+          prev.longitude,
+          curr.latitude,
+          curr.longitude
+        );
+        
+        // Only add reasonable distances (filter out GPS jumps)
+        if (distance > 0 && distance < 1) { // Max 1km between consecutive points
+          totalDistance += distance;
+        }
+      }
+    }
+  });
+
+  return totalDistance;
 }
 
 export async function fetchLeaderboard(category: 'territory' | 'distance' | 'achievements' | 'paws'): Promise<LeaderboardUser[]> {
@@ -153,34 +209,13 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           } else if (walkPoints && walkPoints.length > 0) {
             console.log('Walk points found for user:', profile.id, walkPoints.length);
             
-            // Calculate REAL territory size
-            territorySize = calculateTerritoryFromWalkPoints(walkPoints);
+            // Calculate REAL territory size using proper polygon calculations
+            territorySize = calculateRealTerritoryFromWalkPoints(walkPoints);
             
-            // Group by walk session to calculate distances properly
-            const sessionGroups = walkPoints.reduce((groups, point) => {
-              if (!groups[point.walk_session_id]) {
-                groups[point.walk_session_id] = [];
-              }
-              groups[point.walk_session_id].push(point);
-              return groups;
-            }, {} as Record<string, any[]>);
-
-            // Calculate REAL total distance across all sessions
-            Object.values(sessionGroups).forEach(sessionPoints => {
-              if (sessionPoints.length > 1) {
-                for (let i = 1; i < sessionPoints.length; i++) {
-                  const prev = sessionPoints[i - 1];
-                  const curr = sessionPoints[i];
-                  const distance = calculateDistance(
-                    prev.latitude,
-                    prev.longitude,
-                    curr.latitude,
-                    curr.longitude
-                  );
-                  totalDistance += distance;
-                }
-              }
-            });
+            // Calculate REAL total distance
+            totalDistance = calculateRealDistanceFromWalkPoints(walkPoints);
+            
+            console.log('REAL calculated stats:', { territorySize, totalDistance });
           } else {
             console.log('No walk points found for user:', profile.id);
           }
@@ -188,28 +223,12 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           console.log('No dog found for profile:', profile.id);
         }
 
-        // Only generate mock data if absolutely no real data exists AND for demo purposes
-        // In production, users with no data would simply have 0 values
-        if (territorySize === 0 && totalDistance === 0) {
-          // Generate small amounts of mock data for demo purposes only
-          const hash = profile.id.split('').reduce((a, b) => {
-            a = ((a << 5) - a) + b.charCodeAt(0);
-            return a & a;
-          }, 0);
-          
-          // Much smaller mock values to encourage real usage
-          territorySize = Math.abs(hash % 10) / 100; // 0-0.1 km² (very small)
-          totalDistance = Math.abs(hash % 20) / 10; // 0-2 km (very small)
-          
-          console.log('Generated minimal mock data for demo:', { territorySize, totalDistance });
-        }
+        console.log('Final REAL stats for profile:', profile.id, { territorySize, totalDistance, achievementCount });
 
-        console.log('Final stats for profile:', profile.id, { territorySize, totalDistance, achievementCount });
-
-        // Calculate paws balance based on real activity
+        // Calculate paws balance based on REAL activity
         const pawsBalance = Math.floor(
           (achievementCount || 0) * 50 + // 50 paws per achievement
-          territorySize * 1000 + // 1000 paws per km²
+          territorySize * 10000 + // 10,000 paws per km² (higher reward for territory)
           totalDistance * 100 // 100 paws per km walked
         );
 
