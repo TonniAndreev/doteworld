@@ -365,7 +365,6 @@ export function useFriends() {
         .from('friendships')
         .delete()
         .or(`and(requester_id.eq.${user.id},receiver_id.eq.${friendId}),and(requester_id.eq.${friendId},receiver_id.eq.${user.id})`)
-        .eq('status', 'accepted');
 
       if (error) {
         console.error('Error removing friend:', error);
@@ -375,6 +374,9 @@ export function useFriends() {
       console.log('Friend removed successfully');
       // Refresh friends list
       await fetchFriends();
+      
+      // Also refresh friend requests in case there were any pending
+      await fetchFriendRequests();
       return true;
     } catch (error) {
       console.error('Error removing friend:', error);

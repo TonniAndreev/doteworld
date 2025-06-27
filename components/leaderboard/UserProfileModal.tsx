@@ -6,11 +6,14 @@ import {
   Modal,
   TouchableOpacity,
   ActivityIndicator,
+  ScrollView,
+  Alert,
 } from 'react-native';
-import { X, UserPlus, UserCheck, UserX } from 'lucide-react-native';
+import { X, UserPlus, UserCheck, UserX, ChevronRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
+import DogProfileCard from '@/components/profile/DogProfileCard';
 import { useFriends } from '@/hooks/useFriends';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -33,6 +36,7 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
   const [userProfile, setUserProfile] = useState<any>(null);
   const [userDogs, setUserDogs] = useState<any[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isProcessingFriend, setIsProcessingFriend] = useState(false);
   const [userStats, setUserStats] = useState({
     territorySize: 0,
     achievementCount: 0,
@@ -206,14 +210,49 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
   const handleFriendAction = async () => {
     if (!user || !currentUser) return;
     
-    if (friendshipStatus === 'none') {
-      // Send friend request
-      setFriendshipStatus('sent');
-      await sendFriendRequest(user.id);
-    } else if (friendshipStatus === 'friend') {
-      // Unfriend
-      await removeFriend(user.id);
-      setFriendshipStatus('none');
+    setIsProcessingFriend(true);
+    
+    try {
+      let success = false;
+      
+      if (friendshipStatus === 'none') {
+        // Send friend request
+        await sendFriendRequest(user.id);
+        setFriendshipStatus('sent');
+        success = true;
+      } else if (friendshipStatus === 'friend') {
+        // Unfriend with confirmation
+        Alert.alert(
+          'Unfriend User',
+          `Are you sure you want to remove ${displayName} from your friends?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Unfriend',
+              style: 'destructive',
+              onPress: async () => {
+                const unfriendSuccess = await removeFriend(user.id);
+                if (unfriendSuccess) {
+                  setFriendshipStatus('none');
+                  Alert.alert('Success', `${displayName} has been removed from your friends.`);
+                } else {
+                  Alert.alert('Error', 'Failed to remove friend. Please try again.');
+                }
+              },
+            },
+          ]
+        );
+        success = true; // Don't show error for cancellation
+      }
+      
+      if (!success && friendshipStatus !== 'friend') {
+        Alert.alert('Error', 'Failed to update friendship status. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error handling friend action:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setIsProcessingFriend(false);
     }
   };
 
@@ -295,78 +334,106 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
             <X size={24} color={COLORS.neutralDark} />
           </TouchableOpacity>
 
-          {/* User Info Section */}
-          <View style={styles.userSection}>
-            {isLoadingProfile ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={styles.loadingText}>Loading profile...</Text>
-              </View>
-            ) : (
-              <>
-                <View style={styles.avatarContainer}>
-                  <UserAvatar
-                    userId={user.id}
-                    photoURL={userProfile?.avatar_url || user.photoURL}
-                    userName={displayName}
-                    size={100}
-                  />
+          <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+            {/* User Info Section */}
+            <View style={styles.userSection}>
+              {isLoadingProfile ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color={COLORS.primary} />
+                  <Text style={styles.loadingText}>Loading profile...</Text>
                 </View>
+              ) : (
+                <>
+                  <View style={styles.avatarContainer}>
+                    <UserAvatar
+                      userId={user.id}
+                      photoURL={userProfile?.avatar_url || user.photoURL}
+                      userName={displayName}
+                      size={100}
+                    />
+                  </View>
 
-                <View style={styles.userInfo}>
-                  <Text style={styles.userName}>{displayName}</Text>
-                  {displayDogName !== 'No dog' && (
-                    <Text style={styles.dogName}>{displayDogName}</Text>
+                  <View style={styles.userInfo}>
+                    <Text style={styles.userName}>{displayName}</Text>
+                    {displayDogName !== 'No dog' && (
+                      <Text style={styles.dogName}>{displayDogName}</Text>
+                    )}
+                  </View>
+
+                  {/* Stats */}
+                  <View style={styles.statsContainer}>
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{userStats.territorySize.toFixed(1)} km²</Text>
+                      <Text style={styles.statLabel}>Territory</Text>
+                    </View>
+                    
+                    <View style={styles.statDivider} />
+                    
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{userStats.achievementCount}</Text>
+                      <Text style={styles.statLabel}>Badges</Text>
+                    </View>
+                    
+                    <View style={styles.statDivider} />
+                    
+                    <View style={styles.statItem}>
+                      <Text style={styles.statValue}>{userStats.totalDistance.toFixed(1)} km</Text>
+                      <Text style={styles.statLabel}>Distance</Text>
+                    </View>
+                  </View>
+
+                  {/* Friend Action Button */}
+                  {!isCurrentUserProfile && (
+                    <TouchableOpacity 
+                      style={friendButton.style}
+                      onPress={handleFriendAction}
+                      disabled={friendButton.disabled || isProcessingFriend}
+                    >
+                      {isProcessingFriend ? (
+                        <ActivityIndicator size="small" color={COLORS.white} />
+                      ) : (
+                        friendButton.icon
+                      )}
+                      <Text style={[
+                        styles.actionButtonText,
+                        friendButton.disabled && styles.disabledButtonText
+                      ]}>
+                        {isProcessingFriend ? 'Processing...' : friendButton.text}
+                      </Text>
+                    </TouchableOpacity>
                   )}
-                </View>
-
-                {/* Stats */}
-                <View style={styles.statsContainer}>
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{userStats.territorySize.toFixed(1)} km²</Text>
-                    <Text style={styles.statLabel}>Territory</Text>
-                  </View>
-                  
-                  <View style={styles.statDivider} />
-                  
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{userStats.achievementCount}</Text>
-                    <Text style={styles.statLabel}>Badges</Text>
-                  </View>
-                  
-                  <View style={styles.statDivider} />
-                  
-                  <View style={styles.statItem}>
-                    <Text style={styles.statValue}>{userStats.totalDistance.toFixed(1)} km</Text>
-                    <Text style={styles.statLabel}>Distance</Text>
-                  </View>
-                </View>
-
-                {/* Friend Action Button */}
-                {!isCurrentUserProfile && (
-                  <TouchableOpacity 
-                    style={friendButton.style}
-                    onPress={handleFriendAction}
-                    disabled={friendButton.disabled}
-                  >
-                    {friendButton.icon}
-                    <Text style={[
-                      styles.actionButtonText,
-                      friendButton.disabled && styles.disabledButtonText
-                    ]}>
-                      {friendButton.text}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
-          </View>
+                </>
+              )}
+            </View>
         </View>
       </View>
     </Modal>
   );
 }
 
+            {/* Dogs Section */}
+            {!isLoadingProfile && userDogs.length > 0 && (
+              <View style={styles.dogsSection}>
+                <View style={styles.dogsSectionHeader}>
+                  <Text style={styles.dogsSectionTitle}>
+                    {isCurrentUserProfile ? 'My Dogs' : `${displayName.split(' ')[0]}'s Dogs`}
+                  </Text>
+                  <Text style={styles.dogsCount}>
+                    {userDogs.length} dog{userDogs.length !== 1 ? 's' : ''}
+                  </Text>
+                </View>
+                
+                {userDogs.map((dog, index) => (
+                  <View key={dog.id} style={styles.dogCardWrapper}>
+                    <DogProfileCard 
+                      dog={dog} 
+                      showFullDetails={false}
+                    />
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
@@ -377,7 +444,8 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     width: '90%',
-    maxWidth: 400,
+    maxWidth: 450,
+    maxHeight: '85%',
     backgroundColor: COLORS.white,
     borderRadius: 20,
     overflow: 'hidden',
@@ -401,11 +469,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  scrollContainer: {
+    flex: 1,
+  },
   userSection: {
     backgroundColor: COLORS.white,
     padding: 32,
     alignItems: 'center',
-    minHeight: 400,
   },
   loadingContainer: {
     flex: 1,
@@ -499,5 +569,28 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: COLORS.neutralDark,
+  },
+  dogsSection: {
+    backgroundColor: COLORS.neutralExtraLight,
+    padding: 20,
+  },
+  dogsSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  dogsSectionTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.neutralDark,
+  },
+  dogsCount: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+  },
+  dogCardWrapper: {
+    marginBottom: 12,
   },
 });
