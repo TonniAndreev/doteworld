@@ -95,7 +95,7 @@ export default function LoginScreen() {
       {/* Overlapping Form Container with Blur and Gradient */}
       <View style={styles.formOverlay}>
         {/* Blur Effect */}
-        <BlurView intensity={20} style={StyleSheet.absoluteFillObject} />
+        <BlurView intensity={4} style={StyleSheet.absoluteFillObject} />
         
         {/* Gradient Overlay */}
         <LinearGradient
