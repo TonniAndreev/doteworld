@@ -8,7 +8,6 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   ActivityIndicator,
   Linking,
   Dimensions,
@@ -90,7 +89,6 @@ export default function LoginScreen() {
         source={require('@/assets/images/Map.jpg')}
         style={styles.backgroundImage}
         resizeMode="cover"
-        height="60%"
       />
       
       {/* Overlapping Form Container with Blur and Gradient */}
@@ -110,10 +108,7 @@ export default function LoginScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardAvoid}
           >
-            <ScrollView 
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-            >
+            <View style={styles.contentContainer}>
               {/* Logo Section */}
               <View style={styles.logoContainer}>
                 <Image
@@ -236,7 +231,7 @@ export default function LoginScreen() {
                   resizeMode="contain"
                 />
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </View>
@@ -255,12 +250,11 @@ const styles = StyleSheet.create({
     left: 0,
     width: screenWidth,
     height: screenWidth * (3/4), // Assuming a 4:3 aspect ratio for the map image
-    // This maintains the original aspect ratio while starting from the top
   },
   formOverlay: {
     flex: 1,
-    marginTop: screenHeight * 0.25, // Lifted by 5% (from 30% to 25%)
-    borderTopLeftRadius: 50, // 3.125rem = 50px
+    marginTop: screenHeight * 0.20, // Reduced from 25% to 20% to lift form higher
+    borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
     overflow: 'hidden',
   },
@@ -270,18 +264,19 @@ const styles = StyleSheet.create({
   keyboardAvoid: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
+  contentContainer: {
+    flex: 1,
     padding: 24,
-    paddingTop: 24, // Reduced from 32px to 24px
+    paddingTop: 12, // Reduced from 24px to 12px (50% reduction)
+    justifyContent: 'space-between', // Distribute content evenly to prevent scrolling
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 24, // Reduced from 32px to 24px
+    marginBottom: 12, // Reduced from 24px to 12px (50% reduction)
   },
   logoImage: {
-    width: 75, // 50% of original 150
-    height: 75, // 50% of original 150
+    width: 75,
+    height: 75,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -289,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorLight,
     padding: 12,
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   errorText: {
     fontFamily: 'Inter-Medium',
@@ -298,7 +293,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -307,6 +302,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#D1D5DB', // Thin gray stroke (darker than background)
   },
   inputIcon: {
     marginRight: 8,
@@ -334,7 +331,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   loginButtonText: {
     fontFamily: 'Inter-Bold',
@@ -344,7 +341,7 @@ const styles = StyleSheet.create({
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   orLine: {
     flex: 1,
@@ -360,7 +357,7 @@ const styles = StyleSheet.create({
   socialButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   socialButton: {
     flexDirection: 'row',
@@ -396,7 +393,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   noAccountText: {
     fontFamily: 'Inter-Regular',
@@ -411,10 +408,10 @@ const styles = StyleSheet.create({
   },
   boltNewContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 8, // Reduced padding to save space
   },
   boltNewImage: {
-    width: 200,
-    height: 60,
+    width: 160, // Slightly smaller to save space
+    height: 48,
   },
 });
