@@ -90,7 +90,7 @@ export default function LoginScreen() {
         source={require('@/assets/images/Map.jpg')}
         style={styles.backgroundImage}
         resizeMode="cover"
-        height="70%"
+        height="60%"
       />
       
       {/* Overlapping Form Container with Blur and Gradient */}
