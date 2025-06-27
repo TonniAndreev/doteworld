@@ -49,7 +49,7 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
               name,
               breed
             )
-          `)
+          `);
 
         const firstDog = dogData?.[0]?.dogs;
 
@@ -70,15 +70,17 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           if (walkPoints.length > 1) {
             for (let i = 1; i < walkPoints.length; i++) {
                 // Each session with 3+ points contributes to territory
-                if (sessionPoints.length >= 3) {
-            );
-            totalDistance += distance;
+                if (walkPoints.length >= 3) {
+                    const distance = calculateDistance(
+                        walkPoints[i-1].latitude,
+                        walkPoints[i-1].longitude,
+                        walkPoints[i].latitude,
+                        walkPoints[i].longitude
+                    );
+                    totalDistance += distance;
+                }
+            }
           }
-                curr.latitude,
-                curr.longitude
-              )
-                      }
-                  }
         }
 
         // Generate a consistent paws balance based on user activity
