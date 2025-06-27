@@ -9,11 +9,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, ChevronDown, CircleAlert as AlertCircle, Check, Search, X } from 'lucide-react-native';
+import { Camera, ChevronDown, CircleAlert as AlertCircle, Check, Search, X, Calendar } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -103,8 +104,10 @@ const DOG_BREEDS = [
 export default function DogProfileScreen() {
   const [dogName, setDogName] = useState('');
   const [dogBreed, setDogBreed] = useState('');
+  const [dogBirthday, setDogBirthday] = useState('');
   const [dogPhoto, setDogPhoto] = useState<string | null>(null);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -185,13 +188,125 @@ export default function DogProfileScreen() {
     setError('');
     
     try {
-      await updateDogProfile(dogName, dogBreed, dogPhoto);
+      await updateDogProfile(dogName, dogBreed, dogPhoto, dogBirthday);
       router.replace('/(tabs)');
     } catch (error: any) {
       setError(error.message || 'Failed to save dog profile. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const generateDateOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    const days = [];
+
+    // Generate years (current year back to 20 years ago)
+    for (let year = currentYear; year >= currentYear - 20; year--) {
+      years.push(year);
+    }
+
+    // Generate days 1-31
+    for (let day = 1; day <= 31; day++) {
+      days.push(day);
+    }
+
+    return { years, months, days };
+  };
+
+  const DatePickerModal = () => {
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [selectedMonth, setSelectedMonth] = useState(0);
+    const [selectedDay, setSelectedDay] = useState(1);
+    const { years, months, days } = generateDateOptions();
+
+    const handleDateConfirm = () => {
+      const date = new Date(selectedYear, selectedMonth, selectedDay);
+      const formattedDate = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      setDogBirthday(formattedDate);
+      setShowDatePicker(false);
+    };
+
+    return (
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showDatePicker}
+        onRequestClose={() => setShowDatePicker(false)}
+      >
+        <View style={styles.dateModalOverlay}>
+          <View style={styles.dateModalContainer}>
+            <View style={styles.dateModalHeader}>
+              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                <Text style={styles.dateModalCancel}>Cancel</Text>
+              </TouchableOpacity>
+              <Text style={styles.dateModalTitle}>Select Birthday</Text>
+              <TouchableOpacity onPress={handleDateConfirm}>
+                <Text style={styles.dateModalConfirm}>Done</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.datePickerContainer}>
+              <View style={styles.dateColumn}>
+                <Text style={styles.dateColumnTitle}>Month</Text>
+                <ScrollView style={styles.dateScrollView} showsVerticalScrollIndicator={false}>
+                  {months.map((month, index) => (
+                    <TouchableOpacity
+                      key={month}
+                      style={[styles.dateOption, selectedMonth === index && styles.selectedDateOption]}
+                      onPress={() => setSelectedMonth(index)}
+                    >
+                      <Text style={[styles.dateOptionText, selectedMonth === index && styles.selectedDateOptionText]}>
+                        {month}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              <View style={styles.dateColumn}>
+                <Text style={styles.dateColumnTitle}>Day</Text>
+                <ScrollView style={styles.dateScrollView} showsVerticalScrollIndicator={false}>
+                  {days.map((day) => (
+                    <TouchableOpacity
+                      key={day}
+                      style={[styles.dateOption, selectedDay === day && styles.selectedDateOption]}
+                      onPress={() => setSelectedDay(day)}
+                    >
+                      <Text style={[styles.dateOptionText, selectedDay === day && styles.selectedDateOptionText]}>
+                        {day}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+              
+              <View style={styles.dateColumn}>
+                <Text style={styles.dateColumnTitle}>Year</Text>
+                <ScrollView style={styles.dateScrollView} showsVerticalScrollIndicator={false}>
+                  {years.map((year) => (
+                    <TouchableOpacity
+                      key={year}
+                      style={[styles.dateOption, selectedYear === year && styles.selectedDateOption]}
+                      onPress={() => setSelectedYear(year)}
+                    >
+                      <Text style={[styles.dateOptionText, selectedYear === year && styles.selectedDateOptionText]}>
+                        {year}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    );
   };
 
   return (
@@ -262,6 +377,17 @@ export default function DogProfileScreen() {
                 {dogBreed || 'Select breed'}
               </Text>
               <ChevronDown size={20} color={COLORS.neutralDark} />
+            </TouchableOpacity>
+            
+            <Text style={styles.inputLabel}>Birthday (Optional)</Text>
+            <TouchableOpacity 
+              style={styles.breedSelector}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Calendar size={20} color={COLORS.neutralMedium} />
+              <Text style={dogBirthday ? styles.breedText : styles.breedPlaceholder}>
+                {dogBirthday ? new Date(dogBirthday).toLocaleDateString() : 'Select birthday'}
+              </Text>
             </TouchableOpacity>
             
             {showBreedDropdown && (
@@ -346,6 +472,8 @@ export default function DogProfileScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+      
+      <DatePickerModal />
     </SafeAreaView>
   );
 }
@@ -465,11 +593,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
+    flex: 1,
+    marginLeft: 8,
   },
   breedPlaceholder: {
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
+    flex: 1,
+    marginLeft: 8,
   },
   dropdownContainer: {
     backgroundColor: COLORS.white,
@@ -582,5 +714,77 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
+  },
+  dateModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  dateModalContainer: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '60%',
+  },
+  dateModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  dateModalCancel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+  },
+  dateModalTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.neutralDark,
+  },
+  dateModalConfirm: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.primary,
+  },
+  datePickerContainer: {
+    flexDirection: 'row',
+    height: 300,
+  },
+  dateColumn: {
+    flex: 1,
+    paddingHorizontal: 10,
+  },
+  dateColumnTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    textAlign: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  dateScrollView: {
+    flex: 1,
+  },
+  dateOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+  },
+  selectedDateOption: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 8,
+  },
+  dateOptionText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+  },
+  selectedDateOptionText: {
+    fontFamily: 'Inter-Bold',
+    color: COLORS.primary,
   },
 });

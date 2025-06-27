@@ -45,7 +45,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   loginWithGoogle: () => Promise<void>; 
   loginWithFacebook: () => Promise<void>;
-  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null) => Promise<void>;
+  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null, birthday?: string) => Promise<void>;
   refreshUserData: () => Promise<void>;
 }
 
@@ -337,20 +337,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto?: string | null) => {
+  const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto?: string | null, birthday?: string) => {
     if (!user) {
       throw new Error('No user logged in');
     }
 
     try {
       // Create or update dog
+      const dogData: any = {
+        name: dogName,
+        breed: dogBreed,
+        photo_url: dogPhoto,
+      };
+      
+      if (birthday) {
+        dogData.birthday = birthday;
+      }
+      
       const { data: dog, error: dogError } = await supabase
         .from('dogs')
-        .insert({
-          name: dogName,
-          breed: dogBreed,
-          photo_url: dogPhoto,
-        })
+        .insert(dogData)
         .select()
         .single();
 

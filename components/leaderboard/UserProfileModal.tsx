@@ -58,6 +58,8 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     
     setIsLoadingProfile(true);
     try {
+      console.log('Loading user data for:', user.id);
+      
       // Get user profile
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
@@ -69,6 +71,7 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         console.error('Error fetching user profile:', profileError);
       } else {
         setUserProfile(profile);
+        console.log('User profile loaded:', profile);
       }
 
       // Get user's dogs with more detailed query
@@ -79,7 +82,12 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
             id,
             name,
             breed,
-            photo_url
+            photo_url,
+            birthday,
+            bio,
+            weight,
+            gender,
+            created_at
           )
         `)
         .eq('profile_id', user.id);
@@ -108,6 +116,8 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         const dogIds = dogData.map(pd => pd.dogs?.id).filter(Boolean);
         
         if (dogIds.length > 0) {
+          console.log('Fetching walk points for dogs:', dogIds);
+          
           // Get walk points for all user's dogs
           const { data: walkPoints, error: walkError } = await supabase
             .from('walk_points')
@@ -127,6 +137,8 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
               return groups;
             }, {} as Record<string, any[]>);
 
+            console.log('Walk sessions found:', Object.keys(sessionGroups).length);
+
             // Calculate total distance across all sessions
             Object.values(sessionGroups).forEach(sessionPoints => {
               if (sessionPoints.length > 1) {
@@ -141,14 +153,21 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
                   );
                   totalDistance += distance;
                 }
+                
+                // Calculate territory for this session
+                if (sessionPoints.length >= 3) {
+                  // Simple area calculation: each session with 3+ points contributes ~0.01 km²
+                  territorySize += 0.01;
+                }
               }
             });
-
-            // Simple territory calculation: assume each walk point represents ~0.001 km²
-            territorySize = walkPoints.length * 0.001;
+          } else {
+            console.log('No walk points found for user:', user.id);
           }
         }
       }
+
+      console.log('Calculated stats for user:', user.id, { territorySize, totalDistance, achievementCount });
 
       setUserStats({
         territorySize,
