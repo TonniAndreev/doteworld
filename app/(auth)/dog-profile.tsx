@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, ChevronDown, CircleAlert as AlertCircle, Check } from 'lucide-react-native';
+import { Camera, ChevronDown, CircleAlert as AlertCircle, Check, Search, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -97,17 +97,23 @@ const DOG_BREEDS = [
   // Catch-all
   'Mixed Breed',
   'Other',
-];
+].sort(); // Sort alphabetically
 
 export default function DogProfileScreen() {
   const [dogName, setDogName] = useState('');
   const [dogBreed, setDogBreed] = useState('');
   const [dogPhoto, setDogPhoto] = useState<string | null>(null);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
+  const [breedSearchQuery, setBreedSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
   const { user, updateDogProfile } = useAuth();
+  
+  // Filter and sort breeds based on search query
+  const filteredBreeds = DOG_BREEDS.filter(breed =>
+    breed.toLowerCase().includes(breedSearchQuery.toLowerCase())
+  ).sort();
   
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -151,6 +157,16 @@ export default function DogProfileScreen() {
   const handleBreedSelect = (breed: string) => {
     setDogBreed(breed);
     setShowBreedDropdown(false);
+    setBreedSearchQuery('');
+  };
+
+  const clearBreedSearch = () => {
+    setBreedSearchQuery('');
+  };
+
+  const closeBreedDropdown = () => {
+    setShowBreedDropdown(false);
+    setBreedSearchQuery('');
   };
   
   const handleSubmit = async () => {
@@ -249,19 +265,61 @@ export default function DogProfileScreen() {
             
             {showBreedDropdown && (
               <View style={styles.dropdownContainer}>
+                {/* Search Header */}
+                <View style={styles.searchHeader}>
+                  <View style={styles.searchInputContainer}>
+                    <Search size={16} color={COLORS.neutralMedium} style={styles.searchIcon} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search breeds..."
+                      value={breedSearchQuery}
+                      onChangeText={setBreedSearchQuery}
+                      placeholderTextColor={COLORS.neutralMedium}
+                      autoFocus={true}
+                    />
+                    {breedSearchQuery.length > 0 && (
+                      <TouchableOpacity onPress={clearBreedSearch} style={styles.clearButton}>
+                        <X size={16} color={COLORS.neutralMedium} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  <TouchableOpacity onPress={closeBreedDropdown} style={styles.closeDropdownButton}>
+                    <X size={20} color={COLORS.neutralDark} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Results Count */}
+                <View style={styles.resultsHeader}>
+                  <Text style={styles.resultsCount}>
+                    {filteredBreeds.length} breed{filteredBreeds.length !== 1 ? 's' : ''} found
+                  </Text>
+                </View>
+
+                {/* Breeds List */}
                 <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
-                  {DOG_BREEDS.map((breed, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={styles.dropdownItem}
-                      onPress={() => handleBreedSelect(breed)}
-                    >
-                      <Text style={styles.dropdownItemText}>{breed}</Text>
-                      {breed === dogBreed && (
-                        <Check size={16} color={COLORS.primary} />
-                      )}
-                    </TouchableOpacity>
-                  ))}
+                  {filteredBreeds.length > 0 ? (
+                    filteredBreeds.map((breed, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={styles.dropdownItem}
+                        onPress={() => handleBreedSelect(breed)}
+                      >
+                        <Text style={styles.dropdownItemText}>{breed}</Text>
+                        {breed === dogBreed && (
+                          <Check size={16} color={COLORS.primary} />
+                        )}
+                      </TouchableOpacity>
+                    ))
+                  ) : (
+                    <View style={styles.noResultsContainer}>
+                      <Text style={styles.noResultsText}>
+                        No breeds found matching "{breedSearchQuery}"
+                      </Text>
+                      <Text style={styles.noResultsSubtext}>
+                        Try a different search term or select "Other"
+                      </Text>
+                    </View>
+                  )}
                 </ScrollView>
               </View>
             )}
@@ -355,7 +413,6 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
     marginTop: 8,
   },
-
   photoButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -424,6 +481,50 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+    maxHeight: 300,
+  },
+  searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralExtraLight,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  closeDropdownButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  resultsCount: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.neutralMedium,
   },
   dropdown: {
     maxHeight: 200,
@@ -441,6 +542,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
+    flex: 1,
+  },
+  noResultsContainer: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  noResultsSubtext: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
   },
   saveButton: {
     backgroundColor: COLORS.primary,
