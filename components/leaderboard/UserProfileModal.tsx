@@ -8,14 +8,17 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
-import { X, UserPlus, UserCheck, UserX, ChevronRight } from 'lucide-react-native';
+import { X, UserPlus, UserCheck, UserX } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
 import DogProfileCard from '@/components/profile/DogProfileCard';
 import { useFriends } from '@/hooks/useFriends';
 import { useAuth } from '@/contexts/AuthContext';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -48,6 +51,7 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
 
   useEffect(() => {
     if (visible && user) {
+      console.log('Modal opened for user:', user);
       loadUserData();
       checkFriendshipStatus();
     }
@@ -329,7 +333,10 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     return degrees * (Math.PI / 180);
   };
 
-  if (!user) return null;
+  if (!user) {
+    console.log('No user provided to modal');
+    return null;
+  }
 
   const friendButton = getFriendButtonContent();
   const isCurrentUserProfile = user.id === currentUser?.id;
@@ -340,12 +347,15 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
   // Use the actual dog name from database, fallback to user.dogName if no dogs found
   const displayDogName = userDogs.length > 0 ? userDogs[0].name : (user.dogName !== 'No dog' ? user.dogName : 'No dog');
 
+  console.log('Rendering modal for user:', displayName, 'visible:', visible);
+
   return (
     <Modal
       animationType="slide"
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
+      statusBarTranslucent={false}
     >
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>
@@ -463,9 +473,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    width: '90%',
-    maxWidth: 450,
-    maxHeight: '85%',
+    width: Math.min(screenWidth * 0.9, 450),
+    maxHeight: screenHeight * 0.85,
     backgroundColor: COLORS.white,
     borderRadius: 20,
     overflow: 'hidden',
@@ -496,6 +505,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     padding: 32,
     alignItems: 'center',
+    minHeight: 300,
   },
   loadingContainer: {
     flex: 1,
