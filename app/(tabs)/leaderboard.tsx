@@ -26,8 +26,8 @@ export default function LeaderboardScreen() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isProfileModalVisible, setProfileModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const [userModalVisible, setUserModalVisible] = useState(false);
   const { user } = useAuth();
 
   // Load leaderboard data
@@ -66,11 +66,11 @@ export default function LeaderboardScreen() {
 
   const handleUserPress = (userData) => {
     setSelectedUser(userData);
-    setUserModalVisible(true);
+    setProfileModalVisible(true);
   };
 
   const closeUserModal = () => {
-    setUserModalVisible(false);
+    setProfileModalVisible(false);
     setSelectedUser(null);
   };
 
@@ -364,7 +364,7 @@ export default function LeaderboardScreen() {
       )}
 
       <UserProfileModal
-        visible={userModalVisible}
+        visible={isProfileModalVisible}
         onClose={closeUserModal}
         user={selectedUser}
       />

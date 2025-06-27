@@ -34,7 +34,7 @@ export default function FriendsScreen() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [userModalVisible, setUserModalVisible] = useState(false);
+  const [isProfileModalVisible, setProfileModalVisible] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   
   const { 
@@ -87,11 +87,11 @@ export default function FriendsScreen() {
 
   const handleUserPress = (user) => {
     setSelectedUser(user);
-    setUserModalVisible(true);
+    setProfileModalVisible(true);
   };
 
   const closeUserModal = () => {
-    setUserModalVisible(false);
+    setProfileModalVisible(false);
     setSelectedUser(null);
   };
 
@@ -250,7 +250,7 @@ export default function FriendsScreen() {
       )}
 
       <UserProfileModal
-        visible={userModalVisible}
+        visible={isProfileModalVisible}
         onClose={closeUserModal}
         user={selectedUser}
       />
