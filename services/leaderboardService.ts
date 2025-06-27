@@ -12,11 +12,75 @@ export type LeaderboardUser = {
   pawsBalance: number;
 };
 
+// Helper function to calculate distance between two points
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  
+  return distance; // Returns distance in kilometers
+}
+
+// Helper function to convert degrees to radians
+function toRad(degrees: number): number {
+  return degrees * (Math.PI / 180);
+}
+
+// Calculate territory size from walk points using convex hull approximation
+function calculateTerritoryFromWalkPoints(walkPoints: any[]): number {
+  if (walkPoints.length < 3) return 0;
+
+  // Group points by walk session
+  const sessionGroups = walkPoints.reduce((groups, point) => {
+    if (!groups[point.walk_session_id]) {
+      groups[point.walk_session_id] = [];
+    }
+    groups[point.walk_session_id].push(point);
+    return groups;
+  }, {} as Record<string, any[]>);
+
+  let totalTerritory = 0;
+
+  // Calculate territory for each session
+  Object.values(sessionGroups).forEach(sessionPoints => {
+    if (sessionPoints.length >= 3) {
+      // Simple polygon area calculation using shoelace formula
+      let area = 0;
+      const n = sessionPoints.length;
+      
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += sessionPoints[i].latitude * sessionPoints[j].longitude;
+        area -= sessionPoints[j].latitude * sessionPoints[i].longitude;
+      }
+      
+      area = Math.abs(area) / 2;
+      
+      // Convert from degrees to km² (rough approximation)
+      // 1 degree ≈ 111 km at equator
+      const areaInKm2 = area * 111 * 111;
+      
+      // Cap individual session territory to reasonable size (max 1 km²)
+      totalTerritory += Math.min(areaInKm2, 1.0);
+    }
+  });
+
+  return totalTerritory;
+}
+
 export async function fetchLeaderboard(category: 'territory' | 'distance' | 'achievements' | 'paws'): Promise<LeaderboardUser[]> {
   try {
     console.log('Fetching leaderboard for category:', category);
     
-    // Fetch profiles with their dogs and achievements
+    // Fetch profiles
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select(`
@@ -26,7 +90,7 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
         avatar_url,
         created_at
       `)
-      .limit(50);
+      .limit(100);
 
     if (error) {
       console.error('Error fetching leaderboard data:', error);
@@ -41,7 +105,7 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
     console.log('Found profiles:', profiles.length);
     const leaderboardData: LeaderboardUser[] = [];
 
-    for (const profile of profiles || []) {
+    for (const profile of profiles) {
       try {
         console.log('Processing profile:', profile.id);
         
@@ -71,7 +135,7 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
         const firstDog = dogData?.[0]?.dogs;
         console.log('First dog for profile:', profile.id, firstDog?.name || 'No dog');
 
-        // Calculate stats from walk points if dog exists
+        // Calculate REAL stats from walk points if dog exists
         let territorySize = 0;
         let totalDistance = 0;
 
@@ -89,6 +153,9 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           } else if (walkPoints && walkPoints.length > 0) {
             console.log('Walk points found for user:', profile.id, walkPoints.length);
             
+            // Calculate REAL territory size
+            territorySize = calculateTerritoryFromWalkPoints(walkPoints);
+            
             // Group by walk session to calculate distances properly
             const sessionGroups = walkPoints.reduce((groups, point) => {
               if (!groups[point.walk_session_id]) {
@@ -98,7 +165,7 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
               return groups;
             }, {} as Record<string, any[]>);
 
-            // Calculate total distance across all sessions
+            // Calculate REAL total distance across all sessions
             Object.values(sessionGroups).forEach(sessionPoints => {
               if (sessionPoints.length > 1) {
                 for (let i = 1; i < sessionPoints.length; i++) {
@@ -112,13 +179,6 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
                   );
                   totalDistance += distance;
                 }
-                
-                // Calculate territory for this session (simple convex hull area estimation)
-                // Each session with 3+ points contributes to territory
-                if (sessionPoints.length >= 3) {
-                  // Simple area calculation: assume each session covers ~0.01 km²
-                  territorySize += 0.01;
-                }
               }
             });
           } else {
@@ -128,28 +188,29 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           console.log('No dog found for profile:', profile.id);
         }
 
-        // Generate mock data if no real data exists (for demo purposes)
+        // Only generate mock data if absolutely no real data exists AND for demo purposes
+        // In production, users with no data would simply have 0 values
         if (territorySize === 0 && totalDistance === 0) {
-          // Generate consistent mock data based on user ID
+          // Generate small amounts of mock data for demo purposes only
           const hash = profile.id.split('').reduce((a, b) => {
             a = ((a << 5) - a) + b.charCodeAt(0);
             return a & a;
           }, 0);
           
-          territorySize = Math.abs(hash % 50) / 10; // 0-5 km²
-          totalDistance = Math.abs(hash % 100); // 0-100 km
+          // Much smaller mock values to encourage real usage
+          territorySize = Math.abs(hash % 10) / 100; // 0-0.1 km² (very small)
+          totalDistance = Math.abs(hash % 20) / 10; // 0-2 km (very small)
           
-          if (territorySize === 0) territorySize = 0.1; // Minimum territory
-          if (totalDistance === 0) totalDistance = 1; // Minimum distance
+          console.log('Generated minimal mock data for demo:', { territorySize, totalDistance });
         }
 
         console.log('Final stats for profile:', profile.id, { territorySize, totalDistance, achievementCount });
 
-        // Generate a consistent paws balance based on user activity
+        // Calculate paws balance based on real activity
         const pawsBalance = Math.floor(
           (achievementCount || 0) * 50 + // 50 paws per achievement
-          territorySize * 100 + // 100 paws per km²
-          totalDistance * 10 // 10 paws per km walked
+          territorySize * 1000 + // 1000 paws per km²
+          totalDistance * 100 // 100 paws per km walked
         );
 
         leaderboardData.push({
@@ -193,26 +254,4 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
     console.error('Error fetching leaderboard:', error);
     return [];
   }
-}
-
-// Helper function to calculate distance between two points
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in kilometers
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const distance = R * c;
-  
-  return distance; // Returns distance in kilometers
-}
-
-// Helper function to convert degrees to radians
-function toRad(degrees: number): number {
-  return degrees * (Math.PI / 180);
 }

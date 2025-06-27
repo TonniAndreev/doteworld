@@ -40,18 +40,13 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
   const [userDogs, setUserDogs] = useState<any[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isProcessingFriend, setIsProcessingFriend] = useState(false);
-  const [userStats, setUserStats] = useState({
-    territorySize: 0,
-    achievementCount: 0,
-    totalDistance: 0,
-  });
   
   const { friends, sendFriendRequest, removeFriend } = useFriends();
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
     if (visible && user) {
-      console.log('Modal opened for user:', user);
+      console.log('Modal opened for user:', user.name, user.id);
       loadUserData();
       checkFriendshipStatus();
     }
@@ -73,12 +68,13 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
 
       if (profileError) {
         console.error('Error fetching user profile:', profileError);
+        setUserProfile(null);
       } else {
         setUserProfile(profile);
         console.log('User profile loaded:', profile);
       }
 
-      // Get user's dogs with more detailed query
+      // Get user's dogs
       const { data: dogData, error: dogError } = await supabase
         .from('profile_dogs')
         .select(`
@@ -105,19 +101,6 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         console.log('Processed dogs:', dogs);
         setUserDogs(dogs);
       }
-
-      // Get achievement count
-      const { count: achievementCount } = await supabase
-        .from('profile_achievements')
-        .select('*', { count: 'exact', head: true })
-        .eq('profile_id', user.id);
-
-
-      setUserStats({
-        territorySize: user.territorySize || 0,
-        achievementCount: achievementCount || 0,
-        totalDistance: user.totalDistance || 0,
-      });
 
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -176,13 +159,11 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     setIsProcessingFriend(true);
     
     try {
-      let success = false;
-      
       if (friendshipStatus === 'none') {
         // Send friend request
         await sendFriendRequest(user.id);
         setFriendshipStatus('sent');
-        success = true;
+        Alert.alert('Success', 'Friend request sent!');
       } else if (friendshipStatus === 'friend') {
         // Unfriend with confirmation
         Alert.alert(
@@ -205,11 +186,7 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
             },
           ]
         );
-        success = true; // Don't show error for cancellation
-      }
-      
-      if (!success && friendshipStatus !== 'friend') {
-        Alert.alert('Error', 'Failed to update friendship status. Please try again.');
+        return; // Don't continue processing
       }
     } catch (error) {
       console.error('Error handling friend action:', error);
@@ -307,24 +284,24 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
                     )}
                   </View>
 
-                  {/* Stats */}
+                  {/* Stats - Use the data passed from leaderboard */}
                   <View style={styles.statsContainer}>
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{userStats.territorySize.toFixed(1)} km²</Text>
+                      <Text style={styles.statValue}>{user.territorySize.toFixed(1)} km²</Text>
                       <Text style={styles.statLabel}>Territory</Text>
                     </View>
                     
                     <View style={styles.statDivider} />
                     
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{userStats.achievementCount}</Text>
+                      <Text style={styles.statValue}>{user.achievementCount}</Text>
                       <Text style={styles.statLabel}>Badges</Text>
                     </View>
                     
                     <View style={styles.statDivider} />
                     
                     <View style={styles.statItem}>
-                      <Text style={styles.statValue}>{userStats.totalDistance.toFixed(1)} km</Text>
+                      <Text style={styles.statValue}>{user.totalDistance.toFixed(1)} km</Text>
                       <Text style={styles.statLabel}>Distance</Text>
                     </View>
                   </View>
