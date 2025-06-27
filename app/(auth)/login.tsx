@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
   formOverlay: {
     flex: 1,
-    marginTop: screenHeight * 0.20, // Lifted higher to show more of the logo
+    marginTop: screenHeight * 0.25, // Pushed down more to show more of the background
     borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
     overflow: 'hidden',
@@ -262,15 +262,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    paddingTop: 16, // Reduced gap from logo to form
-    justifyContent: 'space-between', // Distribute content evenly
+    paddingTop: 8, // Reduced from 16 to 8 (50% reduction)
+    justifyContent: 'space-between',
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 16, // Reduced spacing
+    marginBottom: 8, // Reduced from 16 to 8 (50% reduction)
   },
   logoImage: {
-    width: 80, // Slightly larger than before
+    width: 80,
     height: 80,
   },
   errorContainer: {
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorLight,
     padding: 12,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 8, // Reduced from 16 to 8 (50% reduction)
   },
   errorText: {
     fontFamily: 'Inter-Medium',
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   inputContainer: {
-    marginBottom: 16,
+    marginBottom: 8, // Reduced from 16 to 8 (50% reduction)
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.neutralLight,
     borderRadius: 12,
     paddingHorizontal: 12,
-    marginBottom: 12,
+    marginBottom: 6, // Reduced from 12 to 6 (50% reduction)
   },
   inputIcon: {
     marginRight: 8,
@@ -324,7 +324,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8, // Reduced from 16 to 8 (50% reduction)
   },
   loginButtonText: {
     fontFamily: 'Inter-Bold',
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8, // Reduced from 16 to 8 (50% reduction)
   },
   orLine: {
     flex: 1,
@@ -350,7 +350,7 @@ const styles = StyleSheet.create({
   socialButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 10, // Reduced from 20 to 10 (50% reduction)
   },
   socialButton: {
     flexDirection: 'row',
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8, // Reduced from 16 to 8 (50% reduction)
   },
   noAccountText: {
     fontFamily: 'Inter-Regular',
@@ -401,10 +401,10 @@ const styles = StyleSheet.create({
   },
   boltNewContainer: {
     alignItems: 'center',
-    paddingVertical: 8, // Reduced padding
+    paddingVertical: 4, // Reduced from 8 to 4 (50% reduction)
   },
   boltNewImage: {
-    width: 180, // Slightly smaller
+    width: 180,
     height: 54,
   },
 });
