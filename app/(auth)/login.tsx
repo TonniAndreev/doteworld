@@ -8,7 +8,6 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   ActivityIndicator,
   Linking,
   Dimensions,
@@ -90,7 +89,6 @@ export default function LoginScreen() {
         source={require('@/assets/images/Map.jpg')}
         style={styles.backgroundImage}
         resizeMode="cover"
-        height="60%"
       />
       
       {/* Overlapping Form Container with Blur and Gradient */}
@@ -110,10 +108,7 @@ export default function LoginScreen() {
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardAvoid}
           >
-            <ScrollView 
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-            >
+            <View style={styles.content}>
               {/* Logo Section */}
               <View style={styles.logoContainer}>
                 <Image
@@ -236,7 +231,7 @@ export default function LoginScreen() {
                   resizeMode="contain"
                 />
               </TouchableOpacity>
-            </ScrollView>
+            </View>
           </KeyboardAvoidingView>
         </SafeAreaView>
       </View>
@@ -254,13 +249,12 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: screenWidth,
-    height: screenWidth * (3/4), // Assuming a 4:3 aspect ratio for the map image
-    // This maintains the original aspect ratio while starting from the top
+    height: screenWidth * (3/4), // Maintains aspect ratio while starting from the top
   },
   formOverlay: {
     flex: 1,
-    marginTop: screenHeight * 0.25, // Lifted by 5% (from 30% to 25%)
-    borderTopLeftRadius: 50, // 3.125rem = 50px
+    marginTop: screenHeight * 0.20, // Lifted higher to show more of the logo (from 25% to 20%)
+    borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
     overflow: 'hidden',
   },
@@ -270,18 +264,19 @@ const styles = StyleSheet.create({
   keyboardAvoid: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
+  content: {
+    flex: 1,
     padding: 24,
-    paddingTop: 24, // Reduced from 32px to 24px
+    paddingTop: 16, // Reduced from 24px to 16px to bring logo closer to top
+    justifyContent: 'space-between', // Distribute content evenly to prevent scrolling
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 24, // Reduced from 32px to 24px
+    marginBottom: 16, // Reduced from 24px to 16px
   },
   logoImage: {
-    width: 75, // 50% of original 150
-    height: 75, // 50% of original 150
+    width: 80, // Slightly increased from 75 to ensure visibility
+    height: 80, // Slightly increased from 75 to ensure visibility
   },
   errorContainer: {
     flexDirection: 'row',
@@ -289,7 +284,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorLight,
     padding: 12,
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 16, // Reduced from 20px to 16px
   },
   errorText: {
     fontFamily: 'Inter-Medium',
@@ -298,7 +293,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 16, // Reduced from 20px to 16px
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -306,7 +301,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.neutralLight,
     borderRadius: 12,
     paddingHorizontal: 12,
-    marginBottom: 12,
+    marginBottom: 10, // Reduced from 12px to 10px
   },
   inputIcon: {
     marginRight: 8,
@@ -316,13 +311,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
-    paddingVertical: 14,
+    paddingVertical: 12, // Reduced from 14px to 12px
   },
   eyeIcon: {
     padding: 4,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
+    marginTop: 4, // Added small margin to separate from inputs
   },
   forgotPasswordText: {
     fontFamily: 'Inter-Medium',
@@ -332,9 +328,9 @@ const styles = StyleSheet.create({
   loginButton: {
     backgroundColor: COLORS.primary,
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 14, // Reduced from 16px to 14px
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16, // Reduced from 20px to 16px
   },
   loginButtonText: {
     fontFamily: 'Inter-Bold',
@@ -344,7 +340,7 @@ const styles = StyleSheet.create({
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16, // Reduced from 20px to 16px
   },
   orLine: {
     flex: 1,
@@ -360,13 +356,13 @@ const styles = StyleSheet.create({
   socialButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 16, // Reduced from 24px to 16px
   },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 10, // Reduced from 12px to 10px
     borderRadius: 12,
     width: '48%',
   },
@@ -396,7 +392,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16, // Reduced from 24px to 16px
   },
   noAccountText: {
     fontFamily: 'Inter-Regular',
@@ -411,10 +407,10 @@ const styles = StyleSheet.create({
   },
   boltNewContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 8, // Reduced from 16px to 8px
   },
   boltNewImage: {
-    width: 200,
-    height: 60,
+    width: 160, // Reduced from 200px to 160px
+    height: 48, // Reduced from 60px to 48px
   },
 });
