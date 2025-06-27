@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Settings, Award, Users, Map, Route, PawPrint, LogOut, CreditCard as Edit } from 'lucide-react-native';
+import { Award, Users, Map, Route, PawPrint, LogOut, CreditCard as Edit } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -70,16 +70,6 @@ export default function ProfileScreen() {
         
         <View style={styles.headerButtons}>
           <NotificationsButton />
-          
-          <TouchableOpacity 
-            style={styles.settingsButton}
-            onPress={() => {
-              // For now, just show a placeholder
-              Alert.alert('Settings', 'Settings screen coming soon!');
-            }}
-          >
-            <Settings size={24} color={COLORS.neutralDark} />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -303,9 +293,6 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  settingsButton: {
-    marginLeft: 16,
   },
   scrollContainer: {
     flex: 1,
