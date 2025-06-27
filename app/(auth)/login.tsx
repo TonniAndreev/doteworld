@@ -297,7 +297,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginBottom: 3, // Further reduced from 6 to 3
     borderWidth: 1,
-    borderColor: '#666666', // Dark gray thin border
+    borderColor: '#C1C1C1', // Dark gray thin border
   },
   inputIcon: {
     marginRight: 8,
