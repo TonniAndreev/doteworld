@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    paddingTop: 4, // Further reduced from 8 to 4
+    paddingTop: 2, // Further reduced from 8 to 4
     justifyContent: 'space-between',
   },
   logoContainer: {
