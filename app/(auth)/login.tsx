@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Mail, Lock, Facebook, CircleAlert as AlertCircle, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, Facebook, CircleAlert as AlertCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,7 +24,6 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -83,23 +82,23 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Map Image - Full height, positioned from top */}
+      {/* Background Map Image */}
       <Image
         source={require('@/assets/images/Map.jpg')}
         style={styles.backgroundImage}
         resizeMode="cover"
       />
       
-      {/* Gradient Overlay */}
-      <View style={styles.gradientOverlay} />
-      
-      {/* Form Container */}
-      <SafeAreaView style={styles.safeArea}>
+      {/* Overlapping Form Container */}
+      <View style={styles.formOverlay}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardAvoid}
         >
-          <View style={styles.contentContainer}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* Logo Section */}
             <View style={styles.logoContainer}>
               <Image
@@ -139,19 +138,9 @@ export default function LoginScreen() {
                   placeholder="Password"
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
+                  secureTextEntry
                   placeholderTextColor={COLORS.neutralMedium}
                 />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color={COLORS.neutralMedium} />
-                  ) : (
-                    <Eye size={20} color={COLORS.neutralMedium} />
-                  )}
-                </TouchableOpacity>
               </View>
               
               <TouchableOpacity style={styles.forgotPassword}>
@@ -222,9 +211,9 @@ export default function LoginScreen() {
                 resizeMode="contain"
               />
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -239,31 +228,30 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
+    height: screenHeight * 0.4, // 40% of screen height
     width: screenWidth,
-    height: screenHeight,
   },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'transparent',
-    // Create gradient effect using multiple overlays
-    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.3) 40%, rgba(255, 255, 255, 0.8) 60%, rgba(255, 255, 255, 0.95) 80%, #FFFFFF 100%)',
-  },
-  safeArea: {
+  formOverlay: {
     flex: 1,
+    marginTop: screenHeight * 0.3, // Start at 30% from top, overlapping the image
+    borderTopLeftRadius: 50, // 3.125rem = 50px
+    borderTopRightRadius: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    backdropFilter: 'blur(4px)',
+    // For React Native, we'll simulate the gradient and blur effect
+    shadowColor: 'rgba(255, 255, 255, 0.8)',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 1,
+    shadowRadius: 20,
+    elevation: 10,
   },
   keyboardAvoid: {
     flex: 1,
   },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: screenHeight * 0.35, // Start content at 35% to align with logo position
-    paddingBottom: 20,
+  scrollContent: {
+    flexGrow: 1,
+    padding: 32,
+    paddingTop: 40,
   },
   logoContainer: {
     alignItems: 'center',
@@ -278,7 +266,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.errorLight,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 20,
   },
   errorText: {
@@ -293,26 +281,29 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 16,
+    paddingHorizontal: 16,
     marginBottom: 16,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   inputIcon: {
-    marginRight: 8,
+    marginRight: 12,
   },
   input: {
     flex: 1,
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
-    padding: 12,
-  },
-  eyeIcon: {
-    padding: 4,
+    paddingVertical: 16,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
+    marginTop: 8,
   },
   forgotPasswordText: {
     fontFamily: 'Inter-Medium',
@@ -321,14 +312,19 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 16,
+    paddingVertical: 18,
     alignItems: 'center',
     marginBottom: 24,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   loginButtonText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 16,
+    fontSize: 18,
     color: COLORS.white,
   },
   orContainer: {
@@ -339,31 +335,39 @@ const styles = StyleSheet.create({
   orLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.neutralLight,
+    backgroundColor: 'rgba(158, 158, 158, 0.3)',
   },
   orText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralMedium,
     marginHorizontal: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    paddingHorizontal: 8,
   },
   socialButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 32,
+    gap: 12,
   },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
-    width: '48%',
+    paddingVertical: 14,
+    borderRadius: 16,
+    flex: 1,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   googleButton: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: COLORS.neutralLight,
+    borderColor: 'rgba(158, 158, 158, 0.2)',
   },
   googleIcon: {
     width: 20,
@@ -404,7 +408,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   boltNewImage: {
-    width: 200,
-    height: 60,
+    width: 150,
+    height: 45,
+    opacity: 0.7,
   },
 });
