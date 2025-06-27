@@ -85,7 +85,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Map Image - Full height, positioned at top */}
+      {/* Background Map Image - Maintains aspect ratio, starts from top */}
       <Image
         source={require('@/assets/images/Map.jpg')}
         style={styles.backgroundImage}
@@ -252,10 +252,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    bottom: 0,
     width: screenWidth,
-    height: screenHeight,
+    height: screenWidth * (3/4), // Assuming a 4:3 aspect ratio for the map image
+    // This maintains the original aspect ratio while starting from the top
   },
   formOverlay: {
     flex: 1,
