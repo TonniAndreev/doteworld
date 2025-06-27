@@ -333,7 +333,6 @@ const styles = StyleSheet.create({
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: 8,
   },
   orLine: {
     flex: 1,
