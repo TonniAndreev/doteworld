@@ -50,7 +50,6 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
               breed
             )
           `)
-            console.log('Walk points found for user:', profile.id, walkPoints.length);
 
         const firstDog = dogData?.[0]?.dogs;
 
@@ -61,10 +60,8 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           .eq('dog_id', firstDog?.id || 'none'); // Use dog_id if available
 
         let territorySize = 0;
-            console.log('Walk sessions for user:', profile.id, Object.keys(sessionGroups).length);
-            
-            // Calculate total distance and territory across all sessions
 
+        let totalDistance = 0;
         if (walkPoints && walkPoints.length > 0) {
           // Simple calculation: assume each walk point represents ~0.001 km²
           territorySize = walkPoints.length * 0.001;
@@ -72,18 +69,11 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           // Calculate total distance (simplified)
           if (walkPoints.length > 1) {
             for (let i = 1; i < walkPoints.length; i++) {
-              const prev = walkPoints[i - 1];
-              const curr = walkPoints[i];
-              const distance = calculateDistance(
-                prev.latitude,
-                prev.longitude,
-                
-                // Calculate territory for this session (simple convex hull area estimation)
                 // Each session with 3+ points contributes to territory
                 if (sessionPoints.length >= 3) {
-                  // Simple area calculation: assume each session covers ~0.01 km²
-                  territorySize += 0.01;
-                }
+            );
+            totalDistance += distance;
+          }
                 curr.latitude,
                 curr.longitude
               )
