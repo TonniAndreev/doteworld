@@ -15,7 +15,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Mail, Lock, Facebook, CircleAlert as AlertCircle } from 'lucide-react-native';
+import { Mail, Lock, Facebook, CircleAlert as AlertCircle, Eye, EyeOff } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -24,6 +26,7 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -82,137 +85,159 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Background Map Image */}
+      {/* Background Map Image - Full height, positioned at top */}
       <Image
         source={require('@/assets/images/Map.jpg')}
         style={styles.backgroundImage}
         resizeMode="cover"
       />
       
-      {/* Overlapping Form Container */}
+      {/* Overlapping Form Container with Blur and Gradient */}
       <View style={styles.formOverlay}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoid}
-        >
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
+        {/* Blur Effect */}
+        <BlurView intensity={20} style={StyleSheet.absoluteFillObject} />
+        
+        {/* Gradient Overlay */}
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.5)', 'rgba(255, 255, 255, 0.8)', '#FFFFFF']}
+          locations={[0, 0.3, 0.6]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        
+        <SafeAreaView style={styles.safeArea}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardAvoid}
           >
-            {/* Logo Section */}
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('@/assets/images/Logo-full-vertical.png')}
-                style={styles.logoImage}
-                resizeMode="contain"
-              />
-            </View>
-            
-            {/* Error Display */}
-            {error ? (
-              <View style={styles.errorContainer}>
-                <AlertCircle size={20} color={COLORS.error} />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-            
-            {/* Input Fields */}
-            <View style={styles.inputContainer}>
-              <View style={styles.inputWrapper}>
-                <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  keyboardType="email-address"
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-              
-              <View style={styles.inputWrapper}>
-                <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
-              
-              <TouchableOpacity style={styles.forgotPassword}>
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Login Button */}
-            <TouchableOpacity 
-              style={styles.loginButton}
-              onPress={handleEmailLogin}
-              disabled={isLoading}
+            <ScrollView 
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
             >
-              {isLoading ? (
-                <ActivityIndicator color={COLORS.white} />
-              ) : (
-                <Text style={styles.loginButtonText}>Login</Text>
-              )}
-            </TouchableOpacity>
-            
-            {/* OR Divider */}
-            <View style={styles.orContainer}>
-              <View style={styles.orLine} />
-              <Text style={styles.orText}>OR</Text>
-              <View style={styles.orLine} />
-            </View>
-            
-            {/* Social Login Buttons */}
-            <View style={styles.socialButtonsContainer}>
+              {/* Logo Section */}
+              <View style={styles.logoContainer}>
+                <Image
+                  source={require('@/assets/images/Logo-full-vertical.png')}
+                  style={styles.logoImage}
+                  resizeMode="contain"
+                />
+              </View>
+              
+              {/* Error Display */}
+              {error ? (
+                <View style={styles.errorContainer}>
+                  <AlertCircle size={20} color={COLORS.error} />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+              
+              {/* Input Fields */}
+              <View style={styles.inputContainer}>
+                <View style={styles.inputWrapper}>
+                  <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                    placeholderTextColor={COLORS.neutralMedium}
+                  />
+                </View>
+                
+                <View style={styles.inputWrapper}>
+                  <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholderTextColor={COLORS.neutralMedium}
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color={COLORS.neutralMedium} />
+                    ) : (
+                      <Eye size={20} color={COLORS.neutralMedium} />
+                    )}
+                  </TouchableOpacity>
+                </View>
+                
+                <TouchableOpacity style={styles.forgotPassword}>
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Login Button */}
               <TouchableOpacity 
-                style={[styles.socialButton, styles.googleButton]}
-                onPress={handleGoogleLogin}
+                style={styles.loginButton}
+                onPress={handleEmailLogin}
                 disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <Text style={styles.loginButtonText}>Login</Text>
+                )}
+              </TouchableOpacity>
+              
+              {/* OR Divider */}
+              <View style={styles.orContainer}>
+                <View style={styles.orLine} />
+                <Text style={styles.orText}>OR</Text>
+                <View style={styles.orLine} />
+              </View>
+              
+              {/* Social Login Buttons */}
+              <View style={styles.socialButtonsContainer}>
+                <TouchableOpacity 
+                  style={[styles.socialButton, styles.googleButton]}
+                  onPress={handleGoogleLogin}
+                  disabled={isLoading}
+                >
+                  <Image
+                    source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
+                    style={styles.googleIcon}
+                  />
+                  <Text style={styles.socialButtonText}>Google</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.socialButton, styles.facebookButton]}
+                  onPress={handleFacebookLogin}
+                  disabled={isLoading}
+                >
+                  <Facebook size={20} color={COLORS.white} />
+                  <Text style={[styles.socialButtonText, styles.facebookButtonText]}>Facebook</Text>
+                </TouchableOpacity>
+              </View>
+              
+              {/* Register Link */}
+              <View style={styles.registerContainer}>
+                <Text style={styles.noAccountText}>Don't have an account?</Text>
+                <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+                  <Text style={styles.registerText}>Register</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Bolt.new Attribution */}
+              <TouchableOpacity 
+                style={styles.boltNewContainer}
+                onPress={handleBoltNewPress}
               >
                 <Image
-                  source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
-                  style={styles.googleIcon}
+                  source={require('@/assets/images/white_circle_360x360.png')}
+                  style={styles.boltNewImage}
+                  resizeMode="contain"
                 />
-                <Text style={styles.socialButtonText}>Google</Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.socialButton, styles.facebookButton]}
-                onPress={handleFacebookLogin}
-                disabled={isLoading}
-              >
-                <Facebook size={20} color={COLORS.white} />
-                <Text style={[styles.socialButtonText, styles.facebookButtonText]}>Facebook</Text>
-              </TouchableOpacity>
-            </View>
-            
-            {/* Register Link */}
-            <View style={styles.registerContainer}>
-              <Text style={styles.noAccountText}>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-                <Text style={styles.registerText}>Register</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Bolt.new Attribution */}
-            <TouchableOpacity 
-              style={styles.boltNewContainer}
-              onPress={handleBoltNewPress}
-            >
-              <Image
-                source={require('@/assets/images/white_circle_360x360.png')}
-                style={styles.boltNewImage}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          </ScrollView>
-        </KeyboardAvoidingView>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
       </View>
     </View>
   );
@@ -228,34 +253,31 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: screenHeight * 0.4, // 40% of screen height
+    bottom: 0,
     width: screenWidth,
+    height: screenHeight,
   },
   formOverlay: {
     flex: 1,
-    marginTop: screenHeight * 0.3, // Start at 30% from top, overlapping the image
+    marginTop: screenHeight * 0.3, // Start at 30% from top
     borderTopLeftRadius: 50, // 3.125rem = 50px
     borderTopRightRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.5)',
-    backdropFilter: 'blur(4px)',
-    // For React Native, we'll simulate the gradient and blur effect
-    shadowColor: 'rgba(255, 255, 255, 0.8)',
-    shadowOffset: { width: 0, height: -10 },
-    shadowOpacity: 1,
-    shadowRadius: 20,
-    elevation: 10,
+    overflow: 'hidden',
+  },
+  safeArea: {
+    flex: 1,
   },
   keyboardAvoid: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: 32,
-    paddingTop: 40,
+    padding: 24,
+    paddingTop: 32,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   logoImage: {
     width: 75, // 50% of original 150
@@ -266,7 +288,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: COLORS.errorLight,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 8,
     marginBottom: 20,
   },
   errorText: {
@@ -276,34 +298,31 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 12,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 8,
   },
   input: {
     flex: 1,
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
-    paddingVertical: 16,
+    paddingVertical: 14,
+  },
+  eyeIcon: {
+    padding: 4,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginTop: 8,
   },
   forgotPasswordText: {
     fontFamily: 'Inter-Medium',
@@ -312,62 +331,49 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     backgroundColor: COLORS.primary,
-    borderRadius: 16,
-    paddingVertical: 18,
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    marginBottom: 20,
   },
   loginButtonText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 18,
+    fontSize: 16,
     color: COLORS.white,
   },
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   orLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(158, 158, 158, 0.3)',
+    backgroundColor: COLORS.neutralLight,
   },
   orText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralMedium,
     marginHorizontal: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    paddingHorizontal: 8,
   },
   socialButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 32,
-    gap: 12,
+    marginBottom: 24,
   },
   socialButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 16,
-    flex: 1,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    width: '48%',
   },
   googleButton: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: 'rgba(158, 158, 158, 0.2)',
+    borderColor: COLORS.neutralLight,
   },
   googleIcon: {
     width: 20,
@@ -408,8 +414,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   boltNewImage: {
-    width: 150,
-    height: 45,
-    opacity: 0.7,
+    width: 200,
+    height: 60,
   },
 });
