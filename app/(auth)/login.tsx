@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   logoContainer: {
     alignItems: 'center',
     marginBottom: 4, // Further reduced from 8 to 4
-    paddingTop: 12, // Added 12px padding on top of the logo
+    paddingTop: 24, // Added 12px padding on top of the logo
   },
   logoImage: {
     width: 80,
