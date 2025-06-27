@@ -333,7 +333,6 @@ const styles = StyleSheet.create({
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 0, // Further reduced from 8 to 4
   },
   orLine: {
     flex: 1,
