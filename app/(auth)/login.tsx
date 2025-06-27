@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.neutralLight,
     borderRadius: 12,
     paddingHorizontal: 12,
-    marginBottom: 3, // Further reduced from 6 to 3
+    marginBottom: 6, // Further reduced from 6 to 3
     borderWidth: 1,
     borderColor: '#C1C1C1', // Dark gray thin border
   },
