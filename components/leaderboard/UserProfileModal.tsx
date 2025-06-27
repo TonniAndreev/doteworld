@@ -405,11 +405,6 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
                 </>
               )}
             </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
 
             {/* Dogs Section */}
             {!isLoadingProfile && userDogs.length > 0 && (
@@ -434,6 +429,12 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
               </View>
             )}
           </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
