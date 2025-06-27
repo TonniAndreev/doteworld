@@ -8,12 +8,10 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   ActivityIndicator,
   Linking,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Mail, Lock, Facebook, CircleAlert as AlertCircle, Eye, EyeOff } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -90,7 +88,6 @@ export default function LoginScreen() {
         source={require('@/assets/images/Map.jpg')}
         style={styles.backgroundImage}
         resizeMode="cover"
-        height="60%"
       />
       
       {/* Overlapping Form Container with Blur and Gradient */}
@@ -105,140 +102,135 @@ export default function LoginScreen() {
           style={StyleSheet.absoluteFillObject}
         />
         
-        <SafeAreaView style={styles.safeArea}>
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={styles.keyboardAvoid}
-          >
-            <ScrollView 
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-            >
-              {/* Logo Section */}
-              <View style={styles.logoContainer}>
-                <Image
-                  source={require('@/assets/images/Logo-full-vertical.png')}
-                  style={styles.logoImage}
-                  resizeMode="contain"
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoid}
+        >
+          <View style={styles.content}>
+            {/* Logo Section */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('@/assets/images/Logo-full-vertical.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
+            
+            {/* Error Display */}
+            {error ? (
+              <View style={styles.errorContainer}>
+                <AlertCircle size={20} color={COLORS.error} />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+            
+            {/* Input Fields */}
+            <View style={styles.inputContainer}>
+              <View style={styles.inputWrapper}>
+                <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  value={email}
+                  onChangeText={setEmail}
+                  autoCapitalize="none"
+                  keyboardType="email-address"
+                  placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
               
-              {/* Error Display */}
-              {error ? (
-                <View style={styles.errorContainer}>
-                  <AlertCircle size={20} color={COLORS.error} />
-                  <Text style={styles.errorText}>{error}</Text>
-                </View>
-              ) : null}
-              
-              {/* Input Fields */}
-              <View style={styles.inputContainer}>
-                <View style={styles.inputWrapper}>
-                  <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Email"
-                    value={email}
-                    onChangeText={setEmail}
-                    autoCapitalize="none"
-                    keyboardType="email-address"
-                    placeholderTextColor={COLORS.neutralMedium}
-                  />
-                </View>
-                
-                <View style={styles.inputWrapper}>
-                  <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                    placeholderTextColor={COLORS.neutralMedium}
-                  />
-                  <TouchableOpacity
-                    style={styles.eyeIcon}
-                    onPress={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? (
-                      <EyeOff size={20} color={COLORS.neutralMedium} />
-                    ) : (
-                      <Eye size={20} color={COLORS.neutralMedium} />
-                    )}
-                  </TouchableOpacity>
-                </View>
-                
-                <TouchableOpacity style={styles.forgotPassword}>
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              <View style={styles.inputWrapper}>
+                <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  placeholderTextColor={COLORS.neutralMedium}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff size={20} color={COLORS.neutralMedium} />
+                  ) : (
+                    <Eye size={20} color={COLORS.neutralMedium} />
+                  )}
                 </TouchableOpacity>
               </View>
               
-              {/* Login Button */}
+              <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Login Button */}
+            <TouchableOpacity 
+              style={styles.loginButton}
+              onPress={handleEmailLogin}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <Text style={styles.loginButtonText}>Login</Text>
+              )}
+            </TouchableOpacity>
+            
+            {/* OR Divider */}
+            <View style={styles.orContainer}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>OR</Text>
+              <View style={styles.orLine} />
+            </View>
+            
+            {/* Social Login Buttons */}
+            <View style={styles.socialButtonsContainer}>
               <TouchableOpacity 
-                style={styles.loginButton}
-                onPress={handleEmailLogin}
+                style={[styles.socialButton, styles.googleButton]}
+                onPress={handleGoogleLogin}
                 disabled={isLoading}
               >
-                {isLoading ? (
-                  <ActivityIndicator color={COLORS.white} />
-                ) : (
-                  <Text style={styles.loginButtonText}>Login</Text>
-                )}
-              </TouchableOpacity>
-              
-              {/* OR Divider */}
-              <View style={styles.orContainer}>
-                <View style={styles.orLine} />
-                <Text style={styles.orText}>OR</Text>
-                <View style={styles.orLine} />
-              </View>
-              
-              {/* Social Login Buttons */}
-              <View style={styles.socialButtonsContainer}>
-                <TouchableOpacity 
-                  style={[styles.socialButton, styles.googleButton]}
-                  onPress={handleGoogleLogin}
-                  disabled={isLoading}
-                >
-                  <Image
-                    source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
-                    style={styles.googleIcon}
-                  />
-                  <Text style={styles.socialButtonText}>Google</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={[styles.socialButton, styles.facebookButton]}
-                  onPress={handleFacebookLogin}
-                  disabled={isLoading}
-                >
-                  <Facebook size={20} color={COLORS.white} />
-                  <Text style={[styles.socialButtonText, styles.facebookButtonText]}>Facebook</Text>
-                </TouchableOpacity>
-              </View>
-              
-              {/* Register Link */}
-              <View style={styles.registerContainer}>
-                <Text style={styles.noAccountText}>Don't have an account?</Text>
-                <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-                  <Text style={styles.registerText}>Register</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Bolt.new Attribution */}
-              <TouchableOpacity 
-                style={styles.boltNewContainer}
-                onPress={handleBoltNewPress}
-              >
                 <Image
-                  source={require('@/assets/images/white_circle_360x360.png')}
-                  style={styles.boltNewImage}
-                  resizeMode="contain"
+                  source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
+                  style={styles.googleIcon}
                 />
+                <Text style={styles.socialButtonText}>Google</Text>
               </TouchableOpacity>
-            </ScrollView>
-          </KeyboardAvoidingView>
-        </SafeAreaView>
+              
+              <TouchableOpacity 
+                style={[styles.socialButton, styles.facebookButton]}
+                onPress={handleFacebookLogin}
+                disabled={isLoading}
+              >
+                <Facebook size={20} color={COLORS.white} />
+                <Text style={[styles.socialButtonText, styles.facebookButtonText]}>Facebook</Text>
+              </TouchableOpacity>
+            </View>
+            
+            {/* Register Link */}
+            <View style={styles.registerContainer}>
+              <Text style={styles.noAccountText}>Don't have an account?</Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+                <Text style={styles.registerText}>Register</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Bolt.new Attribution */}
+            <TouchableOpacity 
+              style={styles.boltNewContainer}
+              onPress={handleBoltNewPress}
+            >
+              <Image
+                source={require('@/assets/images/white_circle_360x360.png')}
+                style={styles.boltNewImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </View>
   );
@@ -255,33 +247,30 @@ const styles = StyleSheet.create({
     left: 0,
     width: screenWidth,
     height: screenWidth * (3/4), // Assuming a 4:3 aspect ratio for the map image
-    // This maintains the original aspect ratio while starting from the top
   },
   formOverlay: {
     flex: 1,
-    marginTop: screenHeight * 0.25, // Lifted by 5% (from 30% to 25%)
-    borderTopLeftRadius: 50, // 3.125rem = 50px
+    marginTop: screenHeight * 0.20, // Lifted higher to show more of the logo
+    borderTopLeftRadius: 50,
     borderTopRightRadius: 50,
     overflow: 'hidden',
-  },
-  safeArea: {
-    flex: 1,
   },
   keyboardAvoid: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 1,
+  content: {
+    flex: 1,
     padding: 24,
-    paddingTop: 24, // Reduced from 32px to 24px
+    paddingTop: 16, // Reduced gap from logo to form
+    justifyContent: 'space-between', // Distribute content evenly
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 24, // Reduced from 32px to 24px
+    marginBottom: 16, // Reduced spacing
   },
   logoImage: {
-    width: 75, // 50% of original 150
-    height: 75, // 50% of original 150
+    width: 80, // Slightly larger than before
+    height: 80,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -289,7 +278,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorLight,
     padding: 12,
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   errorText: {
     fontFamily: 'Inter-Medium',
@@ -298,7 +287,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -334,7 +323,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   loginButtonText: {
     fontFamily: 'Inter-Bold',
@@ -344,7 +333,7 @@ const styles = StyleSheet.create({
   orContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   orLine: {
     flex: 1,
@@ -360,7 +349,7 @@ const styles = StyleSheet.create({
   socialButtonsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   socialButton: {
     flexDirection: 'row',
@@ -396,7 +385,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   noAccountText: {
     fontFamily: 'Inter-Regular',
@@ -411,10 +400,10 @@ const styles = StyleSheet.create({
   },
   boltNewContainer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 8, // Reduced padding
   },
   boltNewImage: {
-    width: 200,
-    height: 60,
+    width: 180, // Slightly smaller
+    height: 54,
   },
 });
