@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
   },
   formOverlay: {
     flex: 1,
-    marginTop: screenHeight * 0.3, // Start at 30% from top
+    marginTop: screenHeight * 0.25, // Lifted by 5% (from 30% to 25%)
     borderTopLeftRadius: 50, // 3.125rem = 50px
     borderTopRightRadius: 50,
     overflow: 'hidden',
@@ -273,11 +273,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     padding: 24,
-    paddingTop: 32,
+    paddingTop: 24, // Reduced from 32px to 24px
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 24, // Reduced from 32px to 24px
   },
   logoImage: {
     width: 75, // 50% of original 150
