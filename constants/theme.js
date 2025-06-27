@@ -39,7 +39,7 @@ export const COLORS = {
   warningDark: '#D17D00',
   
   error: '#FF3B30',
-  errorLight: 'rgba(255, 200, 200, 0.5)',
+  errorLight: 'rgba(255, 200, 200, 0.7)',
   errorMedium: 'rgba(255, 59, 48, 0.3)',
   errorDark: '#D32F2F',
   
