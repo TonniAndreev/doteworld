@@ -259,15 +259,19 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
-      statusBarTranslucent={true}
+      presentationStyle="overFullScreen"
     >
-      <View style={styles.overlay}>
-        <View style={styles.modalContainer}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalBackground}>
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color={COLORS.neutralDark} />
           </TouchableOpacity>
 
-          <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <ScrollView 
+            style={styles.scrollContainer} 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
             {/* User Info Section */}
             <View style={styles.userSection}>
               {isLoadingProfile ? (
@@ -373,18 +377,17 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
   },
-  modalContainer: {
-    width: Math.min(screenWidth * 0.9, 450),
-    maxHeight: screenHeight * 0.85,
+  modalBackground: {
+    width: '100%',
+    maxHeight: screenHeight * 0.9,
     backgroundColor: COLORS.white,
-    borderRadius: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 4 },
@@ -408,6 +411,10 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   userSection: {
     backgroundColor: COLORS.white,
