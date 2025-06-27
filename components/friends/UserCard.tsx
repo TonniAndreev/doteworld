@@ -8,9 +8,10 @@ interface UserCardProps {
     id: string;
     name: string;
     dogName: string;
-    dogBreed: string;
+    dogBreed?: string;
     photoURL?: string | null;
     territorySize: number;
+    totalDistance: number;
     achievementCount: number;
   };
   onPress: () => void;
@@ -35,13 +36,18 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
         </View>
         
         <Text style={styles.dogInfo}>
-          {user.dogName} • {user.dogBreed}
+          {user.dogName}{user.dogBreed ? ` • ${user.dogBreed}` : ''}
         </Text>
         
         <View style={styles.stats}>
-          <Text style={styles.stat}>{user.territorySize.toFixed(1)} km² territory</Text>
+          <Text style={styles.stat}>
+            {user.territorySize > 0 ? `${(user.territorySize * 1000000).toFixed(0)} m²` : '0 m²'} territory
+          </Text>
           <Text style={styles.statDivider}>•</Text>
-        <Text style={styles.stat}>{(user.territorySize * 1000000).toFixed(0)} m² territory</Text>
+          <Text style={styles.stat}>
+            {user.totalDistance > 0 ? `${(user.totalDistance * 1000).toFixed(0)} m` : '0 m'} walked
+          </Text>
+          <Text style={styles.statDivider}>•</Text>
           <Text style={styles.stat}>{user.achievementCount} badges</Text>
         </View>
       </View>
@@ -91,6 +97,7 @@ const styles = StyleSheet.create({
   stats: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
   },
   stat: {
     fontFamily: 'Inter-Regular',
@@ -98,7 +105,8 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
   },
   statDivider: {
-    marginHorizontal: 6,
+    marginHorizontal: 4,
     color: COLORS.neutralMedium,
+    fontSize: 12,
   },
 });
