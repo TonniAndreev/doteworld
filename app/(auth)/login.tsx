@@ -296,6 +296,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 12,
     marginBottom: 3, // Further reduced from 6 to 3
+    borderWidth: 1,
+    borderColor: '#666666', // Dark gray thin border
   },
   inputIcon: {
     marginRight: 8,
@@ -361,7 +363,7 @@ const styles = StyleSheet.create({
   googleButton: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: COLORS.neutralLight,
+    borderColor: '#666666', // Dark gray thin border
   },
   googleIcon: {
     width: 20,
