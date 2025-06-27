@@ -46,10 +46,11 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
 
   useEffect(() => {
     if (visible && user) {
-      console.log('Modal opened for user:', user.name, user.id);
+      console.log('UserProfileModal: Modal opened for user:', user.name, 'ID:', user.id, 'visible:', visible);
       loadUserData();
       checkFriendshipStatus();
     } else {
+      console.log('UserProfileModal: Modal closed or no user provided. Visible:', visible, 'User:', user?.name || 'none');
       // Reset state when modal closes
       setUserProfile(null);
       setUserDogs([]);
@@ -62,9 +63,9 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
   const loadUserData = async () => {
     if (!user) return;
     
+    console.log('UserProfileModal: Loading user data for:', user.id);
     setIsLoadingProfile(true);
     try {
-      console.log('Loading user data for:', user.id);
       
       // Get user profile
       const { data: profile, error: profileError } = await supabase
@@ -78,7 +79,7 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         setUserProfile(null);
       } else {
         setUserProfile(profile);
-        console.log('User profile loaded:', profile);
+        console.log('UserProfileModal: User profile loaded:', profile);
       }
 
       // Get user's dogs
@@ -103,9 +104,9 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         console.error('Error fetching user dogs:', dogError);
         setUserDogs([]);
       } else {
-        console.log('Raw dog data for user:', user.id, dogData);
+        console.log('UserProfileModal: Raw dog data for user:', user.id, dogData);
         const dogs = dogData?.map(pd => pd.dogs).filter(Boolean) || [];
-        console.log('Processed dogs:', dogs);
+        console.log('UserProfileModal: Processed dogs:', dogs);
         setUserDogs(dogs);
       }
 
@@ -250,7 +251,7 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
   // Use the actual dog name from database, fallback to user.dogName if no dogs found
   const displayDogName = userDogs.length > 0 ? userDogs[0].name : (user.dogName !== 'No dog' ? user.dogName : 'No dog');
 
-  console.log('Rendering modal for user:', displayName, 'visible:', visible);
+  console.log('UserProfileModal: Rendering modal for user:', displayName, 'visible:', visible, 'user object:', !!user);
 
   return (
     <Modal
@@ -258,6 +259,7 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
+      statusBarTranslucent={true}
     >
       <View style={styles.overlay}>
         <View style={styles.modalContainer}>

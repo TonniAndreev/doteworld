@@ -108,9 +108,10 @@ export function useFriends() {
           name: `${friendProfile.first_name || ''} ${friendProfile.last_name || ''}`.trim() || 'User',
           dogName: firstDog?.name || 'No dog',
           dogBreed: firstDog?.breed || '',
+          dogBreed: firstDog?.breed || '',
           photoURL: friendProfile.avatar_url,
-          territorySize: Math.random() * 5, // Mock data - replace with real calculation
-          totalDistance: Math.random() * 50, // Mock data - replace with real calculation
+          territorySize: 0, // Will be calculated from real data
+          totalDistance: 0, // Will be calculated from real data
           achievementCount: achievementCount || 0,
           isFriend: true,
         });
@@ -245,8 +246,8 @@ export function useFriends() {
           dogName: firstDog?.name || 'No dog',
           dogBreed: firstDog?.breed || '',
           photoURL: profile.avatar_url,
-          territorySize: Math.random() * 5, // Mock data - replace with real calculation
-          totalDistance: Math.random() * 50, // Mock data - replace with real calculation
+          territorySize: 0, // Will be calculated from real data
+          totalDistance: 0, // Will be calculated from real data
           achievementCount: achievementCount || 0,
           isFriend: existingRelation?.status === 'accepted',
           requestSent: existingRelation?.status === 'pending',

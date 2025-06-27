@@ -86,6 +86,7 @@ export default function FriendsScreen() {
       );
 
   const handleUserPress = (user) => {
+    console.log('Friend card pressed, user data:', user);
     setSelectedUser(user);
     setProfileModalVisible(true);
   };

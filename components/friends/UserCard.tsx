@@ -19,8 +19,17 @@ interface UserCardProps {
 }
 
 export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
+  console.log('UserCard: Rendering card for user:', user.name, 'onPress defined:', !!onPress);
+  
+  const handlePress = () => {
+    console.log('UserCard: Card pressed for user:', user.name, user.id);
+    if (onPress) {
+      onPress();
+    }
+  };
+  
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress}>
+    <TouchableOpacity style={styles.container} onPress={handlePress}>
       <UserAvatar
         userId={user.id}
         photoURL={user.photoURL}
