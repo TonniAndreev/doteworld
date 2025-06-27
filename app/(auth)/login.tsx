@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
   googleButton: {
     backgroundColor: COLORS.white,
     borderWidth: 1,
-    borderColor: '#666666', // Dark gray thin border
+    borderColor: '#C1C1C1', // Dark gray thin border
   },
   googleIcon: {
     width: 20,
