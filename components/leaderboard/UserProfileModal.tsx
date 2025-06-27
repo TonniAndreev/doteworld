@@ -5,18 +5,14 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
-  Dimensions,
   ActivityIndicator,
 } from 'react-native';
-import { X, UserPlus, UserCheck, UserX, MapPin } from 'lucide-react-native';
-import MapView, { Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
+import { X, UserPlus, UserCheck, UserX } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
 import { useFriends } from '@/hooks/useFriends';
 import { useAuth } from '@/contexts/AuthContext';
-
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -32,39 +28,7 @@ interface UserProfileModalProps {
   } | null;
 }
 
-// Generate mock territory data based on user ID for consistent display
-const generateMockTerritory = (userId: string) => {
-  const hash = userId.split('').reduce((a, b) => {
-    a = ((a << 5) - a) + b.charCodeAt(0);
-    return a & a;
-  }, 0);
-  
-  // Base coordinates around San Francisco area
-  const baseLat = 37.7749 + (Math.abs(hash) % 1000) / 10000;
-  const baseLng = -122.4194 + (Math.abs(hash * 2) % 1000) / 10000;
-  
-  // Generate a polygon around the base coordinates
-  const radius = 0.002;
-  const points = [];
-  const numPoints = 6 + (Math.abs(hash) % 4);
-  
-  for (let i = 0; i < numPoints; i++) {
-    const angle = (i / numPoints) * 2 * Math.PI;
-    const variance = 0.3 + (Math.abs(hash * (i + 1)) % 100) / 200;
-    const lat = baseLat + Math.cos(angle) * radius * variance;
-    const lng = baseLng + Math.sin(angle) * radius * variance;
-    points.push({ latitude: lat, longitude: lng });
-  }
-  
-  return {
-    coordinates: points,
-    center: { latitude: baseLat, longitude: baseLng },
-  };
-};
-
 export default function UserProfileModal({ visible, onClose, user }: UserProfileModalProps) {
-  const [territory, setTerritory] = useState<any>(null);
-  const [isLoadingTerritory, setIsLoadingTerritory] = useState(false);
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending' | 'sent'>('none');
   const [userProfile, setUserProfile] = useState<any>(null);
   const [userDogs, setUserDogs] = useState<any[]>([]);
@@ -75,13 +39,12 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     totalDistance: 0,
   });
   
-  const { friends, sendFriendRequest } = useFriends();
+  const { friends, sendFriendRequest, removeFriend } = useFriends();
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
     if (visible && user) {
       loadUserData();
-      loadTerritory();
       checkFriendshipStatus();
     }
   }, [visible, user, friends]);
@@ -104,7 +67,7 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         setUserProfile(profile);
       }
 
-      // Get user's dogs
+      // Get user's dogs with more detailed query
       const { data: dogData, error: dogError } = await supabase
         .from('profile_dogs')
         .select(`
@@ -121,7 +84,9 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         console.error('Error fetching user dogs:', dogError);
         setUserDogs([]);
       } else {
+        console.log('Raw dog data for user:', user.id, dogData);
         const dogs = dogData?.map(pd => pd.dogs).filter(Boolean) || [];
+        console.log('Processed dogs:', dogs);
         setUserDogs(dogs);
       }
 
@@ -131,33 +96,52 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
         .select('*', { count: 'exact', head: true })
         .eq('profile_id', user.id);
 
-      // Calculate territory size from walk points (simplified calculation)
+      // Calculate territory size and distance from walk points
       let territorySize = 0;
       let totalDistance = 0;
 
-      if (dogs.length > 0) {
-        const { data: walkPoints, error: walkError } = await supabase
-          .from('walk_points')
-          .select('latitude, longitude')
-          .eq('dog_id', dogs[0].id);
+      if (dogData && dogData.length > 0) {
+        const dogIds = dogData.map(pd => pd.dogs?.id).filter(Boolean);
+        
+        if (dogIds.length > 0) {
+          // Get walk points for all user's dogs
+          const { data: walkPoints, error: walkError } = await supabase
+            .from('walk_points')
+            .select('latitude, longitude, walk_session_id, timestamp')
+            .in('dog_id', dogIds)
+            .order('timestamp', { ascending: true });
 
-        if (walkPoints && walkPoints.length > 0) {
-          // Simple calculation: assume each walk point represents ~0.001 km²
-          territorySize = walkPoints.length * 0.001;
-          
-          // Calculate total distance (simplified)
-          if (walkPoints.length > 1) {
-            for (let i = 1; i < walkPoints.length; i++) {
-              const prev = walkPoints[i - 1];
-              const curr = walkPoints[i];
-              const distance = calculateDistance(
-                prev.latitude,
-                prev.longitude,
-                curr.latitude,
-                curr.longitude
-              );
-              totalDistance += distance;
-            }
+          if (walkPoints && walkPoints.length > 0) {
+            console.log('Walk points found:', walkPoints.length);
+            
+            // Group by walk session to calculate distances properly
+            const sessionGroups = walkPoints.reduce((groups, point) => {
+              if (!groups[point.walk_session_id]) {
+                groups[point.walk_session_id] = [];
+              }
+              groups[point.walk_session_id].push(point);
+              return groups;
+            }, {} as Record<string, any[]>);
+
+            // Calculate total distance across all sessions
+            Object.values(sessionGroups).forEach(sessionPoints => {
+              if (sessionPoints.length > 1) {
+                for (let i = 1; i < sessionPoints.length; i++) {
+                  const prev = sessionPoints[i - 1];
+                  const curr = sessionPoints[i];
+                  const distance = calculateDistance(
+                    prev.latitude,
+                    prev.longitude,
+                    curr.latitude,
+                    curr.longitude
+                  );
+                  totalDistance += distance;
+                }
+              }
+            });
+
+            // Simple territory calculation: assume each walk point represents ~0.001 km²
+            territorySize = walkPoints.length * 0.001;
           }
         }
       }
@@ -173,18 +157,6 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     } finally {
       setIsLoadingProfile(false);
     }
-  };
-
-  const loadTerritory = () => {
-    if (!user) return;
-    
-    setIsLoadingTerritory(true);
-    // Simulate loading time for territory
-    setTimeout(() => {
-      const mockTerritory = generateMockTerritory(user.id);
-      setTerritory(mockTerritory);
-      setIsLoadingTerritory(false);
-    }, 500);
   };
 
   const checkFriendshipStatus = async () => {
@@ -238,6 +210,10 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
       // Send friend request
       setFriendshipStatus('sent');
       await sendFriendRequest(user.id);
+    } else if (friendshipStatus === 'friend') {
+      // Unfriend
+      await removeFriend(user.id);
+      setFriendshipStatus('none');
     }
   };
 
@@ -245,10 +221,10 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     switch (friendshipStatus) {
       case 'friend':
         return {
-          icon: <UserCheck size={20} color={COLORS.success} />,
-          text: 'Friends',
-          style: [styles.actionButton, styles.friendButton],
-          disabled: true,
+          icon: <UserX size={20} color={COLORS.white} />,
+          text: 'Unfriend',
+          style: [styles.actionButton, styles.unfriendButton],
+          disabled: false,
         };
       case 'pending':
         return {
@@ -302,7 +278,9 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
   const displayName = userProfile ? 
     `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || user.name :
     user.name;
-  const displayDogName = userDogs.length > 0 ? userDogs[0].name : user.dogName;
+  
+  // Use the actual dog name from database, fallback to user.dogName if no dogs found
+  const displayDogName = userDogs.length > 0 ? userDogs[0].name : (user.dogName !== 'No dog' ? user.dogName : 'No dog');
 
   return (
     <Modal
@@ -316,49 +294,6 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
           <TouchableOpacity style={styles.closeButton} onPress={onClose}>
             <X size={24} color={COLORS.neutralDark} />
           </TouchableOpacity>
-
-          {/* Territory Map Section */}
-          <View style={styles.mapSection}>
-            <View style={styles.mapHeader}>
-              <MapPin size={20} color={COLORS.primary} />
-              <Text style={styles.mapTitle}>Territory</Text>
-            </View>
-            
-            <View style={styles.mapContainer}>
-              {isLoadingTerritory ? (
-                <View style={styles.mapLoading}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                  <Text style={styles.loadingText}>Loading territory...</Text>
-                </View>
-              ) : territory ? (
-                <MapView
-                  provider={PROVIDER_GOOGLE}
-                  style={styles.map}
-                  initialRegion={{
-                    latitude: territory.center.latitude,
-                    longitude: territory.center.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01,
-                  }}
-                  scrollEnabled={false}
-                  zoomEnabled={false}
-                  rotateEnabled={false}
-                  pitchEnabled={false}
-                >
-                  <Polygon
-                    coordinates={territory.coordinates}
-                    fillColor="rgba(241, 102, 46, 0.3)"
-                    strokeColor={COLORS.primary}
-                    strokeWidth={2}
-                  />
-                </MapView>
-              ) : (
-                <View style={styles.mapError}>
-                  <Text style={styles.errorText}>Unable to load territory</Text>
-                </View>
-              )}
-            </View>
-          </View>
 
           {/* User Info Section */}
           <View style={styles.userSection}>
@@ -374,13 +309,15 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
                     userId={user.id}
                     photoURL={userProfile?.avatar_url || user.photoURL}
                     userName={displayName}
-                    size={80}
+                    size={100}
                   />
                 </View>
 
                 <View style={styles.userInfo}>
                   <Text style={styles.userName}>{displayName}</Text>
-                  <Text style={styles.dogName}>{displayDogName}</Text>
+                  {displayDogName !== 'No dog' && (
+                    <Text style={styles.dogName}>{displayDogName}</Text>
+                  )}
                 </View>
 
                 {/* Stats */}
@@ -439,8 +376,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    width: screenWidth * 0.9,
-    height: screenHeight * 0.8,
+    width: '90%',
+    maxWidth: 400,
     backgroundColor: COLORS.white,
     borderRadius: 20,
     overflow: 'hidden',
@@ -464,44 +401,17 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  mapSection: {
-    flex: 1,
-    backgroundColor: COLORS.neutralExtraLight,
-  },
-  mapHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  userSection: {
     backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.neutralLight,
-  },
-  mapTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 18,
-    color: COLORS.neutralDark,
-    marginLeft: 8,
-  },
-  mapContainer: {
-    flex: 1,
-    margin: 16,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: COLORS.neutralLight,
-  },
-  map: {
-    flex: 1,
-  },
-  mapLoading: {
-    flex: 1,
-    justifyContent: 'center',
+    padding: 32,
     alignItems: 'center',
-    backgroundColor: COLORS.neutralExtraLight,
+    minHeight: 400,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 200,
   },
   loadingText: {
     fontFamily: 'Inter-Regular',
@@ -509,49 +419,35 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
     marginTop: 12,
   },
-  mapError: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: COLORS.neutralExtraLight,
-  },
-  errorText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-  },
-  userSection: {
-    backgroundColor: COLORS.white,
-    padding: 24,
-    alignItems: 'center',
-  },
   avatarContainer: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
   userInfo: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   userName: {
     fontFamily: 'Inter-Bold',
-    fontSize: 24,
+    fontSize: 28,
     color: COLORS.neutralDark,
-    marginBottom: 4,
+    marginBottom: 8,
+    textAlign: 'center',
   },
   dogName: {
     fontFamily: 'Inter-Medium',
     fontSize: 18,
     color: COLORS.primary,
+    textAlign: 'center',
   },
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
     backgroundColor: COLORS.neutralExtraLight,
     borderRadius: 16,
-    marginBottom: 24,
+    marginBottom: 32,
   },
   statItem: {
     flex: 1,
@@ -565,7 +461,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontFamily: 'Inter-Bold',
-    fontSize: 18,
+    fontSize: 20,
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
@@ -573,12 +469,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: COLORS.neutralMedium,
+    textAlign: 'center',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 32,
     borderRadius: 16,
     width: '100%',
@@ -586,8 +483,8 @@ const styles = StyleSheet.create({
   addFriendButton: {
     backgroundColor: COLORS.primary,
   },
-  friendButton: {
-    backgroundColor: COLORS.success,
+  unfriendButton: {
+    backgroundColor: COLORS.error,
   },
   pendingButton: {
     backgroundColor: COLORS.neutralLight,

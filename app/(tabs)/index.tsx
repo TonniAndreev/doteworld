@@ -34,6 +34,7 @@ export default function MapScreen() {
     territorySize,
     currentWalkPoints,
     currentPolygon,
+    currentWalkDistance,
     startWalk,
     addWalkPoint,
     endWalk,
@@ -350,7 +351,7 @@ export default function MapScreen() {
               {isWalking && (
                 <View style={styles.walkStatsContainer}>
                   <Text style={styles.walkStatsText}>
-                    {(walkDistance * 1000).toFixed(0)}m walked • {currentWalkPoints.length} points
+                    {(currentWalkDistance * 1000).toFixed(0)}m walked • {currentWalkPoints.length} points
                   </Text>
                 </View>
               )}

@@ -26,6 +26,7 @@ interface TerritoryContextType {
   currentWalkPoints: Coordinate[];
   currentPolygon: Coordinate[] | null;
   currentWalkSessionId: string | null;
+  currentWalkDistance: number;
   startWalk: () => void;
   addWalkPoint: (coordinates: Coordinate) => void;
   endWalk: () => Promise<void>;
@@ -40,6 +41,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
   const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
   const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
+  const [currentWalkDistance, setCurrentWalkDistance] = useState(0);
   
   const { user } = useAuth();
   const { addPaws } = usePaws();
@@ -115,12 +117,25 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const startWalk = () => {
     setCurrentWalkPoints([]);
     setCurrentPolygon(null);
+    setCurrentWalkDistance(0);
     // Generate a unique session ID for this walk
     setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   };
 
   const addWalkPoint = async (coordinates: Coordinate) => {
     if (!user || !user.dogs.length || !currentWalkSessionId) return;
+
+    // Calculate distance from previous point
+    if (currentWalkPoints.length > 0) {
+      const lastPoint = currentWalkPoints[currentWalkPoints.length - 1];
+      const distance = calculateDistance(
+        lastPoint.latitude,
+        lastPoint.longitude,
+        coordinates.latitude,
+        coordinates.longitude
+      );
+      setCurrentWalkDistance(prev => prev + distance);
+    }
 
     const newPoints = [...currentWalkPoints, coordinates];
     setCurrentWalkPoints(newPoints);
@@ -243,6 +258,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentWalkPoints([]);
       setCurrentPolygon(null);
       setCurrentWalkSessionId(null);
+      setCurrentWalkDistance(0);
 
       // Save to storage
       await Promise.all([
@@ -263,7 +279,29 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentWalkPoints([]);
       setCurrentPolygon(null);
       setCurrentWalkSessionId(null);
+      setCurrentWalkDistance(0);
     }
+  };
+
+  // Helper function to calculate distance between two coordinates
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c;
+    
+    return distance;
+  };
+
+  const toRad = (degrees: number): number => {
+    return degrees * (Math.PI / 180);
   };
 
   // Extract renderable polygons for the map
@@ -277,6 +315,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     currentWalkPoints,
     currentPolygon,
     currentWalkSessionId,
+    currentWalkDistance,
     startWalk,
     addWalkPoint,
     endWalk,

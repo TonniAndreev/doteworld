@@ -369,14 +369,16 @@ export function useFriends() {
 
       if (error) {
         console.error('Error removing friend:', error);
-        return;
+        return false;
       }
 
       console.log('Friend removed successfully');
       // Refresh friends list
       await fetchFriends();
+      return true;
     } catch (error) {
       console.error('Error removing friend:', error);
+      return false;
     }
   };
 
