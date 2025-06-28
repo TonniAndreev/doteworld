@@ -109,7 +109,11 @@ export function useSafeSubscription(
         if (entry.count <= 0) {
           // If this is the last reference, remove the channel
           console.log(`Removing channel ${channelName} (reference count zero)`);
-          supabase.removeChannel(channel);
+          try {
+            supabase.removeChannel(channel);
+          } catch (e) {
+            console.error(`Error removing channel ${channelName}:`, e);
+          }
           activeChannels.delete(channelName);
         } else {
           console.log(`Decremented reference count for ${channelName} to ${entry.count}`);

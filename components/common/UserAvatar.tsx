@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Image, View, Text, StyleSheet, ImageStyle, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import { COLORS } from '@/constants/theme';
 import { useUserProfilePhoto } from '@/hooks/useUserProfilePhoto';
