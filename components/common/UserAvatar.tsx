@@ -39,7 +39,7 @@ export default function UserAvatar({
   let finalPhotoUrl = isDogAvatar ? (dogPhotoUrl || photoURL) : (userPhotoUrl || photoURL);
   
   // For debugging - remove in production
-  console.log(`Avatar for ${isDogAvatar ? 'dog' : 'user'} ${userId}: using ${finalPhotoUrl}`);
+  console.log(`Avatar for ${isDogAvatar ? 'dog' : 'user'} ${userId}: using ${finalPhotoUrl || 'null'}`);
   
   const avatarStyle = [
     {
