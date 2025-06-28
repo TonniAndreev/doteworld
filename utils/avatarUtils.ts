@@ -2,6 +2,9 @@
 
 const AVATAR_COUNT = 17; // We have avatars 01.png through 17.png
 
+// App's logo for default avatar fallback
+const DEFAULT_AVATAR = { uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' };
+
 // Static imports for all avatars
 const AVATAR_IMAGES = {
   1: require('@/assets/avatars/01.png'),

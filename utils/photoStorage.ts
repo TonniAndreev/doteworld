@@ -15,14 +15,22 @@ export async function uploadUserProfilePhoto(
   fileUri: string
 ): Promise<PhotoUploadResult> {
   try {
+    console.log('Starting user profile photo upload...');
+    
     // Generate unique filename
     const fileExt = fileUri.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${userId}/profile-${Date.now()}.${fileExt}`;
     
+    console.log(`Uploading to profiles/${fileName}`);
+    
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('profiles')
-      .upload(fileName, fileUri, {
+      .upload(fileName, {
+        uri: fileUri, 
+        type: `image/${fileExt}`, 
+        name: `profile.${fileExt}`
+      }, {
         cacheControl: '3600',
         upsert: true,
       });
@@ -32,6 +40,8 @@ export async function uploadUserProfilePhoto(
       return { success: false, error: uploadError.message };
     }
 
+    console.log('Upload successful, getting public URL');
+
     // Get public URL
     const { data: urlData } = supabase.storage
       .from('profiles')
@@ -40,6 +50,8 @@ export async function uploadUserProfilePhoto(
     if (!urlData?.publicUrl) {
       return { success: false, error: 'Failed to get public URL' };
     }
+
+    console.log('Public URL:', urlData.publicUrl);
 
     // Update user profile with photo path
     const { error: updateError } = await supabase
@@ -55,6 +67,8 @@ export async function uploadUserProfilePhoto(
       console.error('Error updating profile with photo path:', updateError);
       return { success: false, error: updateError.message };
     }
+
+    console.log('Profile updated with new photo path');
 
     return {
       success: true,
@@ -78,14 +92,22 @@ export async function uploadDogProfilePhoto(
   fileUri: string
 ): Promise<PhotoUploadResult> {
   try {
+    console.log('Starting dog profile photo upload...');
+    
     // Generate unique filename
     const fileExt = fileUri.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${dogId}/profile-${Date.now()}.${fileExt}`;
     
-    // Upload to Supabase Storage
+    console.log(`Uploading to dog_profiles/${fileName}`);
+    
+    // Upload to Supabase Storage - pass file object directly
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('dog_profiles')
-      .upload(fileName, fileUri, {
+      .upload(fileName, {
+        uri: fileUri, 
+        type: `image/${fileExt}`, 
+        name: `dog-profile.${fileExt}`
+      }, {
         cacheControl: '3600',
         upsert: true,
       });
@@ -95,6 +117,8 @@ export async function uploadDogProfilePhoto(
       return { success: false, error: uploadError.message };
     }
 
+    console.log('Upload successful, getting public URL');
+
     // Get public URL
     const { data: urlData } = supabase.storage
       .from('dog_profiles')
@@ -103,6 +127,8 @@ export async function uploadDogProfilePhoto(
     if (!urlData?.publicUrl) {
       return { success: false, error: 'Failed to get public URL' };
     }
+
+    console.log('Public URL:', urlData.publicUrl);
 
     // Update dog profile with photo path
     const { error: updateError } = await supabase
@@ -118,6 +144,8 @@ export async function uploadDogProfilePhoto(
       console.error('Error updating dog with photo path:', updateError);
       return { success: false, error: updateError.message };
     }
+
+    console.log('Dog profile updated with new photo path');
 
     return {
       success: true,

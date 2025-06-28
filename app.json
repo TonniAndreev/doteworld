@@ -4,7 +4,7 @@
     "slug": "bolt-expo-nativewind",
     "version": "1.0.0",
     "orientation": "portrait", 
-    "icon": "https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300",
+    "icon": "./assets/images/icon.png",
     "scheme": "doteapp",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,

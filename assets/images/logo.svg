@@ -1,0 +1,38 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Circular background -->
+  <circle cx="256" cy="256" r="256" fill="#F1662E"/>
+  
+  <!-- Paw print with white outline -->
+  <g filter="url(#filter0_d)">
+    <!-- Main paw pad -->
+    <path d="M256 350C291.346 350 320 321.346 320 286C320 250.654 291.346 222 256 222C220.654 222 192 250.654 192 286C192 321.346 220.654 350 256 350Z" fill="white"/>
+    
+    <!-- Top left toe -->
+    <path d="M205 190C226.539 190 244 172.539 244 151C244 129.461 226.539 112 205 112C183.461 112 166 129.461 166 151C166 172.539 183.461 190 205 190Z" fill="white"/>
+    
+    <!-- Top right toe -->
+    <path d="M307 190C328.539 190 346 172.539 346 151C346 129.461 328.539 112 307 112C285.461 112 268 129.461 268 151C268 172.539 285.461 190 307 190Z" fill="white"/>
+    
+    <!-- Bottom left toe -->
+    <path d="M162 246C183.539 246 201 228.539 201 207C201 185.461 183.539 168 162 168C140.461 168 123 185.461 123 207C123 228.539 140.461 246 162 246Z" fill="white"/>
+    
+    <!-- Bottom right toe -->
+    <path d="M350 246C371.539 246 389 228.539 389 207C389 185.461 371.539 168 350 168C328.461 168 311 185.461 311 207C311 228.539 328.461 246 350 246Z" fill="white"/>
+  </g>
+  
+  <!-- Text "DOTE" -->
+  <text x="256" y="415" text-anchor="middle" font-size="64" font-weight="bold" font-family="Arial, sans-serif" fill="white">DOTE</text>
+  
+  <!-- Drop shadow filter -->
+  <defs>
+    <filter id="filter0_d" x="103" y="92" width="306" height="278" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+      <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+      <feOffset/>
+      <feGaussianBlur stdDeviation="10"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+      <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+      <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+    </filter>
+  </defs>
+</svg>
