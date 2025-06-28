@@ -536,17 +536,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Read the file as base64
           let fileData;
           if (Platform.OS === 'web') {
-            // For web, we can use the file URI directly
-            fileData = dogPhoto;
+            // For web, convert data URL to blob
+            if (dogPhoto.startsWith('data:')) {
+              const response = await fetch(dogPhoto);
+              const blob = await response.blob();
+              fileData = blob;
+            } else {
+              fileData = dogPhoto;
+            }
           } else {
             // For mobile, read the file as base64
             const base64Data = await FileSystem.readAsStringAsync(dogPhoto, {
               encoding: FileSystem.EncodingType.Base64,
             });
-            fileData = base64Data;
+            
+            // Convert base64 to Uint8Array for better compatibility
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            fileData = bytes;
           }
           
-          // Upload to Supabase Storage
+          // Upload to Supabase Storage with proper content type
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('dog_photos')
             .upload(filePath, fileData, {
@@ -556,7 +569,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (uploadError) {
             console.error('Error uploading photo:', uploadError);
-            throw new Error('Failed to upload dog photo');
+            // Check if bucket exists and user has permissions
+            const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+            console.log('Available buckets:', buckets);
+            if (bucketsError) {
+              console.error('Error listing buckets:', bucketsError);
+            }
+            throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
           }
           
           console.log('Upload successful:', uploadData);
@@ -573,7 +592,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           dogData.photo_uploaded_at = new Date().toISOString();
         } catch (uploadError) {
           console.error('Photo upload error:', uploadError);
-          // Continue without photo if upload fails
+          // Continue without photo if upload fails, but log the specific error
+          console.warn('Continuing dog creation without photo due to upload error');
         }
       }
       
@@ -633,12 +653,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       let finalAvatarUrl = data.avatar_url || user.avatar_url;
       
-      if (data.avatar_url && (data.avatar_url.startsWith('file://') || data.avatar_url.startsWith('content://'))) {
+      if (data.avatar_url && (data.avatar_url.startsWith('file://') || data.avatar_url.startsWith('content://') || data.avatar_url.startsWith('data:'))) {
         console.log('Uploading avatar from local file:', data.avatar_url);
         
         try {
           // For Android, we need to ensure the file exists and is readable
-          if (Platform.OS === 'android') {
+          if (Platform.OS === 'android' && data.avatar_url.startsWith('file://')) {
             const fileInfo = await FileSystem.getInfoAsync(data.avatar_url);
             console.log('File info:', fileInfo);
             
@@ -658,14 +678,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Read the file as base64
           let fileData;
           if (Platform.OS === 'web') {
-            // For web, we can use the file URI directly
-            fileData = data.avatar_url;
+            // For web, convert data URL to blob
+            if (data.avatar_url.startsWith('data:')) {
+              const response = await fetch(data.avatar_url);
+              const blob = await response.blob();
+              fileData = blob;
+            } else {
+              fileData = data.avatar_url;
+            }
           } else {
             // For mobile, read the file as base64
             const base64Data = await FileSystem.readAsStringAsync(data.avatar_url, {
               encoding: FileSystem.EncodingType.Base64,
             });
-            fileData = base64Data;
+            
+            // Convert base64 to Uint8Array for better compatibility
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            fileData = bytes;
           }
           
           // Upload to Supabase Storage
@@ -729,9 +762,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Refresh user data
       await refreshUserData();
       
-      Alert.alert('Success', 'Profile updated successfully!', [
-        { text: 'OK', onPress: () => router.back() }
-      ]);
     } catch (error: any) {
       console.error('Error updating user profile:', error);
       throw error;
