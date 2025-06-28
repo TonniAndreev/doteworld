@@ -13,6 +13,12 @@ interface User {
   totalDistance: number;
   requestSent?: boolean;
   isFriend?: boolean;
+  dogs?: Array<{
+    id: string;
+    name: string;
+    breed?: string;
+    photo_url?: string | null;
+  }>;
 }
 
 interface FriendRequest {
@@ -23,6 +29,12 @@ interface FriendRequest {
   senderPhotoURL?: string | null;
   timestamp: string;
   status: string;
+  senderDogs?: Array<{
+    id: string;
+    name: string;
+    breed?: string;
+    photo_url?: string | null;
+  }>;
 }
 
 export function useFriends() {
@@ -79,23 +91,25 @@ export function useFriends() {
           continue;
         }
 
-        // Get friend's first dog
+        // Get friend's dogs
         const { data: dogData, error: dogError } = await supabase
           .from('profile_dogs')
           .select(`
             dogs (
+              id,
               name,
-              breed
+              breed,
+              photo_url
             )
           `)
-          .eq('profile_id', friendId)
-          .limit(1);
+          .eq('profile_id', friendId);
 
         if (dogError) {
           console.error('Error fetching friend dogs:', dogError);
         }
 
-        const firstDog = dogData?.[0]?.dogs;
+        const dogs = dogData?.map(item => item.dogs) || [];
+        const firstDog = dogs[0] || null;
 
         // Get friend's achievement count
         const { count: achievementCount } = await supabase
@@ -126,12 +140,12 @@ export function useFriends() {
           name: `${friendProfile.first_name || ''} ${friendProfile.last_name || ''}`.trim() || 'User',
           dogName: firstDog?.name || 'No dog',
           dogBreed: firstDog?.breed || '',
-          dogBreed: firstDog?.breed || '',
           photoURL: friendProfile.avatar_url,
           territorySize,
           totalDistance,
           achievementCount: achievementCount || 0,
           isFriend: true,
+          dogs: dogs,
         });
       }
 
@@ -172,22 +186,25 @@ export function useFriends() {
           continue;
         }
 
-        // Get requester's first dog
+        // Get requester's dogs
         const { data: dogData, error: dogError } = await supabase
           .from('profile_dogs')
           .select(`
             dogs (
-              name
+              id,
+              name,
+              breed,
+              photo_url
             )
           `)
-          .eq('profile_id', request.requester_id)
-          .limit(1);
+          .eq('profile_id', request.requester_id);
 
         if (dogError) {
           console.error('Error fetching requester dogs:', dogError);
         }
 
-        const firstDog = dogData?.[0]?.dogs;
+        const dogs = dogData?.map(item => item.dogs) || [];
+        const firstDog = dogs[0] || null;
 
         requestsData.push({
           id: request.id,
@@ -197,6 +214,7 @@ export function useFriends() {
           senderPhotoURL: requesterProfile.avatar_url,
           timestamp: request.created_at,
           status: request.status,
+          senderDogs: dogs,
         });
       }
 
@@ -238,19 +256,25 @@ export function useFriends() {
           .or(`and(requester_id.eq.${user.id},receiver_id.eq.${profile.id}),and(requester_id.eq.${profile.id},receiver_id.eq.${user.id})`)
           .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no relation exists
 
-        // Get user's first dog
+        // Get user's dogs
         const { data: dogData } = await supabase
           .from('profile_dogs')
           .select(`
             dogs (
+              id,
               name,
-              breed
+              breed,
+              photo_url
             )
           `)
-          .eq('profile_id', profile.id)
-          .limit(1);
+          .eq('profile_id', profile.id);
 
-        const firstDog = dogData?.[0]?.dogs;
+        if (dogData) {
+          console.log(`Found ${dogData.length} dogs for user ${profile.id}`);
+        }
+
+        const dogs = dogData?.map(item => item.dogs) || [];
+        const firstDog = dogs[0] || null;
 
         // Get achievement count
         const { count: achievementCount } = await supabase
@@ -286,6 +310,7 @@ export function useFriends() {
           achievementCount: achievementCount || 0,
           isFriend: existingRelation?.status === 'accepted',
           requestSent: existingRelation?.status === 'pending',
+          dogs: dogs,
         });
       }
 
