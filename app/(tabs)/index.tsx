@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
+import { MapPin, Play, Pause, Locate, Clock, Route } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import MapView, { Polygon, Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
 import ChallengesPanel from '@/components/home/ChallengesPanel';
+import WalkStatsPanel from '@/components/home/WalkStatsPanel';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
 import PawsModal from '@/components/home/PawsModal';
 import { calculateDistance } from '@/utils/locationUtils';
@@ -19,12 +20,16 @@ export default function MapScreen() {
   const [isWalking, setIsWalking] = useState(false);
   const [walkDistance, setWalkDistance] = useState(0);
   const [showChallenges, setShowChallenges] = useState(false);
+  const [showWalkStats, setShowWalkStats] = useState(false);
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
   const [isLocating, setIsLocating] = useState(false);
   const [showPawsModal, setShowPawsModal] = useState(false);
+  const [walkStartTime, setWalkStartTime] = useState<Date | null>(null);
+  const [walkDuration, setWalkDuration] = useState(0); // in seconds
   
   const mapRef = useRef<MapView>(null);
   const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
+  const walkStatsPanelAnimation = useRef(new Animated.Value(0)).current;
   const territorySizeAnimation = useRef(new Animated.Value(0)).current;
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const lastLocationRef = useRef<Location.LocationObject | null>(null);
@@ -55,6 +60,32 @@ export default function MapScreen() {
       }).start();
     }
   }, [isWalking]);
+
+  // Track walk duration
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (isWalking) {
+      if (!walkStartTime) {
+        setWalkStartTime(new Date());
+        setWalkDuration(0);
+      }
+      
+      timer = setInterval(() => {
+        if (walkStartTime) {
+          const now = new Date();
+          const durationInSeconds = Math.floor((now.getTime() - walkStartTime.getTime()) / 1000);
+          setWalkDuration(durationInSeconds);
+        }
+      }, 1000);
+    } else {
+      setWalkStartTime(null);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isWalking, walkStartTime]);
 
   // Initial location setup
   useEffect(() => {
@@ -172,6 +203,8 @@ export default function MapScreen() {
       console.log('Starting conquest...');
       setWalkDistance(0);
       setIsWalking(true);
+      setWalkStartTime(new Date());
+      setWalkDuration(0);
       startWalk();
       
       // Add initial point if we have a location
@@ -186,6 +219,7 @@ export default function MapScreen() {
     } else {
       console.log('Ending conquest...');
       setIsWalking(false);
+      setWalkStartTime(null);
       
       // Stop location tracking
       if (locationSubscriptionRef.current) {
@@ -194,6 +228,18 @@ export default function MapScreen() {
       }
       
       endWalk();
+    }
+  };
+
+  const formatDuration = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes}:${secs.toString().padStart(2, '0')}`;
     }
   };
 
@@ -224,6 +270,15 @@ export default function MapScreen() {
     });
   };
 
+  const toggleWalkStatsPanel = () => {
+    Animated.spring(walkStatsPanelAnimation, {
+      toValue: showWalkStats ? 0 : 1,
+      useNativeDriver: true,
+    }).start(() => {
+      setShowWalkStats(!showWalkStats);
+    });
+  };
+
   const handleMapPress = () => {
     if (showChallenges) {
       Animated.spring(challengesPanelAnimation, {
@@ -231,6 +286,15 @@ export default function MapScreen() {
         useNativeDriver: true,
       }).start(() => {
         setShowChallenges(false);
+      });
+    }
+    
+    if (showWalkStats) {
+      Animated.spring(walkStatsPanelAnimation, {
+        toValue: 0,
+        useNativeDriver: true,
+      }).start(() => {
+        setShowWalkStats(false);
       });
     }
   };
@@ -316,14 +380,26 @@ export default function MapScreen() {
           <SafeAreaView style={styles.overlay} pointerEvents="box-none">
             <View style={styles.topBar}>
               <FloatingPawsBalance />
-              <TouchableOpacity 
-                style={styles.challengesButton}
-                onPress={toggleChallengesPanel}
-              >
-                <Text style={styles.challengesText}>
-                  {activeChallengesCount} Daily Challenge{activeChallengesCount !== 1 ? 's' : ''}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.topBarButtons}>
+                <TouchableOpacity 
+                  style={styles.challengesButton}
+                  onPress={toggleChallengesPanel}
+                >
+                  <Text style={styles.challengesText}>
+                    {activeChallengesCount} Daily Challenge{activeChallengesCount !== 1 ? 's' : ''}
+                  </Text>
+                </TouchableOpacity>
+                
+                {isWalking && (
+                  <TouchableOpacity 
+                    style={styles.walkStatsButton}
+                    onPress={toggleWalkStatsPanel}
+                  >
+                    <Route size={16} color={COLORS.secondary} />
+                    <Text style={styles.walkStatsText}>Stats</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             </View>
             
             <View style={styles.controlsContainer}>
@@ -350,6 +426,15 @@ export default function MapScreen() {
 
               {isWalking && (
                 <View style={styles.walkStatsContainer}>
+                  <View style={styles.durationContainer}>
+                    <Clock size={16} color={COLORS.secondary} />
+                    <Text style={styles.durationText}>
+                      {formatDuration(walkDuration)}
+                    </Text>
+                  </View>
+                  
+                  <Text style={styles.statsDivider}>•</Text>
+                  
                   <Text style={styles.walkStatsText}>
                     {(currentWalkDistance * 1000).toFixed(0)}m walked • {currentWalkPoints.length} points
                   </Text>
@@ -417,6 +502,39 @@ export default function MapScreen() {
             </Animated.View>
           )}
 
+          {showWalkStats && (
+            <Animated.View 
+              style={[
+                styles.walkStatsPanelContainer,
+                {
+                  transform: [
+                    {
+                      translateY: walkStatsPanelAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [300, 0],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            >
+              <WalkStatsPanel 
+                walkDistance={currentWalkDistance}
+                walkDuration={walkDuration}
+                pointsCount={currentWalkPoints.length}
+                territorySize={territorySize}
+                onClose={() => {
+                  Animated.spring(walkStatsPanelAnimation, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                  }).start(() => {
+                    setShowWalkStats(false);
+                  });
+                }}
+              />
+            </Animated.View>
+          )}
+
           <PawsModal 
             visible={showPawsModal}
             onClose={() => setShowPawsModal(false)}
@@ -471,6 +589,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
   },
+  topBarButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   challengesButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -487,6 +610,19 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
+  },
+  walkStatsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    padding: 12,
+    borderRadius: 20,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    gap: 4,
   },
   controlsContainer: {
     position: 'absolute',
@@ -515,7 +651,7 @@ const styles = StyleSheet.create({
   walkStatsContainer: {
     backgroundColor: COLORS.white,
     paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     borderRadius: 20,
     marginBottom: 16,
     shadowColor: COLORS.black,
@@ -523,11 +659,45 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  durationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  durationText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.secondary,
+  },
+  statsDivider: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    shadowRadius: 4,
+    elevation: 3,
   },
   walkStatsText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.secondary,
+  },
+  walkStatsText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.secondary,
+  },
+  walkStatsPanelContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '60%',
   },
   bottomControlsRow: {
     flexDirection: 'row',

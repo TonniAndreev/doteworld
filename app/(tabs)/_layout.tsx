@@ -2,7 +2,8 @@ import { Tabs } from 'expo-router';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
-  MapPin, 
+  MapPin,
+  History,
   Trophy, 
   Award, 
   Users
@@ -37,6 +38,15 @@ export default function TabLayout() {
           title: 'Map',
           tabBarIcon: ({ color, size }) => (
             <MapPin size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="walk-history"
+        options={{
+          title: 'History',
+          tabBarIcon: ({ color, size }) => (
+            <History size={size} color={color} />
           ),
         }}
       />

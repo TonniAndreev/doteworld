@@ -4,6 +4,12 @@ import { useAuth } from './AuthContext';
 import { usePaws } from './PawsContext';
 import { supabase } from '@/utils/supabase';
 import { 
+  startWalkSession, 
+  addWalkPoint as addWalkPointToSession,
+  completeWalkSession,
+  cancelWalkSession
+} from '@/utils/walkSessionService';
+import { 
   calculatePolygonArea, 
   isValidPolygon, 
   createConvexHull,
@@ -22,6 +28,10 @@ interface TerritoryContextType {
   territory: Coordinate[][];
   territoryGeoJSON: turf.Feature<turf.Polygon | turf.MultiPolygon> | null;
   territorySize: number;
+  walkSessions: {
+    totalWalks: number;
+    totalDistance: number;
+  };
   totalDistance: number;
   currentWalkPoints: Coordinate[];
   currentPolygon: Coordinate[] | null;
@@ -38,6 +48,10 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [territoryGeoJSON, setTerritoryGeoJSON] = useState<turf.Feature<turf.Polygon | turf.MultiPolygon> | null>(null);
   const [territorySize, setTerritorySize] = useState(0);
   const [totalDistance, setTotalDistance] = useState(0);
+  const [walkSessions, setWalkSessions] = useState({
+    totalWalks: 0,
+    totalDistance: 0
+  });
   const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
   const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
   const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
@@ -114,12 +128,29 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     loadTerritoryData();
   }, [user]);
 
-  const startWalk = () => {
+  const startWalk = async () => {
     setCurrentWalkPoints([]);
     setCurrentPolygon(null);
     setCurrentWalkDistance(0);
-    // Generate a unique session ID for this walk
-    setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    
+    if (!user || !user.dogs.length) return;
+    
+    try {
+      // Start a new walk session in the database
+      const { sessionId, error } = await startWalkSession(user.dogs[0].id);
+      
+      if (error || !sessionId) {
+        console.error('Failed to start walk session:', error);
+        // Fallback to local session ID if database creation fails
+        setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      } else {
+        setCurrentWalkSessionId(sessionId);
+      }
+    } catch (error) {
+      console.error('Error starting walk:', error);
+      // Fallback to local session ID
+      setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+    }
   };
 
   const addWalkPoint = async (coordinates: Coordinate) => {
@@ -141,18 +172,15 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     setCurrentWalkPoints(newPoints);
 
     try {
-      // Save walk point to database
-      const { error } = await supabase
-        .from('walk_points')
-        .insert({
-          dog_id: user.dogs[0].id, // Use first dog for now
-          walk_session_id: currentWalkSessionId,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-        });
+      // Add walk point to the session
+      const { success, error } = await addWalkPointToSession(
+        currentWalkSessionId,
+        user.dogs[0].id,
+        coordinates
+      );
 
-      if (error) {
-        console.error('Error saving walk point:', error);
+      if (!success) {
+        console.error('Error adding walk point to session:', error);
       }
     } catch (error) {
       console.error('Error saving walk point:', error);
@@ -263,8 +291,16 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       // Save to storage
       await Promise.all([
         AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
-        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
+        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString())
       ]);
+
+      // Complete the walk session with final stats
+      if (currentWalkSessionId) {
+        await completeWalkSession(currentWalkSessionId, {
+          distance: currentWalkDistance,
+          territoryGained: newPolygonArea
+        });
+      }
 
       // Award paws based on the NEW polygon area only (not total territory)
       const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
@@ -278,6 +314,12 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       // Reset current walk state on error
       setCurrentWalkPoints([]);
       setCurrentPolygon(null);
+      
+      // Cancel the walk session
+      if (currentWalkSessionId) {
+        await cancelWalkSession(currentWalkSessionId);
+      }
+      
       setCurrentWalkSessionId(null);
       setCurrentWalkDistance(0);
     }
@@ -310,6 +352,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const value: TerritoryContextType = {
     territory: renderablePolygons, // For backward compatibility with existing map rendering
     territoryGeoJSON,
+    walkSessions,
     territorySize,
     totalDistance,
     currentWalkPoints,
