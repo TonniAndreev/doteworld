@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -7,7 +7,6 @@ import MapView, { Polygon, Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'rea
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
-import ChallengesPanel from '@/components/home/ChallengesPanel';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
 import PawsModal from '@/components/home/PawsModal';
 import { calculateDistance } from '@/utils/locationUtils';
@@ -18,14 +17,10 @@ export default function MapScreen() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isWalking, setIsWalking] = useState(false);
   const [walkDistance, setWalkDistance] = useState(0);
-  const [showChallenges, setShowChallenges] = useState(false);
-  const [activeChallengesCount, setActiveChallengesCount] = useState(2);
   const [isLocating, setIsLocating] = useState(false);
   const [showPawsModal, setShowPawsModal] = useState(false);
   
   const mapRef = useRef<MapView>(null);
-  const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
-  const territorySizeAnimation = useRef(new Animated.Value(0)).current;
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const lastLocationRef = useRef<Location.LocationObject | null>(null);
   
@@ -41,20 +36,6 @@ export default function MapScreen() {
   } = useTerritory();
   
   const { canStartConquest, startConquest, isSubscribed } = usePaws();
-
-  useEffect(() => {
-    if (isWalking) {
-      Animated.spring(territorySizeAnimation, {
-        toValue: 1,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.spring(territorySizeAnimation, {
-        toValue: 0,
-        useNativeDriver: true,
-      }).start();
-    }
-  }, [isWalking]);
 
   // Initial location setup
   useEffect(() => {
@@ -215,26 +196,6 @@ export default function MapScreen() {
     }
   };
 
-  const toggleChallengesPanel = () => {
-    Animated.spring(challengesPanelAnimation, {
-      toValue: showChallenges ? 0 : 1,
-      useNativeDriver: true,
-    }).start(() => {
-      setShowChallenges(!showChallenges);
-    });
-  };
-
-  const handleMapPress = () => {
-    if (showChallenges) {
-      Animated.spring(challengesPanelAnimation, {
-        toValue: 0,
-        useNativeDriver: true,
-      }).start(() => {
-        setShowChallenges(false);
-      });
-    }
-  };
-
   const getButtonText = () => {
     if (isWalking) return 'Finish Conquest';
     if (!canStartConquest && !isSubscribed) return 'Need Paws to Conquer';
@@ -263,7 +224,6 @@ export default function MapScreen() {
             }}
             showsUserLocation
             followsUserLocation={!isWalking} // Don't follow when walking to see the path
-            onPress={handleMapPress}
             zoomEnabled={true}
             rotateEnabled={true}
             scrollEnabled={true}
@@ -316,37 +276,14 @@ export default function MapScreen() {
           <SafeAreaView style={styles.overlay} pointerEvents="box-none">
             <View style={styles.topBar}>
               <FloatingPawsBalance />
-              <TouchableOpacity 
-                style={styles.challengesButton}
-                onPress={toggleChallengesPanel}
-              >
-                <Text style={styles.challengesText}>
-                  {activeChallengesCount} Daily Challenge{activeChallengesCount !== 1 ? 's' : ''}
-                </Text>
-              </TouchableOpacity>
             </View>
             
             <View style={styles.controlsContainer}>
-              <Animated.View 
-                style={[
-                  styles.territorySizeContainer,
-                  {
-                    transform: [
-                      {
-                        translateY: territorySizeAnimation.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [100, 0],
-                        }),
-                      },
-                    ],
-                    opacity: territorySizeAnimation,
-                  },
-                ]}
-              >
+              <View style={styles.territorySizeContainer}>
                 <Text style={styles.territorySizeText}>
                   {(territorySize * 1000000).toFixed(0)} m² territory conquered
                 </Text>
-              </Animated.View>
+              </View>
 
               {isWalking && (
                 <View style={styles.walkStatsContainer}>
@@ -386,36 +323,6 @@ export default function MapScreen() {
               </View>
             </View>
           </SafeAreaView>
-          
-          {showChallenges && (
-            <Animated.View 
-              style={[
-                styles.challengesContainer,
-                {
-                  transform: [
-                    {
-                      translateY: challengesPanelAnimation.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [300, 0],
-                      }),
-                    },
-                  ],
-                },
-              ]}
-            >
-              <ChallengesPanel 
-                walkDistance={walkDistance} 
-                onClose={() => {
-                  Animated.spring(challengesPanelAnimation, {
-                    toValue: 0,
-                    useNativeDriver: true,
-                  }).start(() => {
-                    setShowChallenges(false);
-                  });
-                }}
-              />
-            </Animated.View>
-          )}
 
           <PawsModal 
             visible={showPawsModal}
@@ -466,27 +373,10 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
-  },
-  challengesButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    padding: 12,
-    borderRadius: 20,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  challengesText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.primary,
   },
   controlsContainer: {
     position: 'absolute',
@@ -570,15 +460,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-  },
-  challengesContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '60%',
   },
 });
