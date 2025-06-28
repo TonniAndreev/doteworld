@@ -2,6 +2,12 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/utils/supabase';
 import { Platform } from 'react-native';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import * as Crypto from 'expo-crypto';
+
+// Complete the auth session on web
+WebBrowser.maybeCompleteAuthSession();
 
 interface Dog {
   id: string;
@@ -60,6 +66,12 @@ const isValidEmail = (email: string): boolean => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DoteUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Create redirect URI for OAuth
+  const redirectTo = AuthSession.makeRedirectUri({
+    scheme: 'doteapp',
+    path: '/auth/callback',
+  });
 
   useEffect(() => {
     // Get initial session
@@ -315,8 +327,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const loginWithGoogle = async () => {
     try {
-      // For web platform, use signInWithOAuth
+      setIsLoading(true);
+
       if (Platform.OS === 'web') {
+        // For web platform, use signInWithOAuth
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -326,21 +340,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (error) throw error;
       } else {
-        // For mobile platforms, we would use the native flow
-        // This requires additional setup with Expo AuthSession
-        // For now, show an error message
-        throw new Error('Google login is not configured for mobile platforms in this demo');
+        // For mobile platforms, use expo-auth-session
+        
+        // Generate a secure random state parameter
+        const state = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          Math.random().toString(36),
+          { encoding: Crypto.CryptoEncoding.HEX }
+        );
+
+        // Create the authorization URL
+        const authUrl = `https://uufihbvqnvniaszmfufi.supabase.co/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}&state=${state}`;
+
+        console.log('Opening Google OAuth URL:', authUrl);
+        console.log('Redirect URI:', redirectTo);
+
+        // Open the OAuth session
+        const result = await WebBrowser.openAuthSessionAsync(
+          authUrl,
+          redirectTo,
+          {
+            showInRecents: true,
+          }
+        );
+
+        console.log('OAuth result:', result);
+
+        if (result.type === 'success') {
+          const url = new URL(result.url);
+          const access_token = url.searchParams.get('access_token');
+          const refresh_token = url.searchParams.get('refresh_token');
+          const error = url.searchParams.get('error');
+          const error_description = url.searchParams.get('error_description');
+
+          if (error) {
+            throw new Error(error_description || error);
+          }
+
+          if (access_token && refresh_token) {
+            // Set the session using the tokens
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
+            if (sessionError) {
+              throw sessionError;
+            }
+
+            console.log('Google login successful:', data.user?.id);
+            // fetchUserProfile will be called automatically by the auth state change listener
+          } else {
+            throw new Error('No tokens received from Google OAuth');
+          }
+        } else if (result.type === 'cancel') {
+          throw new Error('Google login was cancelled');
+        } else {
+          throw new Error('Google login failed');
+        }
       }
     } catch (error) {
       console.error('Google login error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
   
   const loginWithFacebook = async () => {
     try {
-      // For web platform, use signInWithOAuth
+      setIsLoading(true);
+
       if (Platform.OS === 'web') {
+        // For web platform, use signInWithOAuth
         const { error } = await supabase.auth.signInWithOAuth({
           provider: 'facebook',
           options: {
@@ -350,14 +422,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         if (error) throw error;
       } else {
-        // For mobile platforms, we would use the native flow
-        // This requires additional setup with Expo AuthSession
-        // For now, show an error message
-        throw new Error('Facebook login is not configured for mobile platforms in this demo');
+        // For mobile platforms, use expo-auth-session
+        
+        // Generate a secure random state parameter
+        const state = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          Math.random().toString(36),
+          { encoding: Crypto.CryptoEncoding.HEX }
+        );
+
+        // Create the authorization URL
+        const authUrl = `https://uufihbvqnvniaszmfufi.supabase.co/auth/v1/authorize?provider=facebook&redirect_to=${encodeURIComponent(redirectTo)}&state=${state}`;
+
+        console.log('Opening Facebook OAuth URL:', authUrl);
+        console.log('Redirect URI:', redirectTo);
+
+        // Open the OAuth session
+        const result = await WebBrowser.openAuthSessionAsync(
+          authUrl,
+          redirectTo,
+          {
+            showInRecents: true,
+          }
+        );
+
+        console.log('OAuth result:', result);
+
+        if (result.type === 'success') {
+          const url = new URL(result.url);
+          const access_token = url.searchParams.get('access_token');
+          const refresh_token = url.searchParams.get('refresh_token');
+          const error = url.searchParams.get('error');
+          const error_description = url.searchParams.get('error_description');
+
+          if (error) {
+            throw new Error(error_description || error);
+          }
+
+          if (access_token && refresh_token) {
+            // Set the session using the tokens
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
+            if (sessionError) {
+              throw sessionError;
+            }
+
+            console.log('Facebook login successful:', data.user?.id);
+            // fetchUserProfile will be called automatically by the auth state change listener
+          } else {
+            throw new Error('No tokens received from Facebook OAuth');
+          }
+        } else if (result.type === 'cancel') {
+          throw new Error('Facebook login was cancelled');
+        } else {
+          throw new Error('Facebook login failed');
+        }
       }
     } catch (error) {
       console.error('Facebook login error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 
