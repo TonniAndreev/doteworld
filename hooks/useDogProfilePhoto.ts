@@ -34,7 +34,7 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
       // Fetch dog profile to get photo_path or photo_url
       const { data: dog, error: dogError } = await supabase
         .from('dogs')
-        .select('photo_path, photo_url, photo_uploaded_at')
+        .select('photo_path, photo_uploaded_at')
         .eq('id', dogId)
         .maybeSingle();
 
@@ -60,10 +60,6 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
           console.log('Using basic URL:', publicUrl);
           setPhotoUrl(publicUrl);
         }
-      } else if (dog?.photo_url) {
-        // Fallback to legacy photo_url
-        console.log('Falling back to photo_url:', dog.photo_url);
-        setPhotoUrl(dog.photo_url);
       } else {
         console.log('No photo found for dog');
         setPhotoUrl(null);

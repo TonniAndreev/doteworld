@@ -177,8 +177,7 @@ export async function uploadDogProfilePhoto(
       .from('dogs')
       .update({
         photo_path: fileName,
-        photo_uploaded_at: new Date().toISOString(),
-        photo_url: urlData.publicUrl, // Keep for backward compatibility
+        photo_uploaded_at: new Date().toISOString()
       })
       .eq('id', dogId);
 
@@ -289,8 +288,7 @@ export async function deleteDogProfilePhoto(dogId: string, photoPath: string): P
       .from('dogs')
       .update({
         photo_path: null,
-        photo_uploaded_at: null,
-        photo_url: null,
+        photo_uploaded_at: null
       })
       .eq('id', dogId);
 

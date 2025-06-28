@@ -14,8 +14,8 @@ interface Dog {
   id: string;
   name: string;
   breed: string;
-  photo_url?: string;
   photo_path?: string;
+  photo_uploaded_at?: string;
   birthday?: string;
   bio?: string;
   weight?: number;
@@ -192,13 +192,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id,
             name,
             breed,
-            photo_url,
             photo_path,
             birthday,
             bio,
             weight,
             gender,
-            created_at
+            created_at,
+            photo_uploaded_at
           )
         `)
         .eq('profile_id', userId)
