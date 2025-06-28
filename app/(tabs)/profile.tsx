@@ -5,13 +5,23 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Modal,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
   Alert,
-  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Award, Users, Map, Route, PawPrint, LogOut, CreditCard as Edit } from 'lucide-react-native';
+import { 
+  Award, 
+  Users, 
+  Map, 
+  Route, 
+  PawPrint, 
+  LogOut, 
+  CreditCard as Edit,
+  Camera
+} from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -36,6 +46,7 @@ export default function ProfileScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </SafeAreaView>
@@ -64,39 +75,90 @@ export default function ProfileScreen() {
   };
 
   const handlePhotoUpload = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'We need camera roll permissions to upload photos.');
-      return;
-    }
-    
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setIsUploadingPhoto(true);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
-      try {
-        const uploadResult = await updateUserProfilePhoto(result.assets[0].uri);
-        
-        if (uploadResult.success) {
-          Alert.alert('Success', 'Profile photo updated successfully!');
-        } else {
-          Alert.alert('Error', uploadResult.error || 'Failed to upload photo');
-        }
-      } catch (error) {
-        console.error('Error uploading photo:', error);
-        Alert.alert('Error', 'Failed to upload photo');
-      } finally {
-        setIsUploadingPhoto(false);
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'We need camera roll permissions to upload photos.');
+        return;
       }
+      
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets.length > 0) {
+        setIsUploadingPhoto(true);
+        
+        try {
+          console.log('Uploading profile photo for user:', user.id);
+          console.log('Photo URI:', result.assets[0].uri);
+          
+          const uploadResult = await updateUserProfilePhoto(result.assets[0].uri);
+          
+          if (uploadResult.success) {
+            Alert.alert('Success', 'Profile photo updated successfully!');
+          } else {
+            console.error('Upload error:', uploadResult.error);
+            Alert.alert('Error', uploadResult.error || 'Failed to upload photo');
+          }
+        } catch (error) {
+          console.error('Error uploading photo:', error);
+          Alert.alert('Error', 'Failed to upload photo. Please try again.');
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+    } catch (error) {
+      console.error('Image picker error:', error);
+      Alert.alert('Error', 'There was a problem selecting your image');
+      setIsUploadingPhoto(false);
     }
   };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'We need camera permissions to take a photo.');
+        return;
+      }
+      
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled && result.assets.length > 0) {
+        setIsUploadingPhoto(true);
+        
+        try {
+          const uploadResult = await updateUserProfilePhoto(result.assets[0].uri);
+          
+          if (uploadResult.success) {
+            Alert.alert('Success', 'Profile photo updated successfully!');
+          } else {
+            Alert.alert('Error', uploadResult.error || 'Failed to upload photo');
+          }
+        } catch (error) {
+          console.error('Error uploading photo:', error);
+          Alert.alert('Error', 'Failed to upload photo');
+        } finally {
+          setIsUploadingPhoto(false);
+        }
+      }
+    } catch (error) {
+      console.error('Camera error:', error);
+      Alert.alert('Error', 'There was a problem taking your photo');
+      setIsUploadingPhoto(false);
+    }
+  };
+
   const firstDog = user.dogs?.[0];
 
   return (
@@ -122,17 +184,27 @@ export default function ProfileScreen() {
               size={100}
             />
             
-            <TouchableOpacity 
-              style={styles.editProfileButton}
-              onPress={handlePhotoUpload}
-              disabled={isUploadingPhoto}
-            >
-              {isUploadingPhoto ? (
-                <ActivityIndicator size="small" color={COLORS.white} />
-              ) : (
-                <Edit size={16} color={COLORS.white} />
-              )}
-            </TouchableOpacity>
+            <View style={styles.photoButtonsContainer}>
+              <TouchableOpacity 
+                style={styles.photoActionButton}
+                onPress={takePhoto}
+                disabled={isUploadingPhoto}
+              >
+                <Camera size={18} color={COLORS.white} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.photoActionButton}
+                onPress={handlePhotoUpload}
+                disabled={isUploadingPhoto}
+              >
+                {isUploadingPhoto ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <Edit size={18} color={COLORS.white} />
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
           
           <Text style={styles.userName}>{user.displayName || 'User'}</Text>
@@ -165,7 +237,7 @@ export default function ProfileScreen() {
             />
             <StatsCard
               icon={<Award size={24} color={COLORS.primary} />}
-              value={(user.achievementCount || 0).toString()}
+              value={(user.badgeCount || 0).toString()}
               label="Badges"
             />
           </View>
@@ -278,28 +350,6 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={editModalVisible}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-            
-            <Text style={styles.modalText}>Profile editing functionality will be implemented in the next version.</Text>
-            
-            <TouchableOpacity 
-              style={styles.modalButton}
-              onPress={() => setEditModalVisible(false)}
-            >
-              <Text style={styles.modalButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -349,18 +399,22 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginBottom: 16,
   },
-  editProfileButton: {
+  photoButtonsContainer: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
+    bottom: -4,
+    right: -4,
+    flexDirection: 'row',
+  },
+  photoActionButton: {
     backgroundColor: COLORS.primary,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: COLORS.white,
+    marginLeft: 4,
   },
   userName: {
     fontFamily: 'Inter-Bold',
@@ -493,47 +547,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.error,
     marginLeft: 8,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.neutralDark,
-    marginBottom: 16,
-  },
-  modalText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  modalButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  modalButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: COLORS.white,
   },
 });

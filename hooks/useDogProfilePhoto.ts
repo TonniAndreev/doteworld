@@ -15,9 +15,13 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Create a unique subscription channel name with a timestamp to avoid collisions
+  const channelName = `dog_photo_${dogId}_${Date.now()}`;
+
   const fetchPhoto = async () => {
     if (!dogId) {
       setIsLoading(false);
+      setPhotoUrl(null);
       return;
     }
 
@@ -32,9 +36,9 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
         .from('dogs')
         .select('photo_path, photo_url, photo_uploaded_at')
         .eq('id', dogId)
-        .single();
+        .maybeSingle();
 
-      if (dogError) {
+      if (dogError && dogError.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
         console.error('Error fetching dog profile:', dogError);
         setError(dogError.message);
         return;
@@ -67,17 +71,17 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
     } catch (err) {
       console.error('Error in useDogProfilePhoto:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
+      setPhotoUrl(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPhoto();
+    if (dogId) {
+      fetchPhoto();
+    }
   }, [dogId]);
-  
-  // Create a unique subscription channel name
-  const channelName = `dog_photo_${dogId}`;
   
   // Use the safe subscription hook instead of direct channel creation
   useSafeSubscription(
@@ -89,7 +93,9 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
     },
     (payload) => {
       console.log('Dog photo updated:', payload);
-      fetchPhoto();
+      if (payload.new?.photo_uploaded_at !== payload.old?.photo_uploaded_at) {
+        fetchPhoto();
+      }
     },
     [dogId]
   );

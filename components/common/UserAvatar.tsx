@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, View, Text, StyleSheet, ImageStyle, ViewStyle, TextStyle } from 'react-native';
+import { Image, View, Text, StyleSheet, ImageStyle, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import { COLORS } from '@/constants/theme';
 import { useUserProfilePhoto } from '@/hooks/useUserProfilePhoto';
 import { useDogProfilePhoto } from '@/hooks/useDogProfilePhoto';
@@ -62,8 +62,23 @@ export default function UserAvatar({
 
   // If image is still loading, show loading state
   const isLoading = isDogAvatar ? dogPhotoLoading : userPhotoLoading;
+  
+  if (isLoading) {
+    return (
+      <View style={[
+        containerStyles,
+        {
+          backgroundColor: COLORS.neutralLight,
+          justifyContent: 'center',
+          alignItems: 'center',
+        }
+      ]}>
+        <ActivityIndicator size="small" color={COLORS.primary} />
+      </View>
+    );
+  }
 
-  // If image failed to load and we want to show fallback
+  // If image failed to load or no URL is available and we want to show fallback
   if ((imageError || !finalPhotoUrl) && showFallback) {
     return (
       <View style={[

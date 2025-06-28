@@ -52,7 +52,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   loginWithGoogle: () => Promise<void>; 
   loginWithFacebook: () => Promise<void>;
-  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null, birthday?: string) => Promise<void>;
+  updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null, birthday?: string) => Promise<any>;
   updateUserProfilePhoto: (photoUri: string) => Promise<{ success: boolean; error?: string }>;
   refreshUserData: () => Promise<void>;
 }
@@ -136,104 +136,108 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
-      if (profileError) {
+      if (profileError && profileError.code !== 'PGRST116') {
         console.error('Error fetching profile:', profileError);
+        setUser(null);
+        setIsLoading(false);
+        return;
+      }
         
-        // If profile doesn't exist, create a basic one from auth user data
-        if (profileError.code === 'PGRST116') {
-          console.log('Profile not found, creating basic profile');
-          const basicProfile = {
-            id: supaUser.id,
-            first_name: supaUser.user_metadata?.first_name || '',
-            last_name: supaUser.user_metadata?.last_name || '',
-            phone: supaUser.user_metadata?.phone || '',
-            created_at: supaUser.created_at,
-          };
-
-          // Try to insert the profile
-          const { error: insertError } = await supabase
-            .from('profiles')
-            .insert([basicProfile]);
-
-          if (insertError) {
-            console.error('Error creating profile:', insertError);
-          }
-
-          // Set user with basic profile data
-          const fullUser: DoteUser = {
-            ...basicProfile,
-            email: supaUser.email!,
-            displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || 'User',
-            dogs: [],
-            friends: [],
-            badgeCount: 0,
-            uid: supaUser.id,
-          };
-
-          setUser(fullUser);
-          await AsyncStorage.setItem('doteUser', JSON.stringify(fullUser));
-        } else {
-          setUser(null);
-        }
-      } else {
-        // Profile exists, fetch user's dogs with fresh data (no cache)
-        console.log('Fetching fresh dog data for user:', userId);
-        const { data: userDogs, error: dogsError } = await supabase
-          .from('profile_dogs')
-          .select(`
-            dogs (
-              id,
-              name,
-              breed,
-              photo_url,
-              birthday,
-              bio,
-              weight,
-              gender,
-              created_at
-            )
-          `)
-          .eq('profile_id', userId)
-          .order('created_at', { ascending: true, foreignTable: 'dogs' });
-
-        if (dogsError) {
-          console.error('Error fetching user dogs:', dogsError);
-        }
-
-        console.log('User dogs data:', userDogs);
-        
-        // Get badge count
-        const { count: badgeCount } = await supabase
-          .from('profile_achievements')
-          .select('*', { count: 'exact', head: true })
-          .eq('profile_id', userId);
-
-        // Create full user object
-        const fullUser: DoteUser = {
+      // If profile doesn't exist, create a basic one from auth user data
+      if (!profile) {
+        console.log('Profile not found, creating basic profile');
+        const basicProfile = {
           id: supaUser.id,
-          email: supaUser.email,
-          ...profile,
-          displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
-          dogs: userDogs?.map(ud => ud.dogs).filter(Boolean) || [],
-          friends: [], // This would be fetched separately in a real app
-          badgeCount: badgeCount || 0,
+          first_name: supaUser.user_metadata?.first_name || '',
+          last_name: supaUser.user_metadata?.last_name || '',
+          phone: supaUser.user_metadata?.phone || '',
+          created_at: supaUser.created_at,
+        };
+
+        // Try to insert the profile
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert([basicProfile]);
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+        }
+
+        // Set user with basic profile data
+        const fullUser: DoteUser = {
+          ...basicProfile,
+          email: supaUser.email!,
+          displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || 'User',
+          dogs: [],
+          friends: [],
+          badgeCount: 0,
           uid: supaUser.id,
         };
 
-        console.log('Final user object with dogs:', fullUser.dogs);
-        
         setUser(fullUser);
-        // Force fresh data by clearing cache and setting new data
-        await AsyncStorage.removeItem('doteUser');
         await AsyncStorage.setItem('doteUser', JSON.stringify(fullUser));
+        setIsLoading(false);
+        return;
       }
+
+      // Profile exists, fetch user's dogs with fresh data (no cache)
+      console.log('Fetching fresh dog data for user:', userId);
+      const { data: userDogs, error: dogsError } = await supabase
+        .from('profile_dogs')
+        .select(`
+          dogs (
+            id,
+            name,
+            breed,
+            photo_url,
+            photo_path,
+            birthday,
+            bio,
+            weight,
+            gender,
+            created_at
+          )
+        `)
+        .eq('profile_id', userId)
+        .order('created_at', { ascending: true, foreignTable: 'dogs' });
+
+      if (dogsError) {
+        console.error('Error fetching user dogs:', dogsError);
+      }
+
+      console.log('User dogs data:', userDogs);
+      
+      // Get badge count
+      const { count: badgeCount } = await supabase
+        .from('profile_achievements')
+        .select('*', { count: 'exact', head: true })
+        .eq('profile_id', userId);
+
+      // Create full user object
+      const fullUser: DoteUser = {
+        id: supaUser.id,
+        email: supaUser.email || '',
+        ...profile,
+        displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
+        dogs: userDogs?.map(ud => ud.dogs).filter(Boolean) || [],
+        friends: [], // This would be fetched separately in a real app
+        badgeCount: badgeCount || 0,
+        uid: supaUser.id,
+      };
+
+      console.log('Final user object with dogs:', fullUser.dogs);
+      
+      setUser(fullUser);
+      // Force fresh data by clearing cache and setting new data
+      await AsyncStorage.removeItem('doteUser');
+      await AsyncStorage.setItem('doteUser', JSON.stringify(fullUser));
+      setIsLoading(false);
     } catch (error) {
       console.error('Unexpected error in fetchUserProfile:', error);
       setUser(null);
-    } finally {
-      setIsLoading(false); 
+      setIsLoading(false);
     }
   };
 
@@ -300,7 +304,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             last_name: last_name.trim(),
             phone: phone.trim(),
           },
-          // Disable email confirmation
+          // Disable email confirmation for development
           emailRedirectTo: undefined,
         },
       });
@@ -571,11 +575,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      console.log("Starting profile photo upload with URI:", photoUri);
       const result = await uploadUserProfilePhoto(user.id, photoUri);
       
       if (result.success) {
         // Refresh user data to get updated photo URL
         await fetchUserProfile(user.id);
+      } else {
+        console.error("Upload failed:", result.error);
       }
       
       return result;

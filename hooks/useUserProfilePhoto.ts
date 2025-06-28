@@ -19,12 +19,13 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
 
   const targetUserId = userId || user?.id;
 
-  // Create a unique subscription channel name
-  const channelName = `profile_photo_${targetUserId}`;
+  // Create a unique subscription channel name with a timestamp to avoid collisions
+  const channelName = `profile_photo_${targetUserId}_${Date.now()}`;
 
   const fetchPhoto = async () => {
     if (!targetUserId) {
       setIsLoading(false);
+      setPhotoUrl(null);
       return;
     }
 
@@ -39,9 +40,9 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
         .from('profiles')
         .select('photo_path, avatar_url, photo_uploaded_at')
         .eq('id', targetUserId)
-        .single();
+        .maybeSingle();
 
-      if (profileError) {
+      if (profileError && profileError.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
         console.error('Error fetching user profile:', profileError);
         setError(profileError.message);
         return;
@@ -74,17 +75,19 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
     } catch (err) {
       console.error('Error in useUserProfilePhoto:', err);
       setError(err instanceof Error ? err.message : 'Unknown error');
+      setPhotoUrl(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPhoto();
+    if (targetUserId) {
+      fetchPhoto();
+    }
   }, [targetUserId]);
-
+  
   // Set up real-time subscription for photo updates
-  // Use the safe subscription hook instead of direct channel creation
   useSafeSubscription(
     channelName,
     {
@@ -94,7 +97,9 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
     },
     (payload) => {
       console.log('Profile photo updated:', payload);
-      fetchPhoto();
+      if (payload.new?.photo_uploaded_at !== payload.old?.photo_uploaded_at) {
+        fetchPhoto();
+      }
     },
     [targetUserId]
   );

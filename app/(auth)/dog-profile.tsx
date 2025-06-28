@@ -10,6 +10,8 @@ import {
   Platform,
   ActivityIndicator,
   Modal,
+  Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -122,41 +124,53 @@ export default function DogProfileScreen() {
   ).sort();
   
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      alert('Sorry, we need camera roll permissions to make this work!');
-      return;
-    }
-    
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setDogPhoto(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'We need camera roll permissions to make this work!');
+        return;
+      }
+      
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log("Image picked:", result.assets[0].uri);
+        setDogPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "There was a problem selecting your image. Please try again.");
     }
   };
   
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
-    if (status !== 'granted') {
-      alert('Sorry, we need camera permissions to make this work!');
-      return;
-    }
-    
-    let result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setDogPhoto(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'We need camera permissions to make this work!');
+        return;
+      }
+      
+      let result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log("Photo taken:", result.assets[0].uri);
+        setDogPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+      Alert.alert("Error", "There was a problem taking a photo. Please try again.");
     }
   };
   
@@ -190,7 +204,7 @@ export default function DogProfileScreen() {
     setError('');
     
     let createdDog;
-    let dogData;
+    
     try {
       console.log('Creating dog profile with name:', dogName, 'breed:', dogBreed);
       
@@ -207,6 +221,11 @@ export default function DogProfileScreen() {
         
         if (!photoResult.success) {
           console.warn('Photo upload failed, but continuing with dog profile creation');
+          Alert.alert(
+            'Photo Upload Issue', 
+            'Your dog profile was created but we had trouble with the photo. You can add a photo later.',
+            [{ text: 'OK' }]
+          );
         }
       }
       
@@ -354,14 +373,26 @@ export default function DogProfileScreen() {
           ) : null}
           
           <View style={styles.photoContainer}>
-            <UserAvatar
-              userId={user?.id || 'temp'}
-              photoURL={dogPhoto}
-              userName={dogName || 'Dog'}
-              size={160}
-              showFallback={!dogPhoto}
-              style={styles.dogPhoto}
-            />
+            {dogPhoto ? (
+              <Image 
+                source={{ uri: dogPhoto }}
+                style={styles.dogPhoto}
+                onError={(e) => {
+                  console.error("Error loading dog photo:", e.nativeEvent.error);
+                  setDogPhoto(null);
+                }}
+              />
+            ) : (
+              <UserAvatar
+                userId={user?.id || 'temp'}
+                photoURL={null}
+                userName={dogName || 'Dog'}
+                size={160}
+                showFallback={true}
+                style={styles.dogPhoto}
+                isDogAvatar={true}
+              />
+            )}
             
             <View style={styles.photoButtons}>
               <TouchableOpacity 
@@ -549,6 +580,9 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   dogPhoto: {
+    width: 160,
+    height: 160,
+    borderRadius: 80,
     marginBottom: 16,
   },
   photoPlaceholder: {

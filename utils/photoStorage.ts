@@ -15,7 +15,23 @@ export async function uploadUserProfilePhoto(
   fileUri: string
 ): Promise<PhotoUploadResult> {
   try {
-    console.log('Starting user profile photo upload...');
+    console.log('Starting user profile photo upload for user:', userId);
+    
+    // Create bucket if it doesn't exist
+    try {
+      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('profiles');
+      if (bucketError && bucketError.message.includes('not found')) {
+        console.log('Creating profiles bucket...');
+        await supabase.storage.createBucket('profiles', { 
+          public: true,
+          fileSizeLimit: 10485760, // 10MB
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
+        });
+      }
+    } catch (bucketError) {
+      console.log('Bucket check/creation error:', bucketError);
+      // Continue even if bucket exists or creation fails
+    }
     
     // Generate unique filename
     const fileExt = fileUri.split('.').pop()?.toLowerCase() || 'jpg';
@@ -97,7 +113,23 @@ export async function uploadDogProfilePhoto(
   fileUri: string
 ): Promise<PhotoUploadResult> {
   try {
-    console.log('Starting dog profile photo upload...');
+    console.log('Starting dog profile photo upload for dog:', dogId);
+    
+    // Create bucket if it doesn't exist
+    try {
+      const { data: bucketData, error: bucketError } = await supabase.storage.getBucket('dog_profiles');
+      if (bucketError && bucketError.message.includes('not found')) {
+        console.log('Creating dog_profiles bucket...');
+        await supabase.storage.createBucket('dog_profiles', { 
+          public: true,
+          fileSizeLimit: 10485760, // 10MB
+          allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp']
+        });
+      }
+    } catch (bucketError) {
+      console.log('Bucket check/creation error:', bucketError);
+      // Continue even if bucket exists or creation fails
+    }
     
     // Generate unique filename
     const fileExt = fileUri.split('.').pop()?.toLowerCase() || 'jpg';
@@ -113,7 +145,7 @@ export async function uploadDogProfilePhoto(
     
     const blob = await response.blob();
     
-    // Upload to Supabase Storage
+    // Upload to Supabase Storage with content type
     const { data, error: uploadError } = await supabase.storage
       .from('dog_profiles')
       .upload(fileName, blob, {
@@ -177,11 +209,16 @@ export async function uploadDogProfilePhoto(
 export function getUserProfilePhotoUrl(photoPath: string | null): string | null {
   if (!photoPath) return null;
   
-  const { data } = supabase.storage
-    .from('profiles')
-    .getPublicUrl(photoPath);
-    
-  return data?.publicUrl || null;
+  try {
+    const { data } = supabase.storage
+      .from('profiles')
+      .getPublicUrl(photoPath);
+      
+    return data?.publicUrl || null;
+  } catch (error) {
+    console.error('Error getting user profile photo URL:', error);
+    return null;
+  }
 }
 
 /**
@@ -190,11 +227,16 @@ export function getUserProfilePhotoUrl(photoPath: string | null): string | null 
 export function getDogProfilePhotoUrl(photoPath: string | null): string | null {
   if (!photoPath) return null;
   
-  const { data } = supabase.storage
-    .from('dog_profiles')
-    .getPublicUrl(photoPath);
-    
-  return data?.publicUrl || null;
+  try {
+    const { data } = supabase.storage
+      .from('dog_profiles')
+      .getPublicUrl(photoPath);
+      
+    return data?.publicUrl || null;
+  } catch (error) {
+    console.error('Error getting dog profile photo URL:', error);
+    return null;
+  }
 }
 
 /**

@@ -11,8 +11,8 @@ interface SubscriptionConfig {
   filter?: string;
 }
 
-// Keep track of active channel names to prevent duplicate subscriptions
-const activeChannels = new Set<string>();
+// Global registry of active channels to prevent duplicate subscriptions
+const activeChannels = new Map<string, { count: number, channel: any }>();
 
 /**
  * Hook to safely create and manage Supabase Realtime subscriptions
@@ -28,72 +28,92 @@ export function useSafeSubscription(
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Skip if this channel is already active
-    if (activeChannels.has(channelName)) {
-      console.log(`Channel ${channelName} already exists, skipping subscription`);
-      return () => {};
-    }
-
-    // Add to active channels
-    activeChannels.add(channelName);
-    console.log(`Creating new subscription for channel: ${channelName}`);
+    let channel: any;
+    let cleanupRequired = false;
     
-    // Get existing channels
-    const existingChannels = supabase.getChannels();
-    
-    // Check if channel already exists
-    const existingChannel = existingChannels.find(
-      channel => channel.topic === channelName
-    );
-    
-    // If channel exists but is in CLOSED state, remove it first
-    if (existingChannel && existingChannel._state === 'closed') {
-      console.log(`Removing closed channel: ${channelName}`);
-      supabase.removeChannel(existingChannel);
-    }
-    
-    let channel;
-    
-    try {
-      // Create a new channel with the subscription
-      channel = supabase.channel(channelName);
-      
-      // Set up the subscription
-      channel
-        .on(
-          'postgres_changes',
-          {
-            event: config.event,
-            schema: config.schema || 'public',
-            table: config.table,
-            filter: config.filter,
-          },
-          callback
-        )
-        .subscribe((status: string) => {
-          console.log(`Channel ${channelName} status: ${status}`);
-          setIsConnected(status === 'SUBSCRIBED');
-          setError(status === 'CHANNEL_ERROR' ? 'Subscription error' : null);
-        });
-      
-      console.log(`Successfully created subscription to ${config.table} on channel ${channelName}`);
-    } catch (err) {
-      console.error(`Error setting up subscription to ${config.table}:`, err);
-      setError(err instanceof Error ? err.message : 'Subscription error');
-      setIsConnected(false);
-      activeChannels.delete(channelName);
-    }
-    
-    // Return cleanup function to unsubscribe and remove from active channels
-    return () => {
+    const setupSubscription = async () => {
       try {
-        if (channel) {
-          console.log(`Removing channel ${channelName}`);
-          supabase.removeChannel(channel);
+        // Check if this channel is already in our registry
+        if (activeChannels.has(channelName)) {
+          // Increment the reference count
+          const entry = activeChannels.get(channelName)!;
+          entry.count++;
+          channel = entry.channel;
+          console.log(`Reusing existing channel ${channelName}, reference count: ${entry.count}`);
+          
+          // If channel is already subscribed, we're good to go
+          if (channel._isJoined) {
+            setIsConnected(true);
+            return;
+          }
+          
+          // Otherwise we'll set up a new subscription below
+        } else {
+          // First check if this channel already exists in Supabase
+          const existingChannels = supabase.getChannels();
+          const existingChannel = existingChannels.find(c => c.topic === channelName);
+          
+          if (existingChannel) {
+            // Remove existing channel if it exists but isn't tracked
+            console.log(`Found untracked channel ${channelName}, removing it first`);
+            await supabase.removeChannel(existingChannel);
+          }
+          
+          // Create a new channel
+          channel = supabase.channel(channelName);
+          
+          // Add to our registry with reference count 1
+          activeChannels.set(channelName, { count: 1, channel });
+          console.log(`Created new channel ${channelName}, reference count: 1`);
+          cleanupRequired = true;
         }
-        activeChannels.delete(channelName);
+        
+        // Set up the subscription
+        channel
+          .on(
+            'postgres_changes',
+            {
+              event: config.event,
+              schema: config.schema || 'public',
+              table: config.table,
+              filter: config.filter,
+            },
+            callback
+          )
+          .subscribe((status: string) => {
+            console.log(`Channel ${channelName} status: ${status}`);
+            setIsConnected(status === 'SUBSCRIBED');
+            setError(status === 'CHANNEL_ERROR' ? 'Subscription error' : null);
+          });
+          
       } catch (err) {
-        console.error(`Error removing channel ${channelName}:`, err);
+        console.error(`Error setting up subscription to ${config.table} on ${channelName}:`, err);
+        setError(err instanceof Error ? err.message : 'Subscription error');
+        setIsConnected(false);
+        
+        // If we created a new channel, remove it from registry
+        if (cleanupRequired && activeChannels.has(channelName)) {
+          activeChannels.delete(channelName);
+        }
+      }
+    };
+    
+    setupSubscription();
+    
+    // Return cleanup function
+    return () => {
+      if (activeChannels.has(channelName)) {
+        const entry = activeChannels.get(channelName)!;
+        entry.count--;
+        
+        if (entry.count <= 0) {
+          // If this is the last reference, remove the channel
+          console.log(`Removing channel ${channelName} (reference count zero)`);
+          supabase.removeChannel(channel);
+          activeChannels.delete(channelName);
+        } else {
+          console.log(`Decremented reference count for ${channelName} to ${entry.count}`);
+        }
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
