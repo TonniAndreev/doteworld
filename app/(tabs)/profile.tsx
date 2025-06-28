@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Award, Users, Map, Route, LogOut, CreditCard as Edit } from 'lucide-react-native';
+import { Award, Users, Map, Route, LogOut, Edit, Pencil } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTerritory } from '@/contexts/TerritoryContext';
@@ -22,7 +22,6 @@ import DogOwnershipInvites from '@/components/dog/DogOwnershipInvites';
 import UserAvatar from '@/components/common/UserAvatar';
 
 export default function ProfileScreen() {
-  const [editModalVisible, setEditModalVisible] = useState(false);
   const [showInvites, setShowInvites] = useState(false);
   const [thisMonthDistance, setThisMonthDistance] = useState(0);
   
@@ -73,6 +72,10 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleEditProfile = () => {
+    router.push('/edit-profile');
+  };
+
   const firstDog = user.dogs?.[0];
 
   return (
@@ -81,6 +84,12 @@ export default function ProfileScreen() {
         <Text style={styles.title}>Profile</Text>
         
         <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={handleEditProfile}
+          >
+            <Pencil size={20} color={COLORS.primary} />
+          </TouchableOpacity>
           <NotificationsButton />
         </View>
       </View>
@@ -97,13 +106,6 @@ export default function ProfileScreen() {
               userName={user.displayName || 'User'}
               size={100}
             />
-            
-            <TouchableOpacity 
-              style={styles.editProfileButton}
-              onPress={() => setEditModalVisible(true)}
-            >
-              <Edit size={16} color={COLORS.white} />
-            </TouchableOpacity>
           </View>
           
           <Text style={styles.userName}>{user.displayName || 'User'}</Text>
@@ -250,28 +252,6 @@ export default function ProfileScreen() {
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={editModalVisible}
-        onRequestClose={() => setEditModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-            
-            <Text style={styles.modalText}>Profile editing functionality will be implemented in the next version.</Text>
-            
-            <TouchableOpacity 
-              style={styles.modalButton}
-              onPress={() => setEditModalVisible(false)}
-            >
-              <Text style={styles.modalButtonText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -306,6 +286,10 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  editButton: {
+    padding: 8,
   },
   scrollContainer: {
     flex: 1,
@@ -318,21 +302,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   profileImageContainer: {
-    position: 'relative',
     marginBottom: 16,
-  },
-  editProfileButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: COLORS.primary,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.white,
   },
   userName: {
     fontFamily: 'Inter-Bold',
@@ -465,47 +435,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.error,
     marginLeft: 8,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.neutralDark,
-    marginBottom: 16,
-  },
-  modalText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  modalButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 12,
-  },
-  modalButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: COLORS.white,
   },
 });
