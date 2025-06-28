@@ -54,7 +54,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             console.log('New friendship notification:', payload);
             await handleFriendshipNotification(payload.new);
           }
-        )
+        );
+
+      const friendshipUpdateChannel = supabase
+        .channel('friendships_updates')
         .on(
           'postgres_changes',
           {
@@ -69,12 +72,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
               await handleFriendAcceptedNotification(payload.new);
             }
           }
-        )
-        .subscribe();
+        );
+
+      friendshipSubscription.subscribe();
+      friendshipUpdateChannel.subscribe();
 
       // Set up listener for dog ownership invites
-      const dogInviteSubscription = supabase
-        .channel('dog_invites')
+      const dogInviteChannel = supabase
+        .channel('dog_invites_channel')
         .on(
           'postgres_changes',
           {
@@ -87,12 +92,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             console.log('New dog invite notification:', payload);
             await handleDogInviteNotification(payload.new);
           }
-        )
-        .subscribe();
+        );
+
+      dogInviteChannel.subscribe();
 
       // Set up listener for achievements
-      const achievementSubscription = supabase
-        .channel('achievements')
+      const achievementChannel = supabase
+        .channel('achievements_channel')
         .on(
           'postgres_changes',
           {
@@ -105,16 +111,18 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             console.log('New achievement notification:', payload);
             await handleAchievementNotification(payload.new);
           }
-        )
-        .subscribe();
+        );
+
+      achievementChannel.subscribe();
 
       // Load existing notifications
       loadNotifications();
 
       return () => {
-        supabase.removeChannel(friendshipSubscription);
-        supabase.removeChannel(dogInviteSubscription);
-        supabase.removeChannel(achievementSubscription);
+        friendshipSubscription.unsubscribe();
+        friendshipUpdateChannel.unsubscribe();
+        dogInviteChannel.unsubscribe();
+        achievementChannel.unsubscribe();
       };
     }
   }, [user]);

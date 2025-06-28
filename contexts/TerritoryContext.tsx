@@ -59,6 +59,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [currentWalkDistance, setCurrentWalkDistance] = useState(0); 
   const [walkStartTime, setWalkStartTime] = useState<Date | null>(null);
   const [walkDuration, setWalkDuration] = useState(0); // in seconds
+  const [durationTimer, setDurationTimer] = useState<NodeJS.Timeout | null>(null);
   
   const { user } = useAuth();
   const { addPaws } = usePaws();
@@ -161,20 +162,30 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
 
   // Track walk duration
   useEffect(() => {
-    let timer: NodeJS.Timeout;
-    
     if (walkStartTime && currentWalkSessionId) {
-      timer = setInterval(() => {
+      const timer = setInterval(() => {
         const now = new Date();
         const durationInSeconds = Math.floor((now.getTime() - walkStartTime.getTime()) / 1000);
         setWalkDuration(durationInSeconds);
       }, 1000);
+      
+      setDurationTimer(timer);
+      
+      return () => {
+        clearInterval(timer);
+        setDurationTimer(null);
+      };
     }
-    
-    return () => {
-      if (timer) clearInterval(timer);
-    };
   }, [walkStartTime, currentWalkSessionId]);
+  
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (durationTimer) {
+        clearInterval(durationTimer);
+      }
+    };
+  }, [durationTimer]);
 
   const addWalkPoint = async (coordinates: Coordinate) => {
     if (!user || !user.dogs.length || !currentWalkSessionId) return;
