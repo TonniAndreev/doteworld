@@ -221,6 +221,8 @@ export const ADMOB_CONFIG: AdMobConfig = {
     // Add your test device IDs here for development testing
     // This ensures you see test ads during development
     // You can find your device ID in the console logs when running the app
+    '2077ef9a63d2b398840261c8221a0c9b', // Example device ID - replace with your actual device ID
+    // Add more test device IDs if needed
   ]
 };
 
