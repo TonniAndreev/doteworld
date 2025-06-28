@@ -68,11 +68,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Create redirect URI for OAuth - Use custom scheme for mobile
-  const redirectTo = Platform.OS === 'web' 
-    ? window.location.origin 
-    : AuthSession.makeRedirectUri({
-        scheme: 'doteapp', // Use your custom scheme instead of proxy
-      });
+ const redirectTo = AuthSession.makeRedirectUri({
+    scheme: 'doteapp',
+    path: '/auth/callback',
+    useProxy: false, // Add this line
+  });
 
   useEffect(() => {
     // Get initial session
