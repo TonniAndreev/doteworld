@@ -8,6 +8,7 @@ import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
 import ChallengesPanel from '@/components/home/ChallengesPanel';
+import { useWalkHistory } from '@/hooks/useWalkHistory';
 import WalkStatsPanel from '@/components/home/WalkStatsPanel';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
 import PawsModal from '@/components/home/PawsModal';
@@ -24,8 +25,6 @@ export default function MapScreen() {
   const [activeChallengesCount, setActiveChallengesCount] = useState(2);
   const [isLocating, setIsLocating] = useState(false);
   const [showPawsModal, setShowPawsModal] = useState(false);
-  const [walkStartTime, setWalkStartTime] = useState<Date | null>(null);
-  const [walkDuration, setWalkDuration] = useState(0); // in seconds
   
   const mapRef = useRef<MapView>(null);
   const challengesPanelAnimation = useRef(new Animated.Value(0)).current;
@@ -37,6 +36,7 @@ export default function MapScreen() {
   const { 
     territory,
     territorySize,
+    walkDuration,
     currentWalkPoints,
     currentPolygon,
     currentWalkDistance,
@@ -61,31 +61,6 @@ export default function MapScreen() {
     }
   }, [isWalking]);
 
-  // Track walk duration
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    
-    if (isWalking) {
-      if (!walkStartTime) {
-        setWalkStartTime(new Date());
-        setWalkDuration(0);
-      }
-      
-      timer = setInterval(() => {
-        if (walkStartTime) {
-          const now = new Date();
-          const durationInSeconds = Math.floor((now.getTime() - walkStartTime.getTime()) / 1000);
-          setWalkDuration(durationInSeconds);
-        }
-      }, 1000);
-    } else {
-      setWalkStartTime(null);
-    }
-    
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [isWalking, walkStartTime]);
 
   // Initial location setup
   useEffect(() => {
@@ -203,8 +178,6 @@ export default function MapScreen() {
       console.log('Starting conquest...');
       setWalkDistance(0);
       setIsWalking(true);
-      setWalkStartTime(new Date());
-      setWalkDuration(0);
       startWalk();
       
       // Add initial point if we have a location
@@ -219,7 +192,6 @@ export default function MapScreen() {
     } else {
       console.log('Ending conquest...');
       setIsWalking(false);
-      setWalkStartTime(null);
       
       // Stop location tracking
       if (locationSubscriptionRef.current) {

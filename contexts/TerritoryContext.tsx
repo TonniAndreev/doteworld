@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { usePaws } from './PawsContext';
 import { supabase } from '@/utils/supabase';
+import { useWalkHistory } from '@/hooks/useWalkHistory';
 import { 
   startWalkSession, 
   addWalkPoint as addWalkPointToSession,
@@ -55,10 +56,13 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [currentWalkPoints, setCurrentWalkPoints] = useState<Coordinate[]>([]);
   const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
   const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
-  const [currentWalkDistance, setCurrentWalkDistance] = useState(0);
+  const [currentWalkDistance, setCurrentWalkDistance] = useState(0); 
+  const [walkStartTime, setWalkStartTime] = useState<Date | null>(null);
+  const [walkDuration, setWalkDuration] = useState(0); // in seconds
   
   const { user } = useAuth();
   const { addPaws } = usePaws();
+  const { addWalkHistoryEntry } = useWalkHistory();
 
   useEffect(() => {
     const loadTerritoryData = async () => {
@@ -132,6 +136,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     setCurrentWalkPoints([]);
     setCurrentPolygon(null);
     setCurrentWalkDistance(0);
+    setWalkStartTime(new Date());
+    setWalkDuration(0);
     
     if (!user || !user.dogs.length) return;
     
@@ -152,6 +158,23 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
     }
   };
+
+  // Track walk duration
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    
+    if (walkStartTime && currentWalkSessionId) {
+      timer = setInterval(() => {
+        const now = new Date();
+        const durationInSeconds = Math.floor((now.getTime() - walkStartTime.getTime()) / 1000);
+        setWalkDuration(durationInSeconds);
+      }, 1000);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [walkStartTime, currentWalkSessionId]);
 
   const addWalkPoint = async (coordinates: Coordinate) => {
     if (!user || !user.dogs.length || !currentWalkSessionId) return;
@@ -302,6 +325,23 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         });
       }
 
+      // Add to walk history
+      if (user.dogs[0]) {
+        await addWalkHistoryEntry({
+          dog_id: user.dogs[0].id,
+          start_time: walkStartTime?.toISOString() || new Date().toISOString(),
+          end_time: new Date().toISOString(),
+          distance: currentWalkDistance,
+          duration: walkDuration,
+          territory_gained: newPolygonArea,
+          points_count: currentWalkPoints.length,
+          route_data: {
+            points: currentWalkPoints,
+            polygon: finalHull,
+          }
+        });
+      }
+
       // Award paws based on the NEW polygon area only (not total territory)
       const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
       if (pawsEarned > 0) {
@@ -316,12 +356,31 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentPolygon(null);
       
       // Cancel the walk session
-      if (currentWalkSessionId) {
+      if (currentWalkSessionId && walkStartTime) {
         await cancelWalkSession(currentWalkSessionId);
+        
+        // Add to walk history as cancelled
+        if (user.dogs[0]) {
+          await addWalkHistoryEntry({
+            dog_id: user.dogs[0].id,
+            start_time: walkStartTime.toISOString(),
+            end_time: new Date().toISOString(),
+            distance: currentWalkDistance,
+            duration: walkDuration,
+            territory_gained: 0, // No territory gained for cancelled walks
+            points_count: currentWalkPoints.length,
+            route_data: {
+              points: currentWalkPoints,
+              status: 'cancelled'
+            }
+          });
+        }
       }
       
       setCurrentWalkSessionId(null);
       setCurrentWalkDistance(0);
+      setWalkStartTime(null);
+      setWalkDuration(0);
     }
   };
 
@@ -358,6 +417,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     currentWalkPoints,
     currentPolygon,
     currentWalkSessionId,
+    walkDuration,
     currentWalkDistance,
     startWalk,
     addWalkPoint,

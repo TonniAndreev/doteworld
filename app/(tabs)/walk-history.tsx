@@ -13,75 +13,43 @@ import { router } from 'expo-router';
 import { ChevronLeft, Route, Calendar, Clock, MapPin, Trophy, ArrowRight } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/utils/supabase';
-import { getWalkSessions } from '@/utils/walkSessionService';
+import { useWalkHistory } from '@/hooks/useWalkHistory';
 import MapView, { Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
 import { extractPolygonCoordinates } from '@/utils/locationUtils';
 
-interface WalkSession {
+interface WalkHistoryItem {
   id: string;
   dog_id: string;
-  started_at: string;
-  ended_at?: string;
+  dog_name?: string;
+  start_time: string;
+  end_time?: string;
   distance: number;
+  duration: number;
   points_count: number;
   territory_gained: number;
-  status: 'active' | 'completed' | 'cancelled';
-  weather_conditions?: any;
-  created_at: string;
-  dog_name?: string;
+  route_data?: any;
 }
 
 export default function WalkHistoryScreen() {
-  const [walkSessions, setWalkSessions] = useState<WalkSession[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedDogId, setSelectedDogId] = useState<string | null>(null);
   const { user } = useAuth();
+  const { walkHistory, isLoading, refetch } = useWalkHistory(selectedDogId || undefined);
 
   useEffect(() => {
     if (user && user.dogs.length > 0) {
       setSelectedDogId(user.dogs[0].id);
-      loadWalkSessions(user.dogs[0].id);
     }
   }, [user]);
 
-  const loadWalkSessions = async (dogId: string) => {
-    setIsLoading(true);
-    try {
-      const { sessions, error } = await getWalkSessions(dogId, 20, 'completed');
-      
-      if (error) {
-        console.error('Error loading walk sessions:', error);
-        return;
-      }
-      
-      // Fetch dog names for each session
-      const sessionsWithDogNames = await Promise.all(
-        sessions.map(async (session) => {
-          const { data: dog } = await supabase
-            .from('dogs')
-            .select('name')
-            .eq('id', session.dog_id)
-            .single();
-            
-          return {
-            ...session,
-            dog_name: dog?.name || 'Unknown Dog'
-          };
-        })
-      );
-      
-      setWalkSessions(sessionsWithDogNames);
-    } catch (error) {
-      console.error('Error loading walk history:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
   };
 
   const handleDogChange = (dogId: string) => {
     setSelectedDogId(dogId);
-    loadWalkSessions(dogId);
   };
 
   const formatDate = (dateString: string) => {
@@ -101,21 +69,16 @@ export default function WalkHistoryScreen() {
     });
   };
 
-  const formatDuration = (startDate: string, endDate?: string) => {
-    if (!endDate) return 'In progress';
+  const formatDuration = (durationSeconds: number) => {
+    if (durationSeconds <= 0) return '-';
     
-    const start = new Date(startDate).getTime();
-    const end = new Date(endDate).getTime();
-    const durationMs = end - start;
-    
-    const seconds = Math.floor(durationMs / 1000);
-    const minutes = Math.floor(seconds / 60);
+    const minutes = Math.floor(durationSeconds / 60);
     const hours = Math.floor(minutes / 60);
     
     if (hours > 0) {
       return `${hours}h ${minutes % 60}m`;
     } else {
-      return `${minutes}m ${seconds % 60}s`;
+      return `${minutes}m ${durationSeconds % 60}s`;
     }
   };
 
@@ -136,14 +99,14 @@ export default function WalkHistoryScreen() {
     }
   };
 
-  const renderWalkItem = ({ item }: { item: WalkSession }) => (
+  const renderWalkItem = ({ item }: { item: WalkHistoryItem }) => (
     <TouchableOpacity 
       style={styles.walkItem}
       onPress={() => router.push(`/walk-details/${item.id}`)}
     >
       <View style={styles.walkHeader}>
         <View style={styles.walkInfo}>
-          <Text style={styles.walkDate}>{formatDate(item.started_at)}</Text>
+          <Text style={styles.walkDate}>{formatDate(item.start_time)}</Text>
           <Text style={styles.walkDogName}>{item.dog_name}</Text>
         </View>
         
@@ -159,7 +122,7 @@ export default function WalkHistoryScreen() {
         <View style={styles.walkStat}>
           <Clock size={16} color={COLORS.secondary} />
           <Text style={styles.walkStatValue}>
-            {formatDuration(item.started_at, item.ended_at)}
+            {formatDuration(item.duration)}
           </Text>
         </View>
         
@@ -233,10 +196,12 @@ export default function WalkHistoryScreen() {
         </View>
       ) : (
         <FlatList
-          data={walkSessions}
+          data={walkHistory}
           keyExtractor={(item) => item.id}
           renderItem={renderWalkItem}
           contentContainerStyle={styles.walkList}
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Route size={64} color={COLORS.neutralMedium} />

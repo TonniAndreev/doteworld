@@ -14,29 +14,22 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft, Route, Calendar, Clock, MapPin, Trophy, Share2, Thermometer, Wind, Droplets } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
-import { getWalkPoints } from '@/utils/walkSessionService';
 import MapView, { Polygon, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { createConvexHull, isValidPolygon } from '@/utils/locationUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-interface WalkSession {
+interface WalkHistoryItem {
   id: string;
   dog_id: string;
-  started_at: string;
-  ended_at?: string;
+  dog_name?: string;
+  start_time: string;
+  end_time?: string;
   distance: number;
+  duration: number;
   points_count: number;
   territory_gained: number;
-  status: 'active' | 'completed' | 'cancelled';
-  weather_conditions?: {
-    temperature?: number;
-    conditions?: string;
-    humidity?: number;
-    windSpeed?: number;
-  };
-  created_at: string;
-  dog_name?: string;
+  route_data?: any;
 }
 
 interface Coordinate {
@@ -46,7 +39,7 @@ interface Coordinate {
 
 export default function WalkDetailsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [walkSession, setWalkSession] = useState<WalkSession | null>(null);
+  const [walkItem, setWalkItem] = useState<WalkHistoryItem | null>(null);
   const [walkPoints, setWalkPoints] = useState<Coordinate[]>([]);
   const [walkPolygon, setWalkPolygon] = useState<Coordinate[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,14 +55,14 @@ export default function WalkDetailsScreen() {
     setIsLoading(true);
     try {
       // Fetch walk session details
-      const { data: session, error: sessionError } = await supabase
-        .from('walk_sessions')
+      const { data: walkData, error: walkError } = await supabase
+        .from('walk_history')
         .select('*')
         .eq('id', id)
         .single();
 
-      if (sessionError) {
-        console.error('Error fetching walk session:', sessionError);
+      if (walkError) {
+        console.error('Error fetching walk history:', walkError);
         return;
       }
 
@@ -77,15 +70,12 @@ export default function WalkDetailsScreen() {
       const { data: dog } = await supabase
         .from('dogs')
         .select('name')
-        .eq('id', session.dog_id)
+        .eq('id', walkData.dog_id)
         .single();
 
-      // Fetch walk points
-      const { points, error: pointsError } = await getWalkPoints(session.id);
-
-      if (pointsError) {
-        console.error('Error fetching walk points:', pointsError);
-      } else {
+      // Extract walk points from route_data if available
+      if (walkData.route_data && walkData.route_data.points) {
+        const points = walkData.route_data.points;
         setWalkPoints(points);
         
         // Calculate map region based on points
@@ -122,8 +112,8 @@ export default function WalkDetailsScreen() {
         }
       }
 
-      setWalkSession({
-        ...session,
+      setWalkItem({
+        ...walkData,
         dog_name: dog?.name || 'Unknown Dog',
       });
     } catch (error) {
@@ -151,21 +141,17 @@ export default function WalkDetailsScreen() {
     });
   };
 
-  const formatDuration = (startDate: string, endDate?: string) => {
-    if (!endDate) return 'In progress';
-    
-    const start = new Date(startDate).getTime();
-    const end = new Date(endDate).getTime();
-    const durationMs = end - start;
-    
-    const seconds = Math.floor(durationMs / 1000);
-    const minutes = Math.floor(seconds / 60);
+  const formatDuration = (durationSeconds: number) => {
+    if (durationSeconds <= 0) return '-';
+
+    const minutes = Math.floor(durationSeconds / 60);
     const hours = Math.floor(minutes / 60);
+    const seconds = durationSeconds % 60;
     
     if (hours > 0) {
-      return `${hours}h ${minutes % 60}m ${seconds % 60}s`;
+      return `${hours}h ${minutes % 60}m ${seconds}s`;
     } else if (minutes > 0) {
-      return `${minutes}m ${seconds % 60}s`;
+      return `${minutes}m ${seconds}s`;
     } else {
       return `${seconds}s`;
     }
@@ -189,14 +175,11 @@ export default function WalkDetailsScreen() {
   };
 
   const calculatePace = (): string => {
-    if (!walkSession || !walkSession.distance || !walkSession.ended_at) return '-';
+    if (!walkItem || !walkItem.distance || walkItem.duration <= 0) return '-';
     
-    const start = new Date(walkSession.started_at).getTime();
-    const end = new Date(walkSession.ended_at).getTime();
-    const durationMinutes = (end - start) / (1000 * 60);
-    
+    const durationMinutes = walkItem.duration / 60;
     // Calculate minutes per kilometer
-    const paceInMinPerKm = durationMinutes / walkSession.distance;
+    const paceInMinPerKm = durationMinutes / walkItem.distance;
     
     const paceMinutes = Math.floor(paceInMinPerKm);
     const paceSeconds = Math.floor((paceInMinPerKm - paceMinutes) * 60);
@@ -205,11 +188,11 @@ export default function WalkDetailsScreen() {
   };
 
   const handleShare = async () => {
-    if (!walkSession) return;
+    if (!walkItem) return;
     
     try {
       await Share.share({
-        message: `I just walked ${formatDistance(walkSession.distance)} with ${walkSession.dog_name} and conquered ${formatTerritory(walkSession.territory_gained)} of territory using Dote!`,
+        message: `I just walked ${formatDistance(walkItem.distance)} with ${walkItem.dog_name} and conquered ${formatTerritory(walkItem.territory_gained)} of territory using Dote!`,
       });
     } catch (error) {
       console.error('Error sharing walk:', error);
@@ -227,7 +210,7 @@ export default function WalkDetailsScreen() {
     );
   }
 
-  if (!walkSession) {
+  if (!walkItem) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -327,20 +310,20 @@ export default function WalkDetailsScreen() {
 
         {/* Walk Info */}
         <View style={styles.infoContainer}>
-          <Text style={styles.dogName}>{walkSession.dog_name}</Text>
+          <Text style={styles.dogName}>{walkItem.dog_name}</Text>
           
           <View style={styles.dateTimeContainer}>
             <View style={styles.dateContainer}>
               <Calendar size={16} color={COLORS.neutralMedium} />
               <Text style={styles.dateText}>
-                {formatDate(walkSession.started_at)}
+                {formatDate(walkItem.start_time)}
               </Text>
             </View>
             
             <View style={styles.timeContainer}>
               <Clock size={16} color={COLORS.neutralMedium} />
               <Text style={styles.timeText}>
-                {formatTime(walkSession.started_at)}
+                {formatTime(walkItem.start_time)}
               </Text>
             </View>
           </View>
@@ -351,7 +334,7 @@ export default function WalkDetailsScreen() {
           <View style={styles.statCard}>
             <Route size={24} color={COLORS.primary} />
             <Text style={styles.statValue}>
-              {formatDistance(walkSession.distance)}
+              {formatDistance(walkItem.distance)}
             </Text>
             <Text style={styles.statLabel}>Distance</Text>
           </View>
@@ -359,7 +342,7 @@ export default function WalkDetailsScreen() {
           <View style={styles.statCard}>
             <Clock size={24} color={COLORS.secondary} />
             <Text style={styles.statValue}>
-              {formatDuration(walkSession.started_at, walkSession.ended_at)}
+              {formatDuration(walkItem.duration)}
             </Text>
             <Text style={styles.statLabel}>Duration</Text>
           </View>
@@ -367,7 +350,7 @@ export default function WalkDetailsScreen() {
           <View style={styles.statCard}>
             <Trophy size={24} color={COLORS.accent} />
             <Text style={styles.statValue}>
-              {formatTerritory(walkSession.territory_gained)}
+              {formatTerritory(walkItem.territory_gained)}
             </Text>
             <Text style={styles.statLabel}>Territory</Text>
           </View>
@@ -375,7 +358,7 @@ export default function WalkDetailsScreen() {
           <View style={styles.statCard}>
             <MapPin size={24} color={COLORS.tertiary} />
             <Text style={styles.statValue}>
-              {walkSession.points_count}
+              {walkItem.points_count}
             </Text>
             <Text style={styles.statLabel}>GPS Points</Text>
           </View>
@@ -394,15 +377,15 @@ export default function WalkDetailsScreen() {
             <View style={styles.additionalStatItem}>
               <Text style={styles.additionalStatLabel}>Calories</Text>
               <Text style={styles.additionalStatValue}>
-                ~{Math.round(walkSession.distance * 60)} cal
+                ~{Math.round(walkItem.distance * 60)} cal
               </Text>
             </View>
             
             <View style={styles.additionalStatItem}>
               <Text style={styles.additionalStatLabel}>Avg. Speed</Text>
               <Text style={styles.additionalStatValue}>
-                {walkSession.ended_at ? 
-                  `${(walkSession.distance / ((new Date(walkSession.ended_at).getTime() - new Date(walkSession.started_at).getTime()) / 3600000)).toFixed(1)} km/h` : 
+                {walkItem.duration > 0 ? 
+                  `${(walkItem.distance / (walkItem.duration / 3600)).toFixed(1)} km/h` : 
                   '-'
                 }
               </Text>
@@ -410,43 +393,43 @@ export default function WalkDetailsScreen() {
           </View>
         </View>
 
-        {/* Weather Conditions */}
-        {walkSession.weather_conditions && (
+        {/* Weather Conditions - if available in route_data */}
+        {walkItem.route_data?.weather && (
           <View style={styles.weatherContainer}>
             <Text style={styles.sectionTitle}>Weather Conditions</Text>
             
             <View style={styles.weatherContent}>
-              {walkSession.weather_conditions.temperature !== undefined && (
+              {walkItem.route_data.weather.temperature !== undefined && (
                 <View style={styles.weatherItem}>
                   <Thermometer size={20} color={COLORS.primary} />
                   <Text style={styles.weatherValue}>
-                    {walkSession.weather_conditions.temperature}°C
+                    {walkItem.route_data.weather.temperature}°C
                   </Text>
                 </View>
               )}
               
-              {walkSession.weather_conditions.conditions && (
+              {walkItem.route_data.weather.conditions && (
                 <View style={styles.weatherItem}>
                   <Text style={styles.weatherValue}>
-                    {walkSession.weather_conditions.conditions}
+                    {walkItem.route_data.weather.conditions}
                   </Text>
                 </View>
               )}
               
-              {walkSession.weather_conditions.humidity !== undefined && (
+              {walkItem.route_data.weather.humidity !== undefined && (
                 <View style={styles.weatherItem}>
                   <Droplets size={20} color={COLORS.secondary} />
                   <Text style={styles.weatherValue}>
-                    {walkSession.weather_conditions.humidity}%
+                    {walkItem.route_data.weather.humidity}%
                   </Text>
                 </View>
               )}
               
-              {walkSession.weather_conditions.windSpeed !== undefined && (
+              {walkItem.route_data.weather.windSpeed !== undefined && (
                 <View style={styles.weatherItem}>
                   <Wind size={20} color={COLORS.tertiary} />
                   <Text style={styles.weatherValue}>
-                    {walkSession.weather_conditions.windSpeed} km/h
+                    {walkItem.route_data.weather.windSpeed} km/h
                   </Text>
                 </View>
               )}
