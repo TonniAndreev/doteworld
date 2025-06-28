@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { UserCheck } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
@@ -28,13 +28,28 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
   
   return (
     <TouchableOpacity style={styles.container} onPress={handlePress}>
-      <UserAvatar
-        userId={user.id}
-        photoURL={user.photoURL}
-        userName={user.name}
-        size={50}
-        style={styles.avatar}
-      />
+      <View style={styles.avatarContainer}>
+        <UserAvatar
+          userId={user.id}
+          photoURL={user.photoURL}
+          userName={user.name}
+          size={50}
+          style={styles.userAvatar}
+        />
+        
+        {/* Dog avatar overlapping with user avatar */}
+        <View style={styles.dogAvatarContainer}>
+          <UserAvatar
+            userId={`dog-${user.id}`}
+            photoURL={null}
+            userName={user.dogName}
+            size={34}
+            isDogAvatar={true}
+            dogBreed={user.dogBreed}
+            style={styles.dogAvatar}
+          />
+        </View>
+      </View>
       
       <View style={styles.info}>
         <View style={styles.nameContainer}>
@@ -75,8 +90,28 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  avatar: {
-    marginRight: 16,
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 20, // Increased spacing between avatar and text
+    width: 50,
+    height: 50,
+  },
+  userAvatar: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  dogAvatarContainer: {
+    position: 'absolute',
+    bottom: -6,
+    left: -6,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    borderRadius: 17, // Half of the dog avatar size
+    overflow: 'hidden',
+  },
+  dogAvatar: {
+    borderRadius: 17, // Half of the dog avatar size
   },
   info: {
     flex: 1,

@@ -20,13 +20,27 @@ export default function FriendRequestItem({ request, onAccept, onDecline }: Frie
   return (
     <View style={styles.container}>
       <View style={styles.userInfo}>
-        <UserAvatar
-          userId={request.senderId}
-          photoURL={request.senderPhotoURL}
-          userName={request.senderName}
-          size={50}
-          style={styles.avatar}
-        />
+        <View style={styles.avatarContainer}>
+          <UserAvatar
+            userId={request.senderId}
+            photoURL={request.senderPhotoURL}
+            userName={request.senderName}
+            size={50}
+            style={styles.userAvatar}
+          />
+          
+          {/* Dog avatar overlapping with user avatar */}
+          <View style={styles.dogAvatarContainer}>
+            <UserAvatar
+              userId={`dog-${request.senderId}`}
+              photoURL={null}
+              userName={request.senderDogName}
+              size={34}
+              isDogAvatar={true}
+              style={styles.dogAvatar}
+            />
+          </View>
+        </View>
 
         <View style={styles.details}>
           <Text style={styles.name}>{request.senderName}</Text>
@@ -76,8 +90,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  avatar: {
-    marginRight: 16, // Increased from 12 to 16 (4px more spacing)
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 20, // Increased spacing between avatar and text
+    width: 50,
+    height: 50,
+  },
+  userAvatar: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  dogAvatarContainer: {
+    position: 'absolute',
+    bottom: -6,
+    left: -6,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    borderRadius: 17, // Half of the dog avatar size
+    overflow: 'hidden',
+  },
+  dogAvatar: {
+    borderRadius: 17, // Half of the dog avatar size
   },
   details: {
     flex: 1,
