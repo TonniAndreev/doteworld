@@ -8,7 +8,7 @@ export type LeaderboardUser = {
   photoURL?: string | null;
   territorySize: number;
   totalDistance: number;
-  achievementCount: number;
+  badgeCount: number;
   pawsBalance: number;
 };
 
@@ -165,8 +165,8 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
       try {
         console.log('Processing profile:', profile.id);
         
-        // Get achievement count
-        const { count: achievementCount } = await supabase
+        // Get badge count
+        const { count: badgeCount } = await supabase
           .from('profile_achievements')
           .select('*', { count: 'exact', head: true })
           .eq('profile_id', profile.id);
@@ -223,11 +223,11 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           console.log('No dog found for profile:', profile.id);
         }
 
-        console.log('Final REAL stats for profile:', profile.id, { territorySize, totalDistance, achievementCount });
+        console.log('Final REAL stats for profile:', profile.id, { territorySize, totalDistance, badgeCount });
 
         // Calculate paws balance based on REAL activity
         const pawsBalance = Math.floor(
-          (achievementCount || 0) * 50 + // 50 paws per achievement
+          (badgeCount || 0) * 50 + // 50 paws per badge
           territorySize * 10000 + // 10,000 paws per km² (higher reward for territory)
           totalDistance * 100 // 100 paws per km walked
         );
@@ -239,7 +239,7 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           photoURL: profile.avatar_url,
           territorySize,
           totalDistance,
-          achievementCount: achievementCount || 0,
+          badgeCount: badgeCount || 0,
           pawsBalance,
         });
       } catch (profileError) {
@@ -259,7 +259,7 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
         case 'distance':
           return b.totalDistance - a.totalDistance;
         case 'achievements':
-          return b.achievementCount - a.achievementCount;
+          return b.badgeCount - a.badgeCount;
         case 'paws':
           return b.pawsBalance - a.pawsBalance;
         default:

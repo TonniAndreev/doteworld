@@ -12,7 +12,6 @@ export interface Achievement {
   currentValue: number;
   targetValue: number;
   unit: string;
-  pawsReward: number;
   obtained_at?: string;
 }
 
@@ -73,7 +72,6 @@ export function useAchievements() {
           currentValue: isCompleted ? 1 : 0, // This would be calculated based on user's actual progress
           targetValue: 1, // This would come from achievement definition
           unit: 'completion',
-          pawsReward: 100, // This would come from achievement definition
           obtained_at: userAchievement?.obtained_at,
         };
       }) || [];

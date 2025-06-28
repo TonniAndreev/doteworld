@@ -16,36 +16,36 @@ import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAchievements } from '@/hooks/useAchievements';
 
-export default function AchievementsScreen() {
+export default function BadgesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedAchievement, setSelectedAchievement] = useState<any>(null);
+  const [selectedBadge, setSelectedBadge] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
   
-  const { achievements, isLoading } = useAchievements();
+  const { achievements: badges, isLoading } = useAchievements();
 
-  // Filter achievements based on search query
-  const filteredAchievements = achievements.filter(achievement => 
-    achievement.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    achievement.description.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter badges based on search query
+  const filteredBadges = badges.filter(badge => 
+    badge.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    badge.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Sort achievements: completed first, then by title
-  const sortedAchievements = filteredAchievements.sort((a, b) => {
+  // Sort badges: completed first, then by title
+  const sortedBadges = filteredBadges.sort((a, b) => {
     if (a.completed && !b.completed) return -1;
     if (!a.completed && b.completed) return 1;
     return a.title.localeCompare(b.title);
   });
 
-  const handleAchievementPress = (achievement: any) => {
-    setSelectedAchievement(achievement);
+  const handleBadgePress = (badge: any) => {
+    setSelectedBadge(badge);
     setModalVisible(true);
   };
 
-  const shareAchievement = async () => {
-    if (selectedAchievement && selectedAchievement.completed) {
+  const shareBadge = async () => {
+    if (selectedBadge && selectedBadge.completed) {
       try {
         await Share.share({
-          message: `I just earned the "${selectedAchievement.title}" badge on Dote! Walking my dog has never been more fun.`,
+          message: `I just earned the "${selectedBadge.title}" badge on Dote! Walking my dog has never been more fun.`,
         });
       } catch (error) {
         console.log('Error sharing:', error);
@@ -55,26 +55,26 @@ export default function AchievementsScreen() {
 
   const closeModal = () => {
     setModalVisible(false);
-    setSelectedAchievement(null);
+    setSelectedBadge(null);
   };
 
-  const completedCount = achievements.filter(a => a.completed).length;
-  const totalCount = achievements.length;
+  const completedCount = badges.filter(b => b.completed).length;
+  const totalCount = badges.length;
 
-  const renderAchievementItem = ({ item }: { item: any }) => (
+  const renderBadgeItem = ({ item }: { item: any }) => (
     <TouchableOpacity 
       style={[
-        styles.achievementCard,
-        !item.completed && styles.incompleteCard
+        styles.badgeCard,
+        !item.completed && styles.incompleteBadge
       ]} 
-      onPress={() => handleAchievementPress(item)}
+      onPress={() => handleBadgePress(item)}
       activeOpacity={0.8}
     >
-      <View style={styles.achievementImageContainer}>
+      <View style={styles.badgeImageContainer}>
         <Image 
           source={{ uri: item.icon_url }} 
           style={[
-            styles.achievementImage,
+            styles.badgeImage,
             !item.completed && styles.grayscaleImage
           ]} 
         />
@@ -85,10 +85,10 @@ export default function AchievementsScreen() {
         )}
       </View>
       
-      <View style={styles.achievementContent}>
+      <View style={styles.badgeContent}>
         <Text 
           style={[
-            styles.achievementTitle,
+            styles.badgeTitle,
             !item.completed && styles.incompleteText
           ]} 
           numberOfLines={2}
@@ -117,17 +117,8 @@ export default function AchievementsScreen() {
           styles.progressText,
           !item.completed && styles.incompleteText
         ]}>
-          {item.completed ? 'Completed!' : `${item.currentValue}/${item.targetValue}`}
+          {item.completed ? 'Earned!' : `${item.currentValue}/${item.targetValue}`}
         </Text>
-
-        <View style={styles.rewardContainer}>
-          <Text style={[
-            styles.rewardText,
-            !item.completed && styles.incompleteText
-          ]}>
-            {item.pawsReward} Paws
-          </Text>
-        </View>
       </View>
     </TouchableOpacity>
   );
@@ -136,11 +127,11 @@ export default function AchievementsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerContent}>
-          <Text style={styles.title}>Achievements</Text>
+          <Text style={styles.title}>Badges</Text>
           <View style={styles.statsContainer}>
             <Award size={20} color={COLORS.primary} />
             <Text style={styles.statsText}>
-              {completedCount}/{totalCount} Completed
+              {completedCount}/{totalCount} Earned
             </Text>
           </View>
         </View>
@@ -151,7 +142,7 @@ export default function AchievementsScreen() {
         <Search size={20} color={COLORS.neutralDark} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search achievements..."
+          placeholder="Search badges..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor={COLORS.neutralMedium}
@@ -164,11 +155,11 @@ export default function AchievementsScreen() {
       </View>
 
       <FlatList
-        data={sortedAchievements}
-        renderItem={renderAchievementItem}
+        data={sortedBadges}
+        renderItem={renderBadgeItem}
         keyExtractor={(item) => item.id}
         numColumns={2}
-        contentContainerStyle={styles.achievementsList}
+        contentContainerStyle={styles.badgesList}
         columnWrapperStyle={styles.row}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -176,10 +167,10 @@ export default function AchievementsScreen() {
             <Award size={64} color={COLORS.neutralMedium} />
             <Text style={styles.emptyText}>
               {isLoading 
-                ? 'Loading achievements...' 
+                ? 'Loading badges...' 
                 : searchQuery 
-                ? 'No achievements match your search'
-                : 'No achievements found'}
+                ? 'No badges match your search'
+                : 'No badges found'}
             </Text>
           </View>
         }
@@ -191,7 +182,7 @@ export default function AchievementsScreen() {
         visible={modalVisible}
         onRequestClose={closeModal}
       >
-        {selectedAchievement && (
+        {selectedBadge && (
           <View style={styles.modalContainer}>
             <View style={styles.modalContent}>
               <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
@@ -200,65 +191,58 @@ export default function AchievementsScreen() {
               
               <View style={styles.modalImageContainer}>
                 <Image 
-                  source={{ uri: selectedAchievement.icon_url }} 
+                  source={{ uri: selectedBadge.icon_url }} 
                   style={[
                     styles.modalImage,
-                    !selectedAchievement.completed && styles.grayscaleImage
+                    !selectedBadge.completed && styles.grayscaleImage
                   ]} 
                 />
-                {selectedAchievement.completed && (
+                {selectedBadge.completed && (
                   <View style={styles.modalCompletedBadge}>
                     <Star size={24} color={COLORS.accent} fill={COLORS.accent} />
                   </View>
                 )}
               </View>
               
-              <Text style={styles.modalTitle}>{selectedAchievement.title}</Text>
-              <Text style={styles.modalDescription}>{selectedAchievement.description}</Text>
+              <Text style={styles.modalTitle}>{selectedBadge.title}</Text>
+              <Text style={styles.modalDescription}>{selectedBadge.description}</Text>
               
               <View style={styles.modalProgressContainer}>
                 <View 
                   style={[
                     styles.modalProgressBar,
-                    !selectedAchievement.completed && styles.incompleteProgressBar
+                    !selectedBadge.completed && styles.incompleteProgressBar
                   ]}
                 >
                   <View 
                     style={[
                       styles.modalProgressFill, 
                       { 
-                        width: `${Math.min(100, (selectedAchievement.currentValue / selectedAchievement.targetValue) * 100)}%` 
+                        width: `${Math.min(100, (selectedBadge.currentValue / selectedBadge.targetValue) * 100)}%` 
                       },
-                      !selectedAchievement.completed && styles.incompleteProgressFill
+                      !selectedBadge.completed && styles.incompleteProgressFill
                     ]} 
                   />
                 </View>
               </View>
               
               <Text style={styles.modalProgressText}>
-                {selectedAchievement.completed 
-                  ? 'Completed!' 
-                  : `${selectedAchievement.currentValue}/${selectedAchievement.targetValue} ${selectedAchievement.unit}`}
+                {selectedBadge.completed 
+                  ? 'Badge Earned!' 
+                  : `${selectedBadge.currentValue}/${selectedBadge.targetValue} ${selectedBadge.unit}`}
               </Text>
               
-              <View style={styles.modalRewardContainer}>
-                <Text style={styles.modalRewardLabel}>Reward</Text>
-                <Text style={styles.modalRewardText}>
-                  {selectedAchievement.pawsReward} Paws
-                </Text>
-              </View>
-              
-              {selectedAchievement.completed && (
-                <TouchableOpacity style={styles.shareButton} onPress={shareAchievement}>
+              {selectedBadge.completed && (
+                <TouchableOpacity style={styles.shareButton} onPress={shareBadge}>
                   <Share2 size={20} color={COLORS.white} />
-                  <Text style={styles.shareButtonText}>Share Achievement</Text>
+                  <Text style={styles.shareButtonText}>Share Badge</Text>
                 </TouchableOpacity>
               )}
 
-              {!selectedAchievement.completed && (
+              {!selectedBadge.completed && (
                 <View style={styles.incompleteNotice}>
                   <Text style={styles.incompleteNoticeText}>
-                    Keep walking to unlock this achievement!
+                    Keep walking and conquering to earn this badge!
                   </Text>
                 </View>
               )}
@@ -325,7 +309,7 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: 4,
   },
-  achievementsList: {
+  badgesList: {
     padding: 8,
     paddingBottom: 32,
   },
@@ -333,7 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
-  achievementCard: {
+  badgeCard: {
     width: '48%',
     backgroundColor: COLORS.white,
     borderRadius: 16,
@@ -346,26 +330,23 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.primaryLight,
   },
-  incompleteCard: {
+  incompleteBadge: {
     opacity: 0.6,
     borderColor: COLORS.neutralLight,
     shadowOpacity: 0.06,
   },
-  achievementImageContainer: {
+  badgeImageContainer: {
     position: 'relative',
     alignItems: 'center',
     marginBottom: 12,
   },
-  achievementImage: {
+  badgeImage: {
     width: 80,
     height: 80,
     borderRadius: 40,
   },
   grayscaleImage: {
     opacity: 0.7,
-    // Note: CSS filter grayscale doesn't work in React Native
-    // For true grayscale, you'd need to use a library like react-native-image-filter-kit
-    // or process images server-side. For now, we use opacity to simulate the effect.
   },
   completedBadge: {
     position: 'absolute',
@@ -380,10 +361,10 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  achievementContent: {
+  badgeContent: {
     alignItems: 'center',
   },
-  achievementTitle: {
+  badgeTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
     color: COLORS.neutralDark,
@@ -421,17 +402,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.neutralDark,
     marginBottom: 8,
-  },
-  rewardContainer: {
-    backgroundColor: COLORS.primaryLight,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-  },
-  rewardText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 12,
-    color: COLORS.primary,
   },
   emptyContainer: {
     flex: 1,
@@ -531,25 +501,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.neutralDark,
     marginBottom: 20,
-  },
-  modalRewardContainer: {
-    backgroundColor: COLORS.primaryLight,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 16,
-    marginBottom: 24,
-    alignItems: 'center',
-  },
-  modalRewardLabel: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.primary,
-    marginBottom: 4,
-  },
-  modalRewardText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.primary,
   },
   shareButton: {
     flexDirection: 'row',

@@ -17,7 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePaws } from '@/contexts/PawsContext';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import StatsCard from '@/components/profile/StatsCard';
-import AchievementsRow from '@/components/profile/AchievementsRow';
+import BadgesRow from '@/components/profile/BadgesRow';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import DogOwnershipInvites from '@/components/dog/DogOwnershipInvites';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -125,7 +125,7 @@ export default function ProfileScreen() {
             <StatsCard
               icon={<Award size={24} color={COLORS.primary} />}
               value={(user.achievementCount || 0).toString()}
-              label="Achievements"
+              label="Badges"
             />
           </View>
         </View>
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
 
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Achievements</Text>
+            <Text style={styles.sectionTitle}>Recent Badges</Text>
             <TouchableOpacity 
               style={styles.seeAllButton}
               onPress={() => router.push('/(tabs)/achievements')}
@@ -182,7 +182,7 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
 
-          <AchievementsRow />
+          <BadgesRow />
         </View>
 
         {/* Dog Ownership Invites Section */}

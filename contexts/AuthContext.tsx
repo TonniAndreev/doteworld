@@ -10,7 +10,6 @@ interface Dog {
   birthday?: string;
   bio?: string;
   weight?: number;
-  gender?: 'male' | 'female' | 'unknown';
   gender?: 'male' | 'female';
   created_at: string;
 }
@@ -26,7 +25,7 @@ interface DoteUser {
   displayName?: string;
   dogs: Dog[];
   friends?: any[];
-  achievementCount?: number;
+  badgeCount?: number;
   uid?: string;
 }
 
@@ -155,7 +154,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || 'User',
             dogs: [],
             friends: [],
-            achievementCount: 0,
+            badgeCount: 0,
             uid: supaUser.id,
           };
 
@@ -191,8 +190,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('User dogs data:', userDogs);
         
-        // Get achievement count
-        const { count: achievementCount } = await supabase
+        // Get badge count
+        const { count: badgeCount } = await supabase
           .from('profile_achievements')
           .select('*', { count: 'exact', head: true })
           .eq('profile_id', userId);
@@ -205,7 +204,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
           dogs: userDogs?.map(ud => ud.dogs).filter(Boolean) || [],
           friends: [], // This would be fetched separately in a real app
-          achievementCount: achievementCount || 0,
+          badgeCount: badgeCount || 0,
           uid: supaUser.id,
         };
 
