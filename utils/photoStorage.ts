@@ -23,16 +23,24 @@ export async function uploadUserProfilePhoto(
     
     console.log(`Uploading to profiles/${fileName}`);
     
+    // Create multipart form-data
+    const formData = new FormData();
+    formData.append('file', {
+      uri: fileUri,
+      type: `image/${fileExt}`,
+      name: `profile.${fileExt}`
+    });
+    
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('profiles')
       .upload(fileName, {
         uri: fileUri, 
         type: `image/${fileExt}`, 
-        name: `profile.${fileExt}`
+        name: `${fileName}`
       }, {
         cacheControl: '3600',
-        upsert: true,
+        upsert: true
       });
 
     if (uploadError) {
@@ -42,7 +50,7 @@ export async function uploadUserProfilePhoto(
 
     console.log('Upload successful, getting public URL');
 
-    // Get public URL
+    // Get public URL after successful upload
     const { data: urlData } = supabase.storage
       .from('profiles')
       .getPublicUrl(fileName);
@@ -101,7 +109,7 @@ export async function uploadDogProfilePhoto(
     console.log(`Uploading to dog_profiles/${fileName}`);
     
     // Upload to Supabase Storage - pass file object directly
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('dog_profiles')
       .upload(fileName, {
         uri: fileUri, 
@@ -109,7 +117,7 @@ export async function uploadDogProfilePhoto(
         name: `dog-profile.${fileExt}`
       }, {
         cacheControl: '3600',
-        upsert: true,
+        upsert: true
       });
 
     if (uploadError) {

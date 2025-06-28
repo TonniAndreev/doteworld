@@ -41,8 +41,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (user) {
       // Set up real-time listener for friend requests
       // Create a single channel for all notifications
-      const notificationsChannel = supabase
-        .channel(`notifications_${user.id}`)
+      const channelName = `notifications_${user.id}`;
+      
+      // Check if channel already exists
+      const existingChannel = supabase.getChannels().find(
+        channel => channel.topic === channelName
+      );
+      
+      // Only create a new channel if one doesn't exist
+      if (!existingChannel) {
+        const notificationsChannel = supabase
+        .channel(channelName)
         .on('postgres_changes', {
           event: 'INSERT',
           schema: 'public',
@@ -82,18 +91,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           await handleAchievementNotification(payload.new);
         });
       
-      // Subscribe to the single channel
-      notificationsChannel.subscribe((status) => {
-        console.log(`Notifications channel status: ${status}`);
-      });
+        // Subscribe to the single channel
+        notificationsChannel.subscribe((status) => {
+          console.log(`Notifications channel status: ${status}`);
+        });
+        
+        // Load existing notifications
+        loadNotifications();
 
-      // Load existing notifications
-      loadNotifications();
-
-      return () => {
-        // Clean up by removing the single channel
-        supabase.removeChannel(notificationsChannel);
-      };
+        return () => {
+          // Clean up by removing the single channel
+          supabase.removeChannel(notificationsChannel);
+        };
+      } else {
+        // Channel already exists, just load notifications
+        loadNotifications();
+        return () => {};
+      }
     }
   }, [user]);
 

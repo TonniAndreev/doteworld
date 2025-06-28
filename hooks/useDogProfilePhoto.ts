@@ -62,36 +62,42 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
   // Set up real-time subscription for photo updates
   useEffect(() => {
     if (!dogId) return;
-    
-    // Create a unique channel key for this component instance
-    const channelKey = `dog_photo_${dogId}_${Math.random().toString(36).substring(2, 9)}`;
 
-    // Create a unique channel for this component instance
-    const channel = supabase
-      .channel(channelKey)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'dogs',
-          filter: `id=eq.${dogId}`,
-        },
-        (payload) => {
-          console.log('Dog photo updated:', payload);
-          fetchPhoto();
-        }
-      );
+    const channelName = `dog_photo_${dogId}`;
     
-    // Subscribe to the channel with status callback
-    channel.subscribe((status) => {
-      console.log(`Dog photo channel status: ${status}`);
-    });
+    // Check if the channel already exists
+    const existingChannel = supabase.getChannels().find(
+      channel => channel.topic === channelName
+    );
+    
+    if (!existingChannel) {
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'dogs',
+            filter: `id=eq.${dogId}`,
+          },
+          (payload) => {
+            console.log('Dog photo updated:', payload);
+            fetchPhoto();
+          }
+        )
+        .subscribe((status) => {
+          console.log(`Dog photo channel status: ${status}`);
+        });
+        
+      // Return cleanup function to unsubscribe
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
 
-    return () => {
-      // Properly unsubscribe when component unmounts
-      supabase.removeChannel(channel);
-    };
+    // No cleanup needed if we're using existing channel
+    return () => {};
   }, [dogId]); // Only re-run when dogId changes
 
   return {

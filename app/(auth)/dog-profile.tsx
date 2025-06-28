@@ -191,13 +191,13 @@ export default function DogProfileScreen() {
     
     try {
       // First create the dog profile
-      const dogData = await updateDogProfile(dogName, dogBreed, null, dogBirthday);
+      console.log("Test photo upload result:", result);
       
       // If there's a photo, upload it to Supabase Storage
       if (dogPhoto && dogData?.id) {
         setIsUploadingPhoto(true);
         const uploadResult = await uploadDogProfilePhoto(dogData.id, dogPhoto);
-        
+        console.log("Dog photo upload result:", uploadResult);
         if (!uploadResult.success) {
           console.error('Failed to upload dog photo:', uploadResult.error);
           // Continue anyway - the dog profile was created successfully

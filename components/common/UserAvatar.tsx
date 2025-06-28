@@ -35,8 +35,19 @@ export default function UserAvatar({
   const { photoUrl: userPhotoUrl } = useUserProfilePhoto(isDogAvatar ? undefined : userId);
   const { photoUrl: dogPhotoUrl } = useDogProfilePhoto(isDogAvatar ? userId : '');
   
-  // Determine the final photo URL to use
-  const finalPhotoUrl = isDogAvatar ? (dogPhotoUrl || photoURL) : (userPhotoUrl || photoURL);
+  // Determine the final photo URL to use (added error handling for URLs)
+  let finalPhotoUrl = isDogAvatar ? (dogPhotoUrl || photoURL) : (userPhotoUrl || photoURL);
+  
+  // Add error handling for potentially malformed URLs
+  if (finalPhotoUrl && typeof finalPhotoUrl === 'string') {
+    // Ensure the URL is properly formed
+    try {
+      new URL(finalPhotoUrl);
+    } catch (e) {
+      console.warn(`Invalid URL for ${isDogAvatar ? 'dog' : 'user'} avatar:`, finalPhotoUrl);
+      finalPhotoUrl = null;
+    }
+  }
   
   const avatarStyle: any = [
     {
@@ -85,10 +96,13 @@ export default function UserAvatar({
   return (
     <View style={containerStyles}>
       <Image
-        source={finalPhotoUrl ? { uri: finalPhotoUrl } : { uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' }}
+        source={finalPhotoUrl ? 
+          (typeof finalPhotoUrl === 'string' ? { uri: finalPhotoUrl } : finalPhotoUrl) : 
+          { uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' }
+        }
         style={avatarStyle}
         onError={() => setImageError(true)}
-        resizeMode="cover"
+        resizeMode="cover"  
       />
     </View>
   );

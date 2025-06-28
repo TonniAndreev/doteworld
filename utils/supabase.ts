@@ -1,18 +1,31 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { createClient } from '@supabase/supabase-js'
 
-// Create a custom storage implementation that handles channel subscriptions better
+// Create a custom storage implementation with better error handling
 class CustomAsyncStorage {
   async getItem(key: string): Promise<string | null> {
-    return AsyncStorage.getItem(key);
+    try {
+      return await AsyncStorage.getItem(key);
+    } catch (error) {
+      console.error('Error reading from AsyncStorage:', error);
+      return null;
+    }
   }
 
   async setItem(key: string, value: string): Promise<void> {
-    return AsyncStorage.setItem(key, value);
+    try {
+      return await AsyncStorage.setItem(key, value);
+    } catch (error) {
+      console.error('Error writing to AsyncStorage:', error);
+    }
   }
 
   async removeItem(key: string): Promise<void> {
-    return AsyncStorage.removeItem(key);
+    try {
+      return await AsyncStorage.removeItem(key);
+    } catch (error) {
+      console.error('Error removing from AsyncStorage:', error);
+    }
   }
 }
 
@@ -31,7 +44,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   realtime: {
     params: {
-      eventsPerSecond: 10,
+      eventsPerSecond: 5,  // Reduce to avoid rate limits
+      realtimeTimeout: 30000, // Increase timeout to 30 seconds
     },
   },
   global: {
@@ -40,3 +54,36 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
   },
 })
+// Add helper function to log all active channels
+export function logActiveChannels() {
+  const channels = supabase.getChannels();
+  console.log(`Active channels (${channels.length}):`, 
+    channels.map(c => ({
+      topic: c.topic,
+      state: c._state
+    }))
+  );
+}
+
+// Add helper function to check if a channel exists
+export function channelExists(channelName: string): boolean {
+  const channels = supabase.getChannels();
+  return channels.some(channel => channel.topic === channelName);
+}
+
+// Add helper function to safely create a channel
+export function safelyCreateChannel(channelName: string) {
+  const existingChannel = supabase.getChannels().find(
+    channel => channel.topic === channelName
+  );
+  
+  if (existingChannel) {
+    // If channel exists and is in a closed state, remove it first
+    if (existingChannel._state === 'closed') {
+      supabase.removeChannel(existingChannel);
+    } else {
+      return existingChannel; // Return existing channel if it's active
+    }
+  }
+  return supabase.channel(channelName); // Create a new channel
+}

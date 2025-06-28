@@ -66,36 +66,42 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
   // Set up real-time subscription for photo updates
   useEffect(() => {
     if (!targetUserId) return;
-    
-    // Create a unique channel key for this component instance
-    const channelKey = `profile_photo_${targetUserId}_${Math.random().toString(36).substring(2, 9)}`;
 
-    // Create a unique channel for this component instance
-    const channel = supabase
-      .channel(channelKey)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${targetUserId}`,
-        },
-        (payload) => {
-          console.log('Profile photo updated:', payload);
-          fetchPhoto();
-        }
-      );
+    const channelName = `profile_photo_${targetUserId}`;
     
-    // Subscribe to the channel with status callback
-    channel.subscribe((status) => {
-      console.log(`Profile photo channel status: ${status}`);
-    });
+    // Check if the channel already exists
+    const existingChannel = supabase.getChannels().find(
+      channel => channel.topic === channelName
+    );
+    
+    if (!existingChannel) {
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${targetUserId}`,
+          },
+          (payload) => {
+            console.log('Profile photo updated:', payload);
+            fetchPhoto();
+          }
+        )
+        .subscribe((status) => {
+          console.log(`Profile photo channel status: ${status}`);
+        });
+        
+      // Return cleanup function to unsubscribe
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
 
-    return () => {
-      // Properly unsubscribe when component unmounts
-      supabase.removeChannel(channel);
-    };
+    // No cleanup needed if we're using existing channel
+    return () => {};
   }, [targetUserId]); // Only re-run when targetUserId changes
 
   return {
