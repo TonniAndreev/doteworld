@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 20, // Increased spacing between avatar and text
+    marginRight: 16, // Increased spacing between avatar and text
     width: 50,
     height: 50,
   },
