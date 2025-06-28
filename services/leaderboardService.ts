@@ -9,7 +9,6 @@ export type LeaderboardUser = {
   territorySize: number;
   totalDistance: number;
   badgeCount: number;
-  pawsBalance: number;
 };
 
 // Helper function to calculate distance between two points
@@ -132,7 +131,7 @@ function calculateRealDistanceFromWalkPoints(walkPoints: any[]): number {
   return totalDistance;
 }
 
-export async function fetchLeaderboard(category: 'territory' | 'distance' | 'achievements' | 'paws'): Promise<LeaderboardUser[]> {
+export async function fetchLeaderboard(category: 'territory' | 'distance' | 'achievements'): Promise<LeaderboardUser[]> {
   try {
     console.log('Fetching leaderboard for category:', category);
     
@@ -225,13 +224,6 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
 
         console.log('Final REAL stats for profile:', profile.id, { territorySize, totalDistance, badgeCount });
 
-        // Calculate paws balance based on REAL activity
-        const pawsBalance = Math.floor(
-          (badgeCount || 0) * 50 + // 50 paws per badge
-          territorySize * 10000 + // 10,000 paws per km² (higher reward for territory)
-          totalDistance * 100 // 100 paws per km walked
-        );
-
         leaderboardData.push({
           id: profile.id,
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
@@ -240,7 +232,6 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           territorySize,
           totalDistance,
           badgeCount: badgeCount || 0,
-          pawsBalance,
         });
       } catch (profileError) {
         console.error('Error processing profile:', profile.id, profileError);
@@ -260,8 +251,6 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           return b.totalDistance - a.totalDistance;
         case 'achievements':
           return b.badgeCount - a.badgeCount;
-        case 'paws':
-          return b.pawsBalance - a.pawsBalance;
         default:
           return 0;
       }

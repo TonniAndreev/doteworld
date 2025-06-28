@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, UserPlus, UserCheck, UserX, Award, Map, Route, PawPrint, Share2 } from 'lucide-react-native';
+import { ChevronLeft, UserPlus, UserCheck, UserX, Award, Map, Route, Share2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -45,7 +45,7 @@ interface UserStats {
   territorySize: number;
   totalDistance: number;
   achievementCount: number;
-  pawsBalance: number;
+  thisMonthDistance: number;
 }
 
 interface UserBadge {
@@ -64,7 +64,7 @@ export default function PublicUserProfileScreen() {
     territorySize: 0,
     totalDistance: 0,
     achievementCount: 0,
-    pawsBalance: 0,
+    thisMonthDistance: 0,
   });
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -171,6 +171,19 @@ export default function PublicUserProfileScreen() {
             const territorySize = calculateRealTerritoryFromWalkPoints(walkPoints);
             const totalDistance = calculateRealDistanceFromWalkPoints(walkPoints);
             
+            // Calculate this month's distance
+            const now = new Date();
+            const currentMonth = now.getMonth();
+            const currentYear = now.getFullYear();
+            
+            const thisMonthWalkPoints = walkPoints.filter(point => {
+              const pointDate = new Date(point.timestamp);
+              return pointDate.getMonth() === currentMonth && 
+                     pointDate.getFullYear() === currentYear;
+            });
+            
+            const thisMonthDistance = calculateRealDistanceFromWalkPoints(thisMonthWalkPoints);
+            
             // Get achievement count
             const { count: achievementCount } = await supabase
               .from('profile_achievements')
@@ -178,18 +191,11 @@ export default function PublicUserProfileScreen() {
               .eq('profile_id', id)
               .not('obtained_at', 'is', null);
 
-            // Calculate paws balance based on activity
-            const pawsBalance = Math.floor(
-              (achievementCount || 0) * 50 +
-              territorySize * 10000 +
-              totalDistance * 100
-            );
-
             setUserStats({
               territorySize,
               totalDistance,
               achievementCount: achievementCount || 0,
-              pawsBalance,
+              thisMonthDistance,
             });
           }
         }
@@ -534,17 +540,17 @@ export default function PublicUserProfileScreen() {
         {/* Stats Section */}
         <View style={styles.statsSection}>
           <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <PawPrint size={24} color={COLORS.primary} />
-              <Text style={styles.statValue}>{userStats.pawsBalance}</Text>
-              <Text style={styles.statLabel}>Paws</Text>
-            </View>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, styles.emphasisStatCard]}>
               <Map size={24} color={COLORS.primary} />
-              <Text style={styles.statValue}>
+              <Text style={[styles.statValue, styles.emphasisStatValue]}>
                 {userStats.territorySize > 0 ? `${(userStats.territorySize * 1000000).toFixed(0)} m²` : '0 m²'}
               </Text>
-              <Text style={styles.statLabel}>Territory</Text>
+              <Text style={[styles.statLabel, styles.emphasisStatLabel]}>Territory</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Award size={24} color={COLORS.primary} />
+              <Text style={styles.statValue}>{userStats.achievementCount}</Text>
+              <Text style={styles.statLabel}>Badges</Text>
             </View>
           </View>
           
@@ -552,14 +558,16 @@ export default function PublicUserProfileScreen() {
             <View style={styles.statCard}>
               <Route size={24} color={COLORS.primary} />
               <Text style={styles.statValue}>
-                {userStats.totalDistance > 0 ? `${(userStats.totalDistance * 1000).toFixed(0)} m` : '0 m'}
+                {userStats.thisMonthDistance > 0 ? `${(userStats.thisMonthDistance * 1000).toFixed(0)} m` : '0 m'}
               </Text>
-              <Text style={styles.statLabel}>Walked</Text>
+              <Text style={styles.statLabel}>This Month</Text>
             </View>
             <View style={styles.statCard}>
-              <Award size={24} color={COLORS.primary} />
-              <Text style={styles.statValue}>{userStats.achievementCount}</Text>
-              <Text style={styles.statLabel}>Badges</Text>
+              <Route size={24} color={COLORS.primary} />
+              <Text style={styles.statValue}>
+                {userStats.totalDistance > 0 ? `${(userStats.totalDistance * 1000).toFixed(0)} m` : '0 m'}
+              </Text>
+              <Text style={styles.statLabel}>Total Distance</Text>
             </View>
           </View>
         </View>
@@ -784,6 +792,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  emphasisStatCard: {
+    backgroundColor: COLORS.primaryExtraLight,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
   statValue: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
@@ -792,10 +805,18 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     textAlign: 'center',
   },
+  emphasisStatValue: {
+    color: COLORS.primary,
+    fontSize: 20,
+  },
   statLabel: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: COLORS.neutralMedium,
+  },
+  emphasisStatLabel: {
+    color: COLORS.primary,
+    fontFamily: 'Inter-Medium',
   },
   sectionContainer: {
     padding: 16,

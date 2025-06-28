@@ -13,9 +13,8 @@ type LeaderboardItemProps = {
     territorySize?: number;
     totalDistance?: number;
     achievementCount?: number;
-    pawsBalance?: number;
   };
-  category: 'territory' | 'distance' | 'achievements' | 'paws';
+  category: 'territory' | 'distance' | 'achievements';
   isCurrentUser?: boolean;
   onPress?: () => void;
 };
@@ -30,13 +29,11 @@ export default function LeaderboardItem({
   const getValue = () => {
     switch (category) {
       case 'territory':
-        return `${user.territorySize} km²`;
+        return `${(user.territorySize * 1000000).toFixed(0)} m²`;
       case 'distance':
         return `${user.totalDistance} km`;
       case 'achievements':
         return user.achievementCount;
-      case 'paws':
-        return user.pawsBalance;
       default:
         return '';
     }
@@ -91,7 +88,8 @@ export default function LeaderboardItem({
       <View style={styles.scoreContainer}>
         <Text style={[
           styles.scoreText,
-          isCurrentUser && styles.highlightedScoreText
+          isCurrentUser && styles.highlightedScoreText,
+          category === 'territory' && styles.territoryScoreText
         ]}>{getValue()}</Text>
       </View>
     </TouchableOpacity>
@@ -179,6 +177,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.primary,
+  },
+  territoryScoreText: {
+    color: COLORS.primary,
+    fontSize: 16,
   },
   highlightedScoreText: {
     color: COLORS.primary,

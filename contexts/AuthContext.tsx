@@ -53,6 +53,7 @@ interface AuthContextType {
   loginWithFacebook: () => Promise<void>;
   updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null, birthday?: string) => Promise<void>;
   refreshUserData: () => Promise<void>;
+  updateUserProfile: (data: Partial<DoteUser>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -546,6 +547,61 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUserProfile = async (data: Partial<DoteUser>) => {
+    if (!user) {
+      throw new Error('No user logged in');
+    }
+
+    try {
+      setIsLoading(true);
+
+      // Update profile in database
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: data.first_name,
+          last_name: data.last_name,
+          phone: data.phone,
+          avatar_url: data.avatar_url,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+        throw new Error('Failed to update profile');
+      }
+
+      // If email changed, update auth email
+      if (data.email && data.email !== user.email) {
+        const { error: emailError } = await supabase.auth.updateUser({
+          email: data.email,
+        });
+
+        if (emailError) {
+          console.error('Error updating email:', emailError);
+          throw new Error('Failed to update email address');
+        }
+      }
+
+      // Update local user state
+      const updatedUser = {
+        ...user,
+        ...data,
+        displayName: `${data.first_name || user.first_name || ''} ${data.last_name || user.last_name || ''}`.trim() || 'User',
+      };
+
+      setUser(updatedUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -574,6 +630,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithFacebook,
     updateDogProfile,
     refreshUserData: () => fetchUserProfile(user?.id || ''),
+    updateUserProfile,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

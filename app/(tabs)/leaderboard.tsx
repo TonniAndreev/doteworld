@@ -9,7 +9,7 @@ import {
   ActivityIndicator 
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Search, Crown, Map, Route, Award, Coins } from 'lucide-react-native';
+import { Search, Crown, Map, Route, Award } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
@@ -18,7 +18,7 @@ import UserAvatar from '@/components/common/UserAvatar';
 import { fetchLeaderboard } from '@/services/leaderboardService';
 import { useAuth } from '@/contexts/AuthContext';
 
-type LeaderboardTab = 'territory' | 'distance' | 'achievements' | 'paws';
+type LeaderboardTab = 'territory' | 'distance' | 'achievements';
 
 export default function LeaderboardScreen() {
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('territory');
@@ -98,13 +98,11 @@ export default function LeaderboardScreen() {
     const getValue = (user) => {
       switch (activeTab) {
         case 'territory':
-          return `${user.territorySize} km²`;
+          return `${(user.territorySize * 1000000).toFixed(0)} m²`;
         case 'distance':
           return `${user.totalDistance} km`;
         case 'achievements':
           return `${user.badgeCount}`;
-        case 'paws':
-          return `${user.pawsBalance}`;
         default:
           return '';
       }
@@ -303,14 +301,6 @@ export default function LeaderboardScreen() {
         >
           <Award size={20} color={activeTab === 'achievements' ? COLORS.primary : COLORS.neutralDark} />
           <Text style={[styles.tabText, activeTab === 'achievements' && styles.activeTabText]}>Badges</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'paws' && styles.activeTab]}
-          onPress={() => setActiveTab('paws')}
-        >
-          <Coins size={20} color={activeTab === 'paws' ? COLORS.primary : COLORS.neutralDark} />
-          <Text style={[styles.tabText, activeTab === 'paws' && styles.activeTabText]}>Paws</Text>
         </TouchableOpacity>
       </View>
 

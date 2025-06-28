@@ -6,17 +6,18 @@ interface StatsCardProps {
   icon: React.ReactNode;
   value: string;
   label: string;
+  emphasis?: boolean;
 }
 
-export default function StatsCard({ icon, value, label }: StatsCardProps) {
+export default function StatsCard({ icon, value, label, emphasis = false }: StatsCardProps) {
   return (
-    <View style={styles.container}>
-      <View style={styles.iconContainer}>
+    <View style={[styles.container, emphasis && styles.emphasisContainer]}>
+      <View style={[styles.iconContainer, emphasis && styles.emphasisIconContainer]}>
         {icon}
       </View>
       <View style={styles.textContainer}>
-        <Text style={styles.value}>{value}</Text>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.value, emphasis && styles.emphasisValue]}>{value}</Text>
+        <Text style={[styles.label, emphasis && styles.emphasisLabel]}>{label}</Text>
       </View>
     </View>
   );
@@ -40,8 +41,21 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  emphasisContainer: {
+    backgroundColor: COLORS.primaryExtraLight,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
   iconContainer: {
     marginRight: 12,
+  },
+  emphasisIconContainer: {
+    backgroundColor: COLORS.white,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   textContainer: {
     flex: 1,
@@ -52,9 +66,17 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 2,
   },
+  emphasisValue: {
+    color: COLORS.primary,
+    fontSize: 22,
+  },
   label: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
+  },
+  emphasisLabel: {
+    color: COLORS.primary,
+    fontFamily: 'Inter-Medium',
   },
 });
