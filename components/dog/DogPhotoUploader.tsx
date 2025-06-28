@@ -124,16 +124,13 @@ export default function DogPhotoUploader({
           fileData = photoUri;
         }
       } else {
-        // For mobile, read the file as base64
-        const base64Data = await FileSystem.readAsStringAsync(photoUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        fileData = base64Data;
+        // For mobile, read the file as ArrayBuffer instead of Base64
+        fileData = await FileSystem.readAsArrayBufferAsync(photoUri);
       }
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .upload(filePath, fileData, {
           contentType: `image/${fileExt}`,
           upsert: true,
@@ -148,7 +145,7 @@ export default function DogPhotoUploader({
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);

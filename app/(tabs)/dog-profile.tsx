@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -281,11 +281,12 @@ export default function DogProfileScreen() {
       
       console.log('Uploading to path:', filePath);
       
-      // Read the file as base64
+      // Read the file based on platform
       let fileData;
       if (Platform.OS === 'web') {
-        // For web, we can use the file URI directly
+        // For web, we need to handle data URLs properly
         if (newDogPhoto.startsWith('data:')) {
+          // Convert data URL to blob for web
           const response = await fetch(newDogPhoto);
           const blob = await response.blob();
           fileData = blob;
@@ -293,11 +294,8 @@ export default function DogProfileScreen() {
           fileData = newDogPhoto;
         }
       } else {
-        // For mobile, read the file as base64
-        const base64Data = await FileSystem.readAsStringAsync(newDogPhoto, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        fileData = base64Data;
+        // For mobile, read the file as ArrayBuffer instead of Base64
+        fileData = await FileSystem.readAsArrayBufferAsync(newDogPhoto);
       }
       
       // Upload to Supabase Storage

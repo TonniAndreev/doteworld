@@ -549,7 +549,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Read the file as base64
+          // Read the file based on platform
           let fileData;
           if (Platform.OS === 'web') {
             // For web, we can use the file URI directly
@@ -561,11 +561,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               fileData = dogPhoto;
             }
           } else {
-            // For mobile, read the file as base64
-            const base64Data = await FileSystem.readAsStringAsync(dogPhoto, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            fileData = base64Data;
+            // For mobile, read the file as ArrayBuffer instead of Base64
+            fileData = await FileSystem.readAsArrayBufferAsync(dogPhoto);
           }
           
           // Upload to Supabase Storage
@@ -694,7 +691,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Read the file as base64
+          // Read the file based on platform
           let fileData;
           if (Platform.OS === 'web') {
             // For web, convert data URL to blob
@@ -706,11 +703,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               fileData = data.avatar_url;
             }
           } else {
-            // For mobile, read the file as base64
-            const base64Data = await FileSystem.readAsStringAsync(data.avatar_url, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            fileData = base64Data;
+            // For mobile, read the file as ArrayBuffer instead of Base64
+            fileData = await FileSystem.readAsArrayBufferAsync(data.avatar_url);
           }
           
           // Upload to Supabase Storage
