@@ -14,8 +14,7 @@ import { ChevronLeft, Route, Calendar, Clock, MapPin, Trophy, ArrowRight } from 
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWalkHistory } from '@/hooks/useWalkHistory';
-import MapView, { Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
-import { extractPolygonCoordinates } from '@/utils/locationUtils';
+import NotificationsButton from '@/components/common/NotificationsButton';
 
 interface WalkHistoryItem {
   id: string;
@@ -136,7 +135,7 @@ export default function WalkHistoryScreen() {
       
       <View style={styles.mapPreviewContainer}>
         <Image
-          source={{ uri: `https://maps.googleapis.com/maps/api/staticmap?center=37.7749,-122.4194&zoom=13&size=600x200&maptype=roadmap&key=YOUR_API_KEY` }}
+          source={{ uri: 'https://images.pexels.com/photos/4498362/pexels-photo-4498362.jpeg?auto=compress&cs=tinysrgb&w=600&h=200' }}
           style={styles.mapPreview}
           resizeMode="cover"
         />
@@ -149,16 +148,8 @@ export default function WalkHistoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <ChevronLeft size={24} color={COLORS.neutralDark} />
-        </TouchableOpacity>
-        
         <Text style={styles.title}>Walk History</Text>
-        
-        <View style={styles.placeholder} />
+        <NotificationsButton />
       </View>
 
       {user && user.dogs.length > 0 && (
@@ -230,23 +221,17 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.neutralLight,
   },
-  backButton: {
-    padding: 8,
-  },
   title: {
     fontFamily: 'Inter-Bold',
-    fontSize: 20,
+    fontSize: 28,
     color: COLORS.neutralDark,
-  },
-  placeholder: {
-    width: 40,
   },
   dogSelector: {
     paddingVertical: 12,

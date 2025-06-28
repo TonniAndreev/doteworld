@@ -61,7 +61,7 @@ export async function startWalkSession(
 /**
  * Add a walk point to an active session
  */
-export async function addWalkPoint(
+export async function addWalkPointToSession(
   sessionId: string,
   dogId: string,
   coordinates: Coordinate
