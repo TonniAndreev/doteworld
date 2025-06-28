@@ -14,7 +14,7 @@ interface Dog {
   id: string;
   name: string;
   breed: string;
-  photo_url?: string;
+  photo_url?: string | null;
   birthday?: string;
   bio?: string;
   weight?: number;
@@ -213,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Create full user object
         const fullUser: DoteUser = {
           id: supaUser.id,
-          email: supaUser.email,
+          email: supaUser.email!,
           ...profile,
           displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
           dogs: userDogs?.map(ud => ud.dogs).filter(Boolean) || [],
@@ -570,6 +570,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Set photo URL in dog data
           dogData.photo_url = publicUrlData.publicUrl;
+          dogData.photo_uploaded_at = new Date().toISOString();
         } catch (uploadError) {
           console.error('Photo upload error:', uploadError);
           // Continue without photo if upload fails
@@ -630,14 +631,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
+      let finalAvatarUrl = data.avatar_url || user.avatar_url;
+      
+      if (data.avatar_url && (data.avatar_url.startsWith('file://') || data.avatar_url.startsWith('content://'))) {
+        console.log('Uploading avatar from local file:', data.avatar_url);
+        
+        try {
+          // For Android, we need to ensure the file exists and is readable
+          if (Platform.OS === 'android') {
+            const fileInfo = await FileSystem.getInfoAsync(data.avatar_url);
+            console.log('File info:', fileInfo);
+            
+            if (!fileInfo.exists) {
+              console.error('File does not exist:', data.avatar_url);
+              throw new Error('Photo file not found');
+            }
+          }
+          
+          // Generate a unique filename
+          const fileExt = data.avatar_url.split('.').pop()?.toLowerCase() || 'jpg';
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `avatars/${user.id}/${fileName}`;
+          
+          console.log('Uploading to path:', filePath);
+          
+          // Read the file as base64
+          let fileData;
+          if (Platform.OS === 'web') {
+            // For web, we can use the file URI directly
+            fileData = data.avatar_url;
+          } else {
+            // For mobile, read the file as base64
+            const base64Data = await FileSystem.readAsStringAsync(data.avatar_url, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            fileData = base64Data;
+          }
+          
+          // Upload to Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, fileData, {
+              contentType: `image/${fileExt}`,
+              upsert: true,
+            });
+          
+          if (uploadError) {
+            console.error('Error uploading avatar:', uploadError);
+            throw new Error('Failed to upload profile photo');
+          }
+          
+          console.log('Upload successful:', uploadData);
+          
+          // Get public URL
+          const { data: publicUrlData } = await supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          
+          console.log('Public URL:', publicUrlData);
+          
+          finalAvatarUrl = publicUrlData.publicUrl;
+        } catch (uploadError) {
+          console.error('Avatar upload error:', uploadError);
+          // Continue without updating avatar if upload fails
+        }
+      }
+
       // Update profile in database
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          phone: data.phone,
-          avatar_url: data.avatar_url,
+          first_name: data.first_name || user.first_name,
+          last_name: data.last_name || user.last_name,
+          phone: data.phone || user.phone,
+          avatar_url: finalAvatarUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -650,7 +717,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If email changed, update auth email
       if (data.email && data.email !== user.email) {
         const { error: emailError } = await supabase.auth.updateUser({
-          email: data.email,
+          email: data.email.trim(),
         });
 
         if (emailError) {
@@ -659,17 +726,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Update local user state
-      const updatedUser = {
-        ...user,
-        ...data,
-        displayName: `${data.first_name || user.first_name || ''} ${data.last_name || user.last_name || ''}`.trim() || 'User',
-      };
-
-      setUser(updatedUser);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-
-    } catch (error) {
+      // Refresh user data
+      await refreshUserData();
+      
+      Alert.alert('Success', 'Profile updated successfully!', [
+        { text: 'OK', onPress: () => router.back() }
+      ]);
+    } catch (error: any) {
       console.error('Error updating user profile:', error);
       throw error;
     } finally {

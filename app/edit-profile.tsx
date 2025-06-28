@@ -45,41 +45,53 @@ export default function EditProfileScreen() {
   }, [user]);
   
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant camera roll permissions to change your profile photo.');
-      return;
-    }
-    
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setAvatarUrl(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera roll permissions to change your profile photo.');
+        return;
+      }
+      
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log('Image picked:', result.assets[0].uri);
+        setAvatarUrl(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
   
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant camera permissions to take a profile photo.');
-      return;
-    }
-    
-    let result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setAvatarUrl(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera permissions to take a profile photo.');
+        return;
+      }
+      
+      let result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log('Photo taken:', result.assets[0].uri);
+        setAvatarUrl(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
   

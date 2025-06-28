@@ -10,10 +10,12 @@ import {
   Platform,
   ActivityIndicator,
   Modal,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { Camera, ChevronDown, CircleAlert as AlertCircle, Check, Search, X, Calendar } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -111,6 +113,7 @@ export default function DogProfileScreen() {
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
   
   const { user, updateDogProfile } = useAuth();
   
@@ -120,41 +123,53 @@ export default function DogProfileScreen() {
   ).sort();
   
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      alert('Sorry, we need camera roll permissions to make this work!');
-      return;
-    }
-    
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setDogPhoto(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'We need camera roll permissions to select a photo.');
+        return;
+      }
+      
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log('Image picked:', result.assets[0].uri);
+        setDogPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
   
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
-    if (status !== 'granted') {
-      alert('Sorry, we need camera permissions to make this work!');
-      return;
-    }
-    
-    let result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setDogPhoto(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'We need camera permissions to take a photo.');
+        return;
+      }
+      
+      let result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log('Photo taken:', result.assets[0].uri);
+        setDogPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
   
@@ -188,6 +203,7 @@ export default function DogProfileScreen() {
     setError('');
     
     try {
+      console.log('Submitting dog profile with photo:', !!dogPhoto);
       await updateDogProfile(dogName, dogBreed, dogPhoto, dogBirthday);
       router.replace('/(tabs)');
     } catch (error: any) {
@@ -340,6 +356,8 @@ export default function DogProfileScreen() {
               size={160}
               showFallback={!dogPhoto}
               style={styles.dogPhoto}
+              isDogAvatar={true}
+              dogBreed={dogBreed}
             />
             
             <View style={styles.photoButtons}>
