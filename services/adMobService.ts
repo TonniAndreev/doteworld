@@ -15,6 +15,7 @@ class AdMobService {
   private isInitialized = false;
   private isAdLoaded = false;
   private config: AdMobConfig | null = null;
+  private rewardedAd: any = null;
 
   async initialize(config: AdMobConfig): Promise<void> {
     if (Platform.OS === 'web') {
@@ -25,13 +26,25 @@ class AdMobService {
     }
 
     try {
-      // TODO: Replace with actual AdMob initialization
-      // const { GoogleMobileAds } = require('react-native-google-mobile-ads');
-      // await GoogleMobileAds().initialize();
+      // Import the library dynamically to avoid issues on web
+      const { GoogleMobileAds, TestIds } = require('react-native-google-mobile-ads');
       
-      console.log('AdMob: Would initialize with config:', config);
+      console.log('AdMob: Initializing with config:', config);
+      
+      // Initialize Google Mobile Ads
+      await GoogleMobileAds().initialize();
+      
+      // Set test device IDs if provided
+      if (config.testDeviceIds && config.testDeviceIds.length > 0) {
+        await GoogleMobileAds().setRequestConfiguration({
+          testDeviceIdentifiers: config.testDeviceIds,
+        });
+      }
+      
       this.isInitialized = true;
       this.config = config;
+      
+      console.log('AdMob: Initialization successful');
     } catch (error) {
       console.error('AdMob initialization error:', error);
       throw new Error('Failed to initialize AdMob');
@@ -50,15 +63,55 @@ class AdMobService {
     }
 
     try {
-      // TODO: Replace with actual AdMob rewarded ad loading
-      // const { RewardedAd, RewardedAdEventType } = require('react-native-google-mobile-ads');
-      // const rewardedAd = RewardedAd.createForAdRequest(this.config!.rewardedAdUnitId);
-      // await rewardedAd.load();
+      const { RewardedAd, RewardedAdEventType, TestIds } = require('react-native-google-mobile-ads');
       
-      console.log('AdMob: Would load rewarded ad');
-      this.isAdLoaded = true;
+      // Use test ad unit ID in development
+      const adUnitId = __DEV__ ? TestIds.REWARDED : this.config!.rewardedAdUnitId;
+      
+      console.log('AdMob: Loading rewarded ad with unit ID:', adUnitId);
+      
+      // Create rewarded ad instance
+      this.rewardedAd = RewardedAd.createForAdRequest(adUnitId, {
+        requestNonPersonalizedAdsOnly: false,
+      });
+
+      // Set up event listeners
+      const unsubscribeLoaded = this.rewardedAd.addAdEventListener(RewardedAdEventType.LOADED, () => {
+        console.log('AdMob: Rewarded ad loaded successfully');
+        this.isAdLoaded = true;
+        unsubscribeLoaded();
+      });
+
+      const unsubscribeFailedToLoad = this.rewardedAd.addAdEventListener(RewardedAdEventType.ERROR, (error: any) => {
+        console.error('AdMob: Failed to load rewarded ad:', error);
+        this.isAdLoaded = false;
+        unsubscribeFailedToLoad();
+      });
+
+      // Load the ad
+      this.rewardedAd.load();
+      
+      // Wait for ad to load or fail (with timeout)
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Ad loading timeout'));
+        }, 10000); // 10 second timeout
+
+        const checkLoaded = () => {
+          if (this.isAdLoaded) {
+            clearTimeout(timeout);
+            resolve();
+          } else {
+            setTimeout(checkLoaded, 100);
+          }
+        };
+        
+        checkLoaded();
+      });
+      
     } catch (error) {
       console.error('AdMob load ad error:', error);
+      this.isAdLoaded = false;
       throw new Error('Failed to load rewarded ad');
     }
   }
@@ -81,16 +134,62 @@ class AdMobService {
     }
 
     try {
-      // TODO: Replace with actual AdMob rewarded ad showing
-      // const reward = await this.rewardedAd.show();
+      const { RewardedAdEventType } = require('react-native-google-mobile-ads');
       
-      console.log('AdMob: Would show rewarded ad');
-      this.isAdLoaded = false;
+      console.log('AdMob: Showing rewarded ad');
       
-      // Mock reward
-      return { type: 'paws', amount: 1 };
+      return new Promise<AdReward>((resolve, reject) => {
+        let rewardEarned = false;
+        
+        // Set up reward listener
+        const unsubscribeEarnedReward = this.rewardedAd.addAdEventListener(
+          RewardedAdEventType.EARNED_REWARD,
+          (reward: any) => {
+            console.log('AdMob: User earned reward:', reward);
+            rewardEarned = true;
+            unsubscribeEarnedReward();
+          }
+        );
+
+        // Set up ad closed listener
+        const unsubscribeClosed = this.rewardedAd.addAdEventListener(
+          RewardedAdEventType.CLOSED,
+          () => {
+            console.log('AdMob: Rewarded ad closed');
+            this.isAdLoaded = false;
+            this.rewardedAd = null;
+            unsubscribeClosed();
+            
+            if (rewardEarned) {
+              resolve({ type: 'paws', amount: 1 });
+            } else {
+              reject(new Error('Ad was closed without earning reward'));
+            }
+          }
+        );
+
+        // Set up error listener
+        const unsubscribeError = this.rewardedAd.addAdEventListener(
+          RewardedAdEventType.ERROR,
+          (error: any) => {
+            console.error('AdMob: Error showing rewarded ad:', error);
+            this.isAdLoaded = false;
+            this.rewardedAd = null;
+            unsubscribeError();
+            unsubscribeClosed();
+            unsubscribeEarnedReward();
+            reject(new Error('Failed to show rewarded ad'));
+          }
+        );
+
+        // Show the ad
+        this.rewardedAd.show();
+      });
+      
     } catch (error) {
       console.error('AdMob show ad error:', error);
+      this.isAdLoaded = false;
+      this.rewardedAd = null;
       throw new Error('Failed to show rewarded ad');
     }
   }
@@ -106,22 +205,24 @@ class AdMobService {
 
 export const adMobService = new AdMobService();
 
-// Configuration constants
+// Configuration constants with real production IDs
 export const ADMOB_CONFIG: AdMobConfig = {
   appId: Platform.select({
-    ios: 'ca-app-pub-3940256099942544~1458002511', // Test app ID
-    android: 'ca-app-pub-3940256099942544~3347511713', // Test app ID
-    default: 'test-app-id'
+    ios: 'ca-app-pub-2380886531830921~9974124526', // Real iOS app ID
+    android: 'ca-app-pub-2380886531830921~8661042855', // Real Android app ID
+    default: 'ca-app-pub-2380886531830921~8661042855'
   }),
   rewardedAdUnitId: Platform.select({
-    ios: 'ca-app-pub-3940256099942544/1712485313', // Test rewarded ad unit ID
-    android: 'ca-app-pub-3940256099942544/5224354917', // Test rewarded ad unit ID
-    default: 'test-rewarded-ad-unit-id'
+    ios: 'ca-app-pub-2380886531830921/5954988462', // Real iOS rewarded ad unit ID
+    android: 'ca-app-pub-2380886531830921/9866313310', // Real Android rewarded ad unit ID
+    default: 'ca-app-pub-2380886531830921/9866313310'
   }),
   testDeviceIds: [
-    // Add your test device IDs here
-    // 'DEVICE_ID_1',
-    // 'DEVICE_ID_2',
+    // Add your test device IDs here for development testing
+    // This ensures you see test ads during development
+    // You can find your device ID in the console logs when running the app
+    '2077ef9a63d2b398840261c8221a0c9b', // Example device ID - replace with your actual device ID
+    // Add more test device IDs if needed
   ]
 };
 

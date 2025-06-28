@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
+// Comment out AdMob import until ready for production
+// import { adMobService, ADMOB_CONFIG } from '@/services/adMobService';
 
 interface Transaction {
   id: string;
@@ -40,10 +42,32 @@ export function PawsProvider({ children }: { children: ReactNode }) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [timeUntilNextPaw, setTimeUntilNextPaw] = useState(0);
+  // Comment out AdMob state until ready for production
+  // const [isAdMobInitialized, setIsAdMobInitialized] = useState(false);
   const { user } = useAuth();
 
   const maxPaws = 5;
   const maxDailyAds = 2;
+
+  // Comment out AdMob initialization until ready for production
+  /*
+  useEffect(() => {
+    const initializeAdMob = async () => {
+      try {
+        console.log('PawsContext: Initializing AdMob...');
+        await adMobService.initialize(ADMOB_CONFIG);
+        setIsAdMobInitialized(true);
+        console.log('PawsContext: AdMob initialized successfully');
+      } catch (error) {
+        console.error('PawsContext: Failed to initialize AdMob:', error);
+        // Continue without AdMob - ads will fall back to mock behavior
+        setIsAdMobInitialized(false);
+      }
+    };
+
+    initializeAdMob();
+  }, []);
+  */
 
   useEffect(() => {
     const loadPawsData = async () => {
@@ -222,12 +246,11 @@ export function PawsProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // TODO: Implement Expo Ads rewarded video here
-      // For now, simulate successful ad watch
-      console.log('Showing rewarded video ad...');
+      // Comment out AdMob implementation and use simulated ad instead
+      console.log('PawsContext: Simulating rewarded video ad...');
       
-      // Simulate ad completion
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Simulate ad loading and showing with a delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Award paw
       await addPaws(1, 'Watched rewarded ad');
@@ -245,9 +268,42 @@ export function PawsProvider({ children }: { children: ReactNode }) {
       
       await AsyncStorage.setItem(`dote_daily_data_${user.uid}`, JSON.stringify(dailyData));
       
+      console.log('PawsContext: Simulated ad completed successfully');
       return true;
+      
+      /* Original AdMob implementation - commented out
+      console.log('PawsContext: Starting ad watch process...');
+      
+      // Load the ad first
+      console.log('PawsContext: Loading rewarded ad...');
+      await adMobService.loadRewardedAd();
+      
+      // Show the ad and wait for completion
+      console.log('PawsContext: Showing rewarded ad...');
+      const reward = await adMobService.showRewardedAd();
+      
+      console.log('PawsContext: Ad completed successfully, reward:', reward);
+      
+      // Award paw
+      await addPaws(reward.amount, 'Watched rewarded ad');
+      
+      // Update daily ad count
+      const newAdsWatched = dailyAdsWatched + 1;
+      setDailyAdsWatched(newAdsWatched);
+      
+      const today = new Date().toDateString();
+      const dailyData: DailyData = {
+        date: today,
+        adsWatched: newAdsWatched,
+        pawsEarned: 0 // This could track daily paws earned
+      };
+      
+      await AsyncStorage.setItem(`dote_daily_data_${user.uid}`, JSON.stringify(dailyData));
+      
+      return true;
+      */
     } catch (error) {
-      console.error('Error watching ad:', error);
+      console.error('PawsContext: Error watching ad:', error);
       return false;
     }
   };

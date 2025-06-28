@@ -3,7 +3,7 @@ import { X, Play, Crown, Clock } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { usePaws } from '@/contexts/PawsContext';
 import { router } from 'expo-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface PawsModalProps {
   visible: boolean;
@@ -19,6 +19,7 @@ export default function PawsModal({ visible, onClose }: PawsModalProps) {
     watchAd 
   } = usePaws();
   
+  const [isWatchingAd, setIsWatchingAd] = useState(false);
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -45,9 +46,26 @@ export default function PawsModal({ visible, onClose }: PawsModalProps) {
   };
 
   const handleWatchAd = async () => {
-    const success = await watchAd();
-    if (success) {
-      onClose();
+    if (isWatchingAd) return;
+    
+    setIsWatchingAd(true);
+    
+    try {
+      console.log('PawsModal: Starting ad watch...');
+      const success = await watchAd();
+      
+      if (success) {
+        console.log('PawsModal: Ad completed successfully');
+        onClose();
+      } else {
+        console.log('PawsModal: Ad was not completed');
+        // Don't close modal if ad wasn't completed, let user try again
+      }
+    } catch (error) {
+      console.error('PawsModal: Error watching ad:', error);
+      // Don't close modal on error, let user try again
+    } finally {
+      setIsWatchingAd(false);
     }
   };
 
@@ -86,15 +104,20 @@ export default function PawsModal({ visible, onClose }: PawsModalProps) {
           <View style={styles.optionsContainer}>
             {canWatchAd && (
               <TouchableOpacity 
-                style={styles.optionButton}
+                style={[styles.optionButton, isWatchingAd && styles.disabledButton]}
                 onPress={handleWatchAd}
+                disabled={isWatchingAd}
               >
                 <View style={styles.optionIcon}>
                   <Play size={24} color={COLORS.white} />
                 </View>
                 <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>Watch Ad {adsRemaining}/2</Text>
-                  <Text style={styles.optionDescription}>Get +1 Paw instantly</Text>
+                  <Text style={styles.optionTitle}>
+                    {isWatchingAd ? 'Loading Ad...' : `Watch Ad (${adsRemaining} left today)`}
+                  </Text>
+                  <Text style={styles.optionDescription}>
+                    {isWatchingAd ? 'Please wait...' : 'Get +1 Paw instantly'}
+                  </Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -188,6 +211,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   premiumButton: {
     backgroundColor: COLORS.accent,

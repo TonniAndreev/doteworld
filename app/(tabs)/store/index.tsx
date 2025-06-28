@@ -23,7 +23,8 @@ import {
   Shield,
   Gift,
   History,
-  Infinity
+  Infinity,
+  Bug
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,6 +36,7 @@ export default function StoreScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [adCooldownTime, setAdCooldownTime] = useState(0);
+  const [isTestingAd, setIsTestingAd] = useState(false);
   
   const { 
     pawsBalance, 
@@ -76,6 +78,26 @@ export default function StoreScreen() {
       Alert.alert('Error', 'Something went wrong. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTestAd = async () => {
+    if (isTestingAd) return;
+    
+    setIsTestingAd(true);
+    try {
+      console.log('Running test ad...');
+      const success = await watchAd();
+      if (success) {
+        Alert.alert('Success!', 'Test ad completed successfully! You earned 1 Paw! 🐾');
+      } else {
+        Alert.alert('Test Failed', 'The test ad failed to complete. Check console logs for details.');
+      }
+    } catch (error) {
+      console.error('Test ad error:', error);
+      Alert.alert('Test Error', `Error running test ad: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsTestingAd(false);
     }
   };
 
@@ -270,6 +292,42 @@ export default function StoreScreen() {
                   )}
                 </TouchableOpacity>
               )}
+            </View>
+          </View>
+        )}
+
+        {/* Developer Tools Section - Only visible in development */}
+        {__DEV__ && (
+          <View style={styles.devToolsSection}>
+            <View style={styles.devToolsCard}>
+              <View style={styles.devToolsHeader}>
+                <Bug size={24} color={COLORS.neutralDark} />
+                <Text style={styles.devToolsTitle}>Developer Tools</Text>
+              </View>
+              
+              <Text style={styles.devToolsDescription}>
+                These tools are only visible in development mode and will not appear in production builds.
+              </Text>
+              
+              <TouchableOpacity
+                style={[
+                  styles.devToolsButton,
+                  isTestingAd && styles.devToolsButtonDisabled
+                ]}
+                onPress={handleTestAd}
+                disabled={isTestingAd}
+              >
+                {isTestingAd ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <>
+                    <Play size={18} color={COLORS.white} />
+                    <Text style={styles.devToolsButtonText}>
+                      Run Test Ad
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -606,6 +664,54 @@ const styles = StyleSheet.create({
     elevation: 0,
   },
   watchAdButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
+    marginLeft: 8,
+  },
+
+  // Developer Tools Section
+  devToolsSection: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  devToolsCard: {
+    backgroundColor: COLORS.neutralExtraLight,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: COLORS.neutralLight,
+    borderStyle: 'dashed',
+  },
+  devToolsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  devToolsTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.neutralDark,
+    marginLeft: 8,
+  },
+  devToolsDescription: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginBottom: 16,
+  },
+  devToolsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  devToolsButtonDisabled: {
+    opacity: 0.6,
+  },
+  devToolsButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
