@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, Info, Users } from 'lucide-react-native';
+import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, Users, ChevronDown, Search, X, Check } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,89 @@ import { supabase } from '@/utils/supabase';
 import DogProfileCard from '@/components/profile/DogProfileCard';
 import DogOwnershipManager from '@/components/dog/DogOwnershipManager';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
+
+// Same breed list as in dog-profile creation
+const DOG_BREEDS = [
+  // Popular breeds
+  'Labrador Retriever',
+  'Golden Retriever',
+  'German Shepherd',
+  'French Bulldog',
+  'Beagle',
+  'Poodle',
+  'Boxer',
+  'Dachshund',
+  'Siberian Husky',
+  'Border Collie',
+  
+  // Small breeds
+  'Chihuahua',
+  'Pomeranian',
+  'Yorkshire Terrier',
+  'Maltese',
+  'Pug',
+  'Shih Tzu',
+  'Cavalier King Charles Spaniel',
+  'Boston Terrier',
+  'Cocker Spaniel',
+  'Jack Russell Terrier',
+  'West Highland White Terrier',
+  'Corgi (Pembroke Welsh)',
+  
+  // Medium breeds
+  'Australian Shepherd',
+  'Brittany',
+  'English Springer Spaniel',
+  'American Staffordshire Terrier',
+  'Whippet',
+  'Australian Cattle Dog',
+  'Basenji',
+  'Basset Hound',
+  'Bichon Frise',
+  'Dalmatian',
+  'English Bulldog',
+  'Portuguese Water Dog',
+  'Samoyed',
+  'Shiba Inu',
+  
+  // Large breeds
+  'Rottweiler',
+  'Doberman Pinscher',
+  'Weimaraner',
+  'Vizsla',
+  'Rhodesian Ridgeback',
+  'Akita',
+  'Alaskan Malamute',
+  'Bloodhound',
+  'Greyhound',
+  'Old English Sheepdog',
+  'Pointer',
+  'Swiss Shepherd',
+  
+  // Giant breeds
+  'Great Dane',
+  'Saint Bernard',
+  'Mastiff',
+  'Newfoundland',
+  'Irish Wolfhound',
+  'Great Pyrenees',
+  'Bernese Mountain Dog',
+  'Leonberger',
+  
+  // Designer/Mixed breeds
+  'Labradoodle',
+  'Goldendoodle',
+  'Cockapoo',
+  'Schnoodle',
+  'Puggle',
+  'Bernedoodle',
+  'Aussiedoodle',
+  'Sheepadoodle',
+  
+  // Catch-all
+  'Mixed Breed',
+  'Other',
+].sort(); // Sort alphabetically
 
 interface Dog {
   id: string;
@@ -40,6 +123,8 @@ export default function DogProfileScreen() {
   const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
   const [ownershipModalVisible, setOwnershipModalVisible] = useState(false);
   const [selectedDogForOwnership, setSelectedDogForOwnership] = useState<Dog | null>(null);
+  const [showBreedDropdown, setShowBreedDropdown] = useState(false);
+  const [breedSearchQuery, setBreedSearchQuery] = useState('');
   const [editForm, setEditForm] = useState({
     name: '',
     breed: '',
@@ -116,6 +201,11 @@ export default function DogProfileScreen() {
       return;
     }
 
+    if (!editForm.breed.trim()) {
+      Alert.alert('Error', 'Dog breed is required');
+      return;
+    }
+
     try {
       setIsSaving(true);
 
@@ -148,6 +238,8 @@ export default function DogProfileScreen() {
       await fetchUserDogs();
       setEditModalVisible(false);
       setSelectedDog(null);
+      setShowBreedDropdown(false);
+      setBreedSearchQuery('');
       
       Alert.alert('Success', 'Dog profile updated successfully!');
     } catch (error) {
@@ -166,6 +258,26 @@ export default function DogProfileScreen() {
     setSelectedDogForOwnership(dog);
     setOwnershipModalVisible(true);
   };
+
+  const handleBreedSelect = (breed: string) => {
+    setEditForm(prev => ({ ...prev, breed }));
+    setShowBreedDropdown(false);
+    setBreedSearchQuery('');
+  };
+
+  const clearBreedSearch = () => {
+    setBreedSearchQuery('');
+  };
+
+  const closeBreedDropdown = () => {
+    setShowBreedDropdown(false);
+    setBreedSearchQuery('');
+  };
+
+  // Filter and sort breeds based on search query
+  const filteredBreeds = DOG_BREEDS.filter(breed =>
+    breed.toLowerCase().includes(breedSearchQuery.toLowerCase())
+  ).sort();
 
   if (isLoading) {
     return (
@@ -254,14 +366,22 @@ export default function DogProfileScreen() {
         animationType="slide"
         transparent={true}
         visible={editModalVisible}
-        onRequestClose={() => setEditModalVisible(false)}
+        onRequestClose={() => {
+          setEditModalVisible(false);
+          setShowBreedDropdown(false);
+          setBreedSearchQuery('');
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Dog Profile</Text>
               <TouchableOpacity 
-                onPress={() => setEditModalVisible(false)}
+                onPress={() => {
+                  setEditModalVisible(false);
+                  setShowBreedDropdown(false);
+                  setBreedSearchQuery('');
+                }}
                 style={styles.modalCloseButton}
               >
                 <Text style={styles.modalCloseText}>Cancel</Text>
@@ -281,16 +401,79 @@ export default function DogProfileScreen() {
                 />
               </View>
 
-              {/* Breed */}
+              {/* Breed - Updated to use dropdown selector */}
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Breed</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={editForm.breed}
-                  onChangeText={(text) => setEditForm(prev => ({ ...prev, breed: text }))}
-                  placeholder="Dog's breed"
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
+                <Text style={styles.inputLabel}>Breed *</Text>
+                <TouchableOpacity 
+                  style={styles.breedSelector}
+                  onPress={() => setShowBreedDropdown(!showBreedDropdown)}
+                >
+                  <Text style={editForm.breed ? styles.breedText : styles.breedPlaceholder}>
+                    {editForm.breed || 'Select breed'}
+                  </Text>
+                  <ChevronDown size={20} color={COLORS.neutralDark} />
+                </TouchableOpacity>
+                
+                {showBreedDropdown && (
+                  <View style={styles.dropdownContainer}>
+                    {/* Search Header */}
+                    <View style={styles.searchHeader}>
+                      <View style={styles.searchInputContainer}>
+                        <Search size={16} color={COLORS.neutralMedium} style={styles.searchIcon} />
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder="Search breeds..."
+                          value={breedSearchQuery}
+                          onChangeText={setBreedSearchQuery}
+                          placeholderTextColor={COLORS.neutralMedium}
+                          autoFocus={true}
+                        />
+                        {breedSearchQuery.length > 0 && (
+                          <TouchableOpacity onPress={clearBreedSearch} style={styles.clearButton}>
+                            <X size={16} color={COLORS.neutralMedium} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <TouchableOpacity onPress={closeBreedDropdown} style={styles.closeDropdownButton}>
+                        <X size={20} color={COLORS.neutralDark} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Results Count */}
+                    <View style={styles.resultsHeader}>
+                      <Text style={styles.resultsCount}>
+                        {filteredBreeds.length} breed{filteredBreeds.length !== 1 ? 's' : ''} found
+                      </Text>
+                    </View>
+
+                    {/* Breeds List */}
+                    <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
+                      {filteredBreeds.length > 0 ? (
+                        filteredBreeds.map((breed, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.dropdownItem}
+                            onPress={() => handleBreedSelect(breed)}
+                          >
+                            <Text style={styles.dropdownItemText}>{breed}</Text>
+                            {breed === editForm.breed && (
+                              <Check size={16} color={COLORS.primary} />
+                            )}
+                          </TouchableOpacity>
+                        ))
+                      ) : (
+                        <View style={styles.noResultsContainer}>
+                          <Text style={styles.noResultsText}>
+                            No breeds found matching "{breedSearchQuery}"
+                          </Text>
+                          <Text style={styles.noResultsSubtext}>
+                            Try a different search term or select "Other"
+                          </Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                )}
               </View>
 
               {/* Birthday */}
@@ -353,22 +536,19 @@ export default function DogProfileScreen() {
                 </View>
               </View>
 
-              {/* Bio */}
+              {/* About - Removed tooltip icon */}
               <View style={styles.inputGroup}>
                 <Text style={styles.inputLabel}>About</Text>
-                <View style={styles.inputWithIcon}>
-                  <Info size={20} color={COLORS.neutralMedium} />
-                  <TextInput
-                    style={[styles.textInputWithIcon, styles.bioInput]}
-                    value={editForm.bio}
-                    onChangeText={(text) => setEditForm(prev => ({ ...prev, bio: text }))}
-                    placeholder="Tell us about your dog..."
-                    placeholderTextColor={COLORS.neutralMedium}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                  />
-                </View>
+                <TextInput
+                  style={[styles.textInput, styles.bioInput]}
+                  value={editForm.bio}
+                  onChangeText={(text) => setEditForm(prev => ({ ...prev, bio: text }))}
+                  placeholder="Tell us about your dog..."
+                  placeholderTextColor={COLORS.neutralMedium}
+                  multiline
+                  numberOfLines={3}
+                  textAlignVertical="top"
+                />
               </View>
             </ScrollView>
 
@@ -597,6 +777,118 @@ const styles = StyleSheet.create({
   bioInput: {
     height: 80,
     textAlignVertical: 'top',
+  },
+  breedSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.neutralLight,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  breedText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    flex: 1,
+  },
+  breedPlaceholder: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    flex: 1,
+  },
+  dropdownContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
+    marginTop: 8,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+    maxHeight: 300,
+  },
+  searchHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralExtraLight,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  closeDropdownButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  resultsCount: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.neutralMedium,
+  },
+  dropdown: {
+    maxHeight: 200,
+  },
+  dropdownItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  dropdownItemText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    flex: 1,
+  },
+  noResultsContainer: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  noResultsSubtext: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
   },
   genderContainer: {
     flexDirection: 'row',
