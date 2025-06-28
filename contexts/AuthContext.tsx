@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/utils/supabase';
+import { Platform } from 'react-native';
 
 interface Dog {
   id: string;
@@ -314,10 +315,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const loginWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-      });
-      if (error) throw error;
+      // For web platform, use signInWithOAuth
+      if (Platform.OS === 'web') {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+          }
+        });
+        
+        if (error) throw error;
+      } else {
+        // For mobile platforms, we would use the native flow
+        // This requires additional setup with Expo AuthSession
+        // For now, show an error message
+        throw new Error('Google login is not configured for mobile platforms in this demo');
+      }
     } catch (error) {
       console.error('Google login error:', error);
       throw error;
@@ -326,10 +339,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const loginWithFacebook = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-      });
-      if (error) throw error;
+      // For web platform, use signInWithOAuth
+      if (Platform.OS === 'web') {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'facebook',
+          options: {
+            redirectTo: window.location.origin,
+          }
+        });
+        
+        if (error) throw error;
+      } else {
+        // For mobile platforms, we would use the native flow
+        // This requires additional setup with Expo AuthSession
+        // For now, show an error message
+        throw new Error('Facebook login is not configured for mobile platforms in this demo');
+      }
     } catch (error) {
       console.error('Facebook login error:', error);
       throw error;
