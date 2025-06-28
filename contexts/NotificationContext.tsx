@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/utils/supabase';
 
@@ -110,9 +111,9 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     try {
-      // For now, we'll use local storage for notifications
+      // For now, we'll use AsyncStorage for notifications
       // In a production app, you'd want to store these in the database
-      const storedNotifications = localStorage.getItem(`notifications_${user.id}`);
+      const storedNotifications = await AsyncStorage.getItem(`notifications_${user.id}`);
       const notifications = storedNotifications ? JSON.parse(storedNotifications) : [];
 
       setNotifications(notifications);
@@ -126,7 +127,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (!user) return;
 
     try {
-      localStorage.setItem(
+      await AsyncStorage.setItem(
         `notifications_${user.id}`,
         JSON.stringify(newNotifications)
       );

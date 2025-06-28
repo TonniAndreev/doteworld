@@ -111,7 +111,6 @@ export default function DogProfileScreen() {
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -211,25 +210,11 @@ export default function DogProfileScreen() {
         }
       }
       
-      dogData = await updateDogProfile(dogName, dogBreed, null, dogBirthday);
-      
-      // If there's a photo, upload it to Supabase Storage
-      if (dogPhoto && dogData?.id) {
-        setIsUploadingPhoto(true);
-        const uploadResult = await uploadDogProfilePhoto(dogData.id, dogPhoto);
-        console.log("Dog photo upload result:", uploadResult);
-        if (!uploadResult.success) {
-          console.error('Failed to upload dog photo:', uploadResult.error);
-          // Continue anyway - the dog profile was created successfully
-        }
-      }
-      
       router.replace('/(tabs)');
     } catch (error: any) {
       setError(error.message || 'Failed to save dog profile. Please try again.');
     } finally {
       setIsLoading(false);
-      setIsUploadingPhoto(false);
       setIsUploadingPhoto(false);
     }
   };
@@ -498,8 +483,6 @@ export default function DogProfileScreen() {
               <ActivityIndicator color={COLORS.white} />
             ) : (
               <Text style={styles.saveButtonText}>
-                {isUploadingPhoto ? 'Uploading Photo...' : 'Save & Continue'}
-              </Text>
                 {isUploadingPhoto ? 'Uploading Photo...' : 'Save & Continue'}
               </Text>
             )}
