@@ -11,22 +11,92 @@ type FriendRequestItemProps = {
     senderDogName: string;
     senderPhotoURL?: string | null;
     timestamp: string;
+    senderDogs?: Array<{
+      id: string;
+      name: string;
+      breed?: string;
+      photo_url?: string | null;
+    }>;
   };
   onAccept: () => void;
   onDecline: () => void;
 };
 
 export default function FriendRequestItem({ request, onAccept, onDecline }: FriendRequestItemProps) {
+  // Determine if we have dogs and how many
+  const hasDogs = request.senderDogs && request.senderDogs.length > 0;
+  const dogCount = request.senderDogs?.length || 0;
+  
   return (
     <View style={styles.container}>
       <View style={styles.userInfo}>
-        <UserAvatar
-          userId={request.senderId}
-          photoURL={request.senderPhotoURL}
-          userName={request.senderName}
-          size={50}
-          style={styles.avatar}
-        />
+        <View style={styles.avatarContainer}>
+          <UserAvatar
+            userId={request.senderId}
+            photoURL={request.senderPhotoURL}
+            userName={request.senderName}
+            size={50}
+            style={styles.userAvatar}
+          />
+          
+          {/* Dog avatars - different display based on number of dogs */}
+          {hasDogs && (
+            <View style={styles.dogAvatarsContainer}>
+              {/* First dog avatar - always shown if there's at least one dog */}
+              {dogCount >= 1 && (
+                <View style={[styles.dogAvatarWrapper, styles.firstDogAvatar]}>
+                  <UserAvatar
+                    userId={`dog-${request.senderDogs[0].id}`}
+                    photoURL={request.senderDogs[0].photo_url}
+                    userName={request.senderDogs[0].name}
+                    size={34}
+                    isDogAvatar={true}
+                    dogBreed={request.senderDogs[0].breed}
+                    style={styles.dogAvatar}
+                  />
+                </View>
+              )}
+              
+              {/* Second dog avatar - shown if there are at least 2 dogs */}
+              {dogCount >= 2 && (
+                <View style={[styles.dogAvatarWrapper, styles.secondDogAvatar]}>
+                  <UserAvatar
+                    userId={`dog-${request.senderDogs[1].id}`}
+                    photoURL={request.senderDogs[1].photo_url}
+                    userName={request.senderDogs[1].name}
+                    size={34}
+                    isDogAvatar={true}
+                    dogBreed={request.senderDogs[1].breed}
+                    style={styles.dogAvatar}
+                  />
+                </View>
+              )}
+              
+              {/* "+X" indicator for 3 or more dogs */}
+              {dogCount > 2 && (
+                <View style={styles.moreDogsBadge}>
+                  <Text style={styles.moreDogsBadgeText}>+{dogCount - 2}</Text>
+                </View>
+              )}
+            </View>
+          )}
+          
+          {/* Fallback for when we don't have the dogs array but have a dog name */}
+          {!hasDogs && request.senderDogName && request.senderDogName !== 'No dog' && (
+            <View style={styles.dogAvatarsContainer}>
+              <View style={[styles.dogAvatarWrapper, styles.firstDogAvatar]}>
+                <UserAvatar
+                  userId={`dog-${request.senderId}`}
+                  photoURL={null}
+                  userName={request.senderDogName}
+                  size={34}
+                  isDogAvatar={true}
+                  style={styles.dogAvatar}
+                />
+              </View>
+            </View>
+          )}
+        </View>
 
         <View style={styles.details}>
           <Text style={styles.name}>{request.senderName}</Text>
@@ -76,8 +146,60 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
-  avatar: {
-    marginRight: 16, // Increased from 12 to 16 (4px more spacing)
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 20, // Increased spacing between avatar and text
+    width: 50,
+    height: 50,
+  },
+  userAvatar: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  dogAvatarsContainer: {
+    position: 'absolute',
+    bottom: -6,
+    left: -6,
+  },
+  dogAvatarWrapper: {
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    borderRadius: 17, // Half of the dog avatar size
+    overflow: 'hidden',
+    position: 'absolute',
+  },
+  firstDogAvatar: {
+    bottom: 0,
+    left: 0,
+    zIndex: 2,
+  },
+  secondDogAvatar: {
+    bottom: 10,
+    left: 10,
+    zIndex: 1,
+  },
+  dogAvatar: {
+    borderRadius: 17, // Half of the dog avatar size
+  },
+  moreDogsBadge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 20,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.primary,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 3,
+  },
+  moreDogsBadgeText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 12,
+    color: COLORS.white,
   },
   details: {
     flex: 1,

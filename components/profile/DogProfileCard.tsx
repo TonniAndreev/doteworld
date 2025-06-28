@@ -7,6 +7,7 @@ import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
 import DogOwnershipManager from '@/components/dog/DogOwnershipManager';
+import DogInviteModal from '@/components/dog/DogInviteModal';
 
 interface Dog {
   id: string;
@@ -45,6 +46,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const [owners, setOwners] = useState<DogOwner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
   const [showOwnershipModal, setShowOwnershipModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [showAllOwners, setShowAllOwners] = useState(false);
   
   const { user } = useAuth();
@@ -101,6 +103,12 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
     if (owner.role === 'owner') return false;
     
     // Check if current user has share permissions
+    const currentUserOwnership = owners.find(o => o.profile_id === user.id);
+    return currentUserOwnership?.permissions?.share === true;
+  };
+
+  const canInviteOwners = () => {
+    if (!user) return false;
     const currentUserOwnership = owners.find(o => o.profile_id === user.id);
     return currentUserOwnership?.permissions?.share === true;
   };
@@ -259,21 +267,21 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 </View>
                 
                 <View style={styles.ownersActions}>
-                  <TouchableOpacity
-                    style={styles.addOwnerButton}
-                    onPress={() => setShowOwnershipModal(true)}
-                  >
-                    <UserPlus size={14} color={COLORS.primary} />
-                  </TouchableOpacity>
-                  
-                  {hasMoreOwners && !showAllOwners && (
+                  {canInviteOwners() && (
                     <TouchableOpacity
-                      style={styles.moreButton}
-                      onPress={() => setShowAllOwners(true)}
+                      style={styles.addOwnerButton}
+                      onPress={() => setShowInviteModal(true)}
                     >
-                      <MoreHorizontal size={14} color={COLORS.neutralMedium} />
+                      <UserPlus size={14} color={COLORS.primary} />
                     </TouchableOpacity>
                   )}
+                  
+                  <TouchableOpacity
+                    style={styles.manageButton}
+                    onPress={() => setShowOwnershipModal(true)}
+                  >
+                    <MoreHorizontal size={14} color={COLORS.neutralMedium} />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -320,6 +328,15 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                     </View>
                   ))}
                   
+                  {hasMoreOwners && !showAllOwners && (
+                    <TouchableOpacity
+                      style={styles.showMoreButton}
+                      onPress={() => setShowAllOwners(true)}
+                    >
+                      <Text style={styles.showMoreText}>Show All Owners</Text>
+                    </TouchableOpacity>
+                  )}
+                  
                   {hasMoreOwners && showAllOwners && (
                     <TouchableOpacity
                       style={styles.showLessButton}
@@ -353,6 +370,14 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
           setShowOwnershipModal(false);
           loadOwners(); // Refresh owners when modal closes
         }}
+      />
+
+      {/* Dog Invite Modal */}
+      <DogInviteModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        dogId={dog.id}
+        dogName={dog.name}
       />
     </CardComponent>
   );
@@ -509,7 +534,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  moreButton: {
+  manageButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -569,6 +594,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorLight,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  showMoreButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  showMoreText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.primary,
   },
   showLessButton: {
     alignItems: 'center',
