@@ -24,7 +24,8 @@ import {
   Shield,
   Gift,
   History,
-  RefreshCw
+  RefreshCw,
+  Infinity
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { usePaws } from '@/contexts/PawsContext';
@@ -32,20 +33,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-interface SubscriptionTier {
-  id: string;
-  name: string;
-  price: string;
-  period: string;
-  features: string[];
-  popular?: boolean;
-  color: string;
-  icon: React.ReactNode;
-}
-
 export default function StoreScreen() {
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<string | null>(null);
   const [showTransactionHistory, setShowTransactionHistory] = useState(false);
   const [adCooldownTime, setAdCooldownTime] = useState(0);
   
@@ -61,52 +50,15 @@ export default function StoreScreen() {
     setSubscriptionStatus
   } = usePaws();
 
-  const subscriptionTiers: SubscriptionTier[] = [
-    {
-      id: 'basic',
-      name: 'Paws Basic',
-      price: '$2.99',
-      period: 'month',
-      features: [
-        'Unlimited territory conquests',
-        'No ads between walks',
-        'Priority customer support',
-        'Basic achievement badges'
-      ],
-      color: COLORS.primary,
-      icon: <PawPrint size={24} color={COLORS.white} />
-    },
-    {
-      id: 'premium',
-      name: 'Paws Premium',
-      price: '$4.99',
-      period: 'month',
-      popular: true,
-      features: [
-        'Everything in Basic',
-        'Exclusive premium badges',
-        'Advanced territory analytics',
-        'Custom dog profile themes',
-        'Early access to new features'
-      ],
-      color: COLORS.accent,
-      icon: <Crown size={24} color={COLORS.white} />
-    },
-    {
-      id: 'family',
-      name: 'Paws Family',
-      price: '$7.99',
-      period: 'month',
-      features: [
-        'Everything in Premium',
-        'Up to 5 dog profiles',
-        'Family leaderboards',
-        'Shared territory maps',
-        'Group challenges'
-      ],
-      color: COLORS.secondary,
-      icon: <Shield size={24} color={COLORS.white} />
-    }
+  const premiumFeatures = [
+    'Unlimited territory conquests',
+    'No ads between walks',
+    'Exclusive premium badges',
+    'Advanced territory analytics',
+    'Custom dog profile themes',
+    'Priority customer support',
+    'Early access to new features',
+    'Family sharing (up to 5 dogs)'
   ];
 
   // Countdown timer for ad cooldown
@@ -140,8 +92,7 @@ export default function StoreScreen() {
     }
   };
 
-  const handleSubscribe = async (tierId: string) => {
-    setSelectedTier(tierId);
+  const handleSubscribe = async () => {
     setIsLoading(true);
 
     try {
@@ -161,7 +112,6 @@ export default function StoreScreen() {
       Alert.alert('Error', 'Failed to process subscription. Please try again.');
     } finally {
       setIsLoading(false);
-      setSelectedTier(null);
     }
   };
 
@@ -290,69 +240,99 @@ export default function StoreScreen() {
           </View>
         )}
 
-        {/* Subscription Tiers */}
+        {/* Premium Subscription Section */}
         <View style={styles.subscriptionSection}>
-          <Text style={styles.sectionTitle}>Subscription Plans</Text>
+          <Text style={styles.sectionTitle}>Go Premium</Text>
           <Text style={styles.sectionSubtitle}>
-            Unlock unlimited paws and premium features
+            Unlock unlimited paws and exclusive features
           </Text>
 
-          {subscriptionTiers.map((tier, index) => (
-            <View key={tier.id} style={styles.tierCard}>
-              {tier.popular && (
-                <View style={styles.popularBadge}>
-                  <Star size={12} color={COLORS.white} />
-                  <Text style={styles.popularText}>Most Popular</Text>
-                </View>
-              )}
+          <View style={styles.premiumCard}>
+            {/* Popular Badge */}
+            <View style={styles.popularBadge}>
+              <Star size={12} color={COLORS.white} />
+              <Text style={styles.popularText}>Most Popular</Text>
+            </View>
 
-              <LinearGradient
-                colors={[tier.color, `${tier.color}CC`]}
-                style={styles.tierHeader}
-              >
-                <View style={styles.tierIcon}>
-                  {tier.icon}
+            {/* Premium Header */}
+            <LinearGradient
+              colors={[COLORS.accent, COLORS.accentDark]}
+              style={styles.premiumHeader}
+            >
+              <View style={styles.premiumIcon}>
+                <Crown size={32} color={COLORS.white} />
+              </View>
+              <View style={styles.premiumInfo}>
+                <Text style={styles.premiumName}>Paws Premium</Text>
+                <View style={styles.premiumPricing}>
+                  <Text style={styles.premiumPrice}>$5.00</Text>
+                  <Text style={styles.premiumPeriod}>/month</Text>
                 </View>
-                <View style={styles.tierInfo}>
-                  <Text style={styles.tierName}>{tier.name}</Text>
-                  <View style={styles.tierPricing}>
-                    <Text style={styles.tierPrice}>{tier.price}</Text>
-                    <Text style={styles.tierPeriod}>/{tier.period}</Text>
-                  </View>
-                </View>
-              </LinearGradient>
+                <Text style={styles.premiumDescription}>
+                  Everything you need for the ultimate dog walking experience
+                </Text>
+              </View>
+            </LinearGradient>
 
-              <View style={styles.tierFeatures}>
-                {tier.features.map((feature, featureIndex) => (
-                  <View key={featureIndex} style={styles.featureItem}>
+            {/* Features List */}
+            <View style={styles.featuresContainer}>
+              <Text style={styles.featuresTitle}>What's Included:</Text>
+              
+              <View style={styles.featuresGrid}>
+                {premiumFeatures.map((feature, index) => (
+                  <View key={index} style={styles.featureItem}>
                     <Check size={16} color={COLORS.success} />
                     <Text style={styles.featureText}>{feature}</Text>
                   </View>
                 ))}
               </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.subscribeButton,
-                  { backgroundColor: tier.color },
-                  selectedTier === tier.id && styles.subscribeButtonLoading
-                ]}
-                onPress={() => handleSubscribe(tier.id)}
-                disabled={isLoading}
-              >
-                {selectedTier === tier.id && isLoading ? (
-                  <ActivityIndicator color={COLORS.white} />
-                ) : (
-                  <>
-                    <Zap size={20} color={COLORS.white} />
-                    <Text style={styles.subscribeButtonText}>
-                      {isSubscribed ? 'Current Plan' : 'Subscribe'}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
             </View>
-          ))}
+
+            {/* Unlimited Paws Highlight */}
+            <View style={styles.unlimitedSection}>
+              <LinearGradient
+                colors={[COLORS.primary, COLORS.primaryDark]}
+                style={styles.unlimitedCard}
+              >
+                <Infinity size={32} color={COLORS.white} />
+                <View style={styles.unlimitedInfo}>
+                  <Text style={styles.unlimitedTitle}>Unlimited Paws</Text>
+                  <Text style={styles.unlimitedSubtitle}>
+                    Never run out of conquests again
+                  </Text>
+                </View>
+              </LinearGradient>
+            </View>
+
+            {/* Subscribe Button */}
+            <TouchableOpacity
+              style={[
+                styles.subscribeButton,
+                isLoading && styles.subscribeButtonLoading
+              ]}
+              onPress={handleSubscribe}
+              disabled={isLoading || isSubscribed}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <>
+                  <Zap size={20} color={COLORS.white} />
+                  <Text style={styles.subscribeButtonText}>
+                    {isSubscribed ? 'Currently Subscribed' : 'Start Premium'}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+
+            {/* Money Back Guarantee */}
+            <View style={styles.guaranteeSection}>
+              <Shield size={16} color={COLORS.success} />
+              <Text style={styles.guaranteeText}>
+                7-day money back guarantee • Cancel anytime
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Transaction History */}
@@ -402,7 +382,7 @@ export default function StoreScreen() {
         {/* Footer Info */}
         <View style={styles.footerInfo}>
           <Text style={styles.footerText}>
-            Subscriptions auto-renew unless cancelled. Cancel anytime in your account settings.
+            Subscription auto-renews unless cancelled. Cancel anytime in your account settings.
           </Text>
           
           <TouchableOpacity 
@@ -603,104 +583,162 @@ const styles = StyleSheet.create({
   subscriptionSection: {
     padding: 16,
   },
-  tierCard: {
+  premiumCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 20,
-    marginBottom: 16,
+    borderRadius: 24,
     shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
     overflow: 'hidden',
     position: 'relative',
   },
   popularBadge: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 20,
+    right: 20,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.accent,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     zIndex: 1,
   },
   popularText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 10,
+    fontSize: 12,
     color: COLORS.white,
     marginLeft: 4,
   },
-  tierHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
+  premiumHeader: {
+    padding: 24,
+    paddingTop: 32,
   },
-  tierIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  premiumIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginBottom: 16,
+    alignSelf: 'center',
   },
-  tierInfo: {
-    flex: 1,
+  premiumInfo: {
+    alignItems: 'center',
   },
-  tierName: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.white,
-    marginBottom: 4,
-  },
-  tierPricing: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-  },
-  tierPrice: {
+  premiumName: {
     fontFamily: 'Inter-Bold',
     fontSize: 24,
     color: COLORS.white,
+    marginBottom: 8,
   },
-  tierPeriod: {
+  premiumPricing: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginBottom: 8,
+  },
+  premiumPrice: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 32,
+    color: COLORS.white,
+  },
+  premiumPeriod: {
     fontFamily: 'Inter-Regular',
-    fontSize: 16,
+    fontSize: 18,
     color: 'rgba(255, 255, 255, 0.8)',
   },
-  tierFeatures: {
-    padding: 20,
+  premiumDescription: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  featuresContainer: {
+    padding: 24,
+  },
+  featuresTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.neutralDark,
+    marginBottom: 16,
+  },
+  featuresGrid: {
+    gap: 12,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
   },
   featureText: {
     fontFamily: 'Inter-Regular',
-    fontSize: 14,
+    fontSize: 15,
     color: COLORS.neutralDark,
     marginLeft: 12,
     flex: 1,
+  },
+  unlimitedSection: {
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  unlimitedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderRadius: 16,
+  },
+  unlimitedInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  unlimitedTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.white,
+    marginBottom: 4,
+  },
+  unlimitedSubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   subscribeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    margin: 20,
-    borderRadius: 12,
+    backgroundColor: COLORS.accent,
+    paddingVertical: 18,
+    margin: 24,
+    borderRadius: 16,
+    shadowColor: COLORS.accent,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   subscribeButtonLoading: {
     opacity: 0.7,
   },
   subscribeButtonText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 16,
+    fontSize: 18,
     color: COLORS.white,
     marginLeft: 8,
+  },
+  guaranteeSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 24,
+  },
+  guaranteeText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginLeft: 6,
   },
   historySection: {
     padding: 16,
