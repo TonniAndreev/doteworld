@@ -54,6 +54,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
   },
 })
+
 // Add helper function to log all active channels
 export function logActiveChannels() {
   const channels = supabase.getChannels();

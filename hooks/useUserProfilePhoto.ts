@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/utils/supabase';
+import { supabase, safelyCreateChannel } from '@/utils/supabase';
 import { getUserProfilePhotoUrl } from '@/utils/photoStorage';
 
 interface UseUserProfilePhotoResult {
@@ -68,15 +68,14 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
     if (!targetUserId) return;
 
     const channelName = `profile_photo_${targetUserId}`;
+    let subscription: any = null;
     
-    // Check if the channel already exists
-    const existingChannel = supabase.getChannels().find(
-      channel => channel.topic === channelName
-    );
-    
-    if (!existingChannel) {
-      const channel = supabase
-        .channel(channelName)
+    try {
+      // Create channel safely (checks if it already exists)
+      const channel = safelyCreateChannel(channelName);
+      
+      // Set up subscription
+      subscription = channel
         .on(
           'postgres_changes',
           {
@@ -91,17 +90,22 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
           }
         )
         .subscribe((status) => {
-          console.log(`Profile photo channel status: ${status}`);
+          console.log(`Profile photo channel ${channelName} status: ${status}`);
         });
-        
-      // Return cleanup function to unsubscribe
-      return () => {
-        supabase.removeChannel(channel);
-      };
+    } catch (err) {
+      console.error('Error setting up profile photo subscription:', err);
     }
-
-    // No cleanup needed if we're using existing channel
-    return () => {};
+    
+    // Return cleanup function to unsubscribe
+    return () => {
+      try {
+        if (subscription) {
+          supabase.removeChannel(subscription);
+        }
+      } catch (err) {
+        console.error('Error removing profile photo channel:', err);
+      }
+    };
   }, [targetUserId]); // Only re-run when targetUserId changes
 
   return {

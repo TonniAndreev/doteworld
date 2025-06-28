@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/utils/supabase';
+import { supabase, safelyCreateChannel } from '@/utils/supabase';
 import { getDogProfilePhotoUrl } from '@/utils/photoStorage';
 
 interface UseDogProfilePhotoResult {
@@ -64,15 +64,14 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
     if (!dogId) return;
 
     const channelName = `dog_photo_${dogId}`;
+    let subscription: any = null;
     
-    // Check if the channel already exists
-    const existingChannel = supabase.getChannels().find(
-      channel => channel.topic === channelName
-    );
-    
-    if (!existingChannel) {
-      const channel = supabase
-        .channel(channelName)
+    try {
+      // Create channel safely (checks if it already exists)
+      const channel = safelyCreateChannel(channelName);
+      
+      // Set up subscription
+      subscription = channel
         .on(
           'postgres_changes',
           {
@@ -87,17 +86,22 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
           }
         )
         .subscribe((status) => {
-          console.log(`Dog photo channel status: ${status}`);
+          console.log(`Dog photo channel ${channelName} status: ${status}`);
         });
-        
-      // Return cleanup function to unsubscribe
-      return () => {
-        supabase.removeChannel(channel);
-      };
+    } catch (err) {
+      console.error('Error setting up dog photo subscription:', err);
     }
-
-    // No cleanup needed if we're using existing channel
-    return () => {};
+    
+    // Return cleanup function to unsubscribe
+    return () => {
+      try {
+        if (subscription) {
+          supabase.removeChannel(subscription);
+        }
+      } catch (err) {
+        console.error('Error removing dog photo channel:', err);
+      }
+    };
   }, [dogId]); // Only re-run when dogId changes
 
   return {

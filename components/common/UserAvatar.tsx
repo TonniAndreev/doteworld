@@ -93,12 +93,15 @@ export default function UserAvatar({
     );
   }
 
+  // Default fallback image
+  const defaultImage = { uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' };
+
   return (
     <View style={containerStyles}>
       <Image
         source={finalPhotoUrl ? 
           (typeof finalPhotoUrl === 'string' ? { uri: finalPhotoUrl } : finalPhotoUrl) : 
-          { uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' }
+          defaultImage
         }
         style={avatarStyle}
         onError={() => setImageError(true)}

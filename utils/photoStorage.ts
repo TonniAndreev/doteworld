@@ -23,24 +23,21 @@ export async function uploadUserProfilePhoto(
     
     console.log(`Uploading to profiles/${fileName}`);
     
-    // Create multipart form-data
-    const formData = new FormData();
-    formData.append('file', {
-      uri: fileUri,
-      type: `image/${fileExt}`,
-      name: `profile.${fileExt}`
-    });
+    // Fetch the file data
+    const response = await fetch(fileUri);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
     
     // Upload to Supabase Storage
-    const { error: uploadError } = await supabase.storage
+    const { data, error: uploadError } = await supabase.storage
       .from('profiles')
-      .upload(fileName, {
-        uri: fileUri, 
-        type: `image/${fileExt}`, 
-        name: `${fileName}`
-      }, {
+      .upload(fileName, blob, {
         cacheControl: '3600',
-        upsert: true
+        upsert: true,
+        contentType: `image/${fileExt}`
       });
 
     if (uploadError) {
@@ -108,16 +105,21 @@ export async function uploadDogProfilePhoto(
     
     console.log(`Uploading to dog_profiles/${fileName}`);
     
-    // Upload to Supabase Storage - pass file object directly
-    const { error: uploadError } = await supabase.storage
+    // Fetch the file data
+    const response = await fetch(fileUri);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    
+    const blob = await response.blob();
+    
+    // Upload to Supabase Storage
+    const { data, error: uploadError } = await supabase.storage
       .from('dog_profiles')
-      .upload(fileName, {
-        uri: fileUri, 
-        type: `image/${fileExt}`, 
-        name: `dog-profile.${fileExt}`
-      }, {
+      .upload(fileName, blob, {
         cacheControl: '3600',
-        upsert: true
+        upsert: true,
+        contentType: `image/${fileExt}`
       });
 
     if (uploadError) {
