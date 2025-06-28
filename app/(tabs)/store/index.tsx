@@ -141,7 +141,7 @@ export default function StoreScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Current Balance - Compact */}
+        {/* Current Balance with Countdown */}
         <View style={styles.balanceSection}>
           <View style={styles.balanceCard}>
             <View style={styles.balanceRow}>
@@ -149,6 +149,14 @@ export default function StoreScreen() {
               <Text style={styles.balanceText}>
                 {isSubscribed ? '∞ Unlimited' : `${pawsBalance}/${maxPaws} Paws`}
               </Text>
+              {!isSubscribed && (
+                <View style={styles.countdownContainer}>
+                  <Clock size={16} color={COLORS.neutralMedium} />
+                  <Text style={styles.countdownText}>
+                    {formatTimeUntil(timeUntilNextPaw)}
+                  </Text>
+                </View>
+              )}
             </View>
             {isSubscribed && (
               <View style={styles.premiumBadge}>
@@ -159,18 +167,22 @@ export default function StoreScreen() {
           </View>
         </View>
 
-        {/* Unlimited Paws with Price - Primary */}
+        {/* Unlimited Paws - Light Design */}
         <View style={styles.unlimitedSection}>
           <View style={styles.unlimitedCard}>
             <View style={styles.unlimitedHeader}>
               <View style={styles.unlimitedIcon}>
-                <Infinity size={32} color={COLORS.white} />
+                <Infinity size={32} color={COLORS.primary} />
               </View>
               <View style={styles.unlimitedInfo}>
                 <Text style={styles.unlimitedTitle}>Unlimited Paws</Text>
                 <Text style={styles.unlimitedPrice}>$5/month</Text>
               </View>
             </View>
+
+            <Text style={styles.unlimitedDescription}>
+              Make infinite conquests and never watch ads again
+            </Text>
 
             <TouchableOpacity
               style={[
@@ -201,7 +213,7 @@ export default function StoreScreen() {
           </View>
         </View>
 
-        {/* Watch Ads - Prominent */}
+        {/* Watch Ads - Grayscale Design */}
         {!isSubscribed && (
           <View style={styles.adsSection}>
             <View style={styles.adsCard}>
@@ -222,10 +234,10 @@ export default function StoreScreen() {
                   {canWatchAd 
                     ? "Watch a short ad to earn a free paw instantly, or wait for your daily free paw."
                     : adCooldownTime > 0
-                    ? `Wait ${formatTime(adCooldownTime)} before watching another ad, or wait for your daily free paw in ${formatTimeUntil(timeUntilNextPaw)}.`
+                    ? `Wait ${formatTime(adCooldownTime)} before watching another ad, or wait for your daily free paw.`
                     : dailyAdsWatched >= maxDailyAds
-                    ? `You've reached today's ad limit. Your next free paw arrives in ${formatTimeUntil(timeUntilNextPaw)}.`
-                    : `Your paws are full! Your next free paw arrives in ${formatTimeUntil(timeUntilNextPaw)}.`
+                    ? `You've reached today's ad limit. Your next free paw arrives soon.`
+                    : `Your paws are full! Your next free paw arrives soon.`
                   }
                 </Text>
               </View>
@@ -258,14 +270,6 @@ export default function StoreScreen() {
                   )}
                 </TouchableOpacity>
               )}
-
-              {/* Next Free Paw Timer */}
-              <View style={styles.nextPawContainer}>
-                <Gift size={16} color={COLORS.secondary} />
-                <Text style={styles.nextPawText}>
-                  Next free paw in {formatTimeUntil(timeUntilNextPaw)}
-                </Text>
-              </View>
             </View>
           </View>
         )}
@@ -358,7 +362,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   
-  // Balance Section - Compact
+  // Balance Section with Countdown
   balanceSection: {
     padding: 16,
     paddingBottom: 8,
@@ -374,12 +378,28 @@ const styles = StyleSheet.create({
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   balanceText: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
     color: COLORS.neutralDark,
     marginLeft: 12,
+  },
+  countdownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16,
+    backgroundColor: COLORS.white,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  countdownText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.neutralMedium,
+    marginLeft: 4,
   },
   premiumBadge: {
     flexDirection: 'row',
@@ -396,35 +416,41 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // Unlimited Paws Section - Primary
+  // Unlimited Paws Section - Light Design
   unlimitedSection: {
     padding: 16,
     paddingTop: 8,
   },
   unlimitedCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.neutralExtraLight,
     borderRadius: 20,
     shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
     shadowRadius: 12,
-    elevation: 8,
+    elevation: 4,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
   },
   unlimitedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.primary,
     padding: 24,
   },
   unlimitedIcon: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   unlimitedInfo: {
     flex: 1,
@@ -432,13 +458,22 @@ const styles = StyleSheet.create({
   unlimitedTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 22,
-    color: COLORS.white,
+    color: COLORS.neutralDark,
     marginBottom: 4,
   },
   unlimitedPrice: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: COLORS.neutralMedium,
+  },
+  unlimitedDescription: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+    lineHeight: 22,
   },
   subscribeButton: {
     flexDirection: 'row',
@@ -476,26 +511,27 @@ const styles = StyleSheet.create({
     marginLeft: 6,
   },
 
-  // Ads Section - Prominent
+  // Ads Section - Grayscale Design
   adsSection: {
     padding: 16,
     paddingTop: 8,
   },
   adsCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 20,
+    borderRadius: 24,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
-    shadowRadius: 10,
+    shadowRadius: 16,
     elevation: 6,
-    borderWidth: 2,
-    borderColor: COLORS.primaryLight,
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
+    overflow: 'hidden',
   },
   adsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.secondary,
+    backgroundColor: '#6B7280', // Grayscale header
     padding: 20,
   },
   adsIcon: {
@@ -538,10 +574,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 20,
-    backgroundColor: COLORS.neutralLight,
+    backgroundColor: '#F3F4F6', // Light grayscale
     marginHorizontal: 20,
     marginBottom: 16,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   cooldownText: {
     fontFamily: 'Inter-Bold',
@@ -553,19 +589,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.secondary,
+    backgroundColor: '#4B5563', // Dark grayscale
     paddingVertical: 16,
     marginHorizontal: 20,
     marginBottom: 16,
-    borderRadius: 16,
-    shadowColor: COLORS.secondary,
+    borderRadius: 20,
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 6,
+    elevation: 4,
   },
   watchAdButtonDisabled: {
-    backgroundColor: COLORS.neutralMedium,
+    backgroundColor: '#9CA3AF', // Lighter grayscale for disabled
     shadowOpacity: 0,
     elevation: 0,
   },
@@ -574,18 +610,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.white,
     marginLeft: 8,
-  },
-  nextPawContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingBottom: 20,
-  },
-  nextPawText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    marginLeft: 6,
   },
 
   // History Section
