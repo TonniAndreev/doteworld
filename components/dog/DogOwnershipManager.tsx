@@ -227,6 +227,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                     renderItem={renderOwner}
                     keyExtractor={(item) => item.profile_id}
                     showsVerticalScrollIndicator={false}
+                    style={styles.ownersList}
+                    contentContainerStyle={styles.ownersListContent}
                     ListEmptyComponent={
                       <View style={styles.emptyContainer}>
                         <Text style={styles.emptyText}>No owners found</Text>
@@ -300,7 +302,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                   disabled={isLoading || !inviteEmail.trim()}
                 >
                   {isLoading ? (
-                    <ActivityIndicator color={COLORS.white} />
+                    <ActivityIndicator size="small" color={COLORS.white} />
                   ) : (
                     <>
                       <UserPlus size={20} color={COLORS.white} />
@@ -382,15 +384,25 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 20,
+    maxHeight: 500, // Add a max height to ensure content is visible
   },
   ownersTab: {
     flex: 1,
+    minHeight: 300, // Ensure minimum height for content
+  },
+  ownersList: {
+    flex: 1,
+    height: '100%',
+  },
+  ownersListContent: {
+    padding: 20,
+    paddingBottom: 40,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 40,
   },
   loadingText: {
     fontFamily: 'Inter-Regular',
@@ -446,6 +458,7 @@ const styles = StyleSheet.create({
   },
   inviteTab: {
     flex: 1,
+    padding: 20,
   },
   sectionTitle: {
     fontFamily: 'Inter-Bold',
