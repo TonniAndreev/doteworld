@@ -301,7 +301,7 @@ export default function DogProfileScreen() {
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .upload(filePath, fileData, {
           contentType: `image/${fileExt}`,
           upsert: true,
@@ -316,7 +316,7 @@ export default function DogProfileScreen() {
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);

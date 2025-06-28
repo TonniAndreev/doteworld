@@ -167,7 +167,7 @@ export default function EditProfileScreen() {
           // Generate a unique filename
           const fileExt = avatarUrl.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `${Date.now()}.${fileExt}`;
-          const filePath = `avatars/${user.id}/${fileName}`;
+          const filePath = `${user.id}/${fileName}`;
           
           console.log('Uploading to path:', filePath);
           
@@ -175,7 +175,13 @@ export default function EditProfileScreen() {
           let fileData;
           if (Platform.OS === 'web') {
             // For web, we can use the file URI directly
-            fileData = avatarUrl;
+            if (avatarUrl.startsWith('data:')) {
+              const response = await fetch(avatarUrl);
+              const blob = await response.blob();
+              fileData = blob;
+            } else {
+              fileData = avatarUrl;
+            }
           } else {
             // For mobile, read the file as base64
             const base64Data = await FileSystem.readAsStringAsync(avatarUrl, {

@@ -115,13 +115,7 @@ export default function DogPhotoUploader({
       let fileData;
       if (Platform.OS === 'web') {
         // For web, we can use the file URI directly
-        if (photoUri.startsWith('data:')) {
-          const response = await fetch(photoUri);
-          const blob = await response.blob();
-          fileData = blob;
-        } else {
-          fileData = photoUri;
-        }
+        fileData = photoUri;
       } else {
         // For mobile, read the file as base64
         const base64Data = await FileSystem.readAsStringAsync(photoUri, {
@@ -132,7 +126,7 @@ export default function DogPhotoUploader({
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .upload(filePath, fileData, {
           contentType: `image/${fileExt}`,
           upsert: true,
@@ -147,7 +141,7 @@ export default function DogPhotoUploader({
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);

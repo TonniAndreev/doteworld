@@ -524,11 +524,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             throw new Error(`Storage error: ${bucketsError.message}`);
           }
           
-          // Check if dog_photos bucket exists
-          const dogPhotosBucket = buckets?.find(b => b.name === 'dog_photos');
+          // Check if dog-photos bucket exists
+          const dogPhotosBucket = buckets?.find(b => b.name === 'dog-photos');
           if (!dogPhotosBucket) {
-            console.error('dog_photos bucket does not exist');
-            throw new Error('Storage not properly configured: dog_photos bucket missing');
+            console.error('dog-photos bucket does not exist');
+            throw new Error('Storage not properly configured: dog-photos bucket missing');
           }
           
           // For Android, we need to ensure the file exists and is readable
@@ -570,7 +570,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('dog_photos')
+            .from('dog-photos')
             .upload(filePath, fileData, {
               contentType: `image/${fileExt}`,
               upsert: true,
@@ -585,7 +585,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Get public URL
           const { data: publicUrlData } = await supabase.storage
-            .from('dog_photos')
+            .from('dog-photos')
             .getPublicUrl(filePath);
           
           console.log('Public URL:', publicUrlData);
