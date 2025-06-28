@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatar: {
-    marginRight: 12,
+    marginRight: 16, // Increased from 12 to 16 (4px more spacing)
   },
   details: {
     flex: 1,
