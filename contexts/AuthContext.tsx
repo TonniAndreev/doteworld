@@ -71,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const redirectTo = AuthSession.makeRedirectUri({
     scheme: 'doteapp',
     path: '/auth/callback',
+    useProxy: false, // Force use of custom scheme instead of Expo proxy
   });
 
   useEffect(() => {
