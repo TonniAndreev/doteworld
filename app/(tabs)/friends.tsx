@@ -9,7 +9,8 @@ import {
   Modal,
   ActivityIndicator,
   Platform,
-  Share
+  Share,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -19,7 +20,8 @@ import {
   X, 
   Check,
   Bell,
-  Share2
+  Share2,
+  Heart
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
@@ -116,6 +118,58 @@ export default function FriendsScreen() {
     setShowInviteModal(false);
   };
 
+  const renderEmptyState = () => {
+    if (isSearching) {
+      return (
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.emptyText}>Searching...</Text>
+        </View>
+      );
+    }
+    
+    if (searchQuery.trim() !== '') {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No users found</Text>
+        </View>
+      );
+    }
+    
+    if (friendRequests.length === 0 && friends.length === 0) {
+      return (
+        <View style={styles.emptyStateContainer}>
+          <Image 
+            source={{ uri: 'https://images.pexels.com/photos/23692803/pexels-photo-23692803.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' }}
+            style={styles.emptyStateImage}
+          />
+          <Text style={styles.emptyStateTitle}>Don't keep your dog alone</Text>
+          <Text style={styles.emptyStateText}>
+            Invite friends or find one, so you can see their territories and walk together!
+          </Text>
+          <View style={styles.emptyStateButtons}>
+            <TouchableOpacity 
+              style={styles.emptyStatePrimaryButton}
+              onPress={handleInviteFriends}
+            >
+              <UserPlus size={20} color={COLORS.white} />
+              <Text style={styles.emptyStatePrimaryButtonText}>Invite Friends</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.emptyStateSecondaryButton}
+              onPress={() => setSearchQuery('a')} // Trigger search with a common letter
+            >
+              <Search size={20} color={COLORS.primary} />
+              <Text style={styles.emptyStateSecondaryButtonText}>Find Friends</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+    
+    return null;
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -167,22 +221,13 @@ export default function FriendsScreen() {
             />
           );
         }}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          (friendRequests.length === 0 && friends.length === 0 && !isSearching && searchQuery.trim() === '') && styles.fullHeightContent
+        ]}
         refreshing={refreshing}
         onRefresh={handleRefresh}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              {isSearching 
-                ? 'Searching...'
-                : searchQuery.trim() !== '' 
-                ? 'No users found' 
-                : friendRequests.length === 0 && friends.length === 0
-                ? 'No friends or requests yet'
-                : ''}
-            </Text>
-          </View>
-        }
+        ListEmptyComponent={renderEmptyState}
       />
 
       {/* Invite Friends Modal (for web fallback) */}
@@ -289,6 +334,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
   },
+  fullHeightContent: {
+    flexGrow: 1,
+  },
   emptyContainer: {
     padding: 24,
     alignItems: 'center',
@@ -298,7 +346,68 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.neutralMedium,
-    marginBottom: 16,
+    marginTop: 12,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  emptyStateImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    marginBottom: 24,
+  },
+  emptyStateTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 24,
+    color: COLORS.neutralDark,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+  },
+  emptyStateButtons: {
+    width: '100%',
+    gap: 12,
+  },
+  emptyStatePrimaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  emptyStatePrimaryButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
+  },
+  emptyStateSecondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    gap: 8,
+  },
+  emptyStateSecondaryButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.primary,
   },
   modalOverlay: {
     flex: 1,
