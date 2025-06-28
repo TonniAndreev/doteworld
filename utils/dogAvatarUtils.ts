@@ -1,7 +1,7 @@
 // Dog avatar utility functions for breed-specific avatars
 
 interface BreedAvatarMap {
-  [key: string]: string;
+  [key: string]: any;
 }
 
 // Map dog breeds to Pexels images of typical dogs of that breed
@@ -105,10 +105,10 @@ const BREED_AVATARS: BreedAvatarMap = {
 
 // Default fallback images for different sizes
 const DEFAULT_AVATARS = {
-  small: 'https://images.pexels.com/photos/1851164/pexels-photo-1851164.jpeg?auto=compress&cs=tinysrgb&w=300&h=300',
-  medium: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300',
-  large: 'https://images.pexels.com/photos/552598/pexels-photo-552598.jpeg?auto=compress&cs=tinysrgb&w=300&h=300',
-  giant: 'https://images.pexels.com/photos/1629781/pexels-photo-1629781.jpeg?auto=compress&cs=tinysrgb&w=300&h=300',
+  small: { uri: 'https://images.pexels.com/photos/1851164/pexels-photo-1851164.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' },
+  medium: { uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' },
+  large: { uri: 'https://images.pexels.com/photos/552598/pexels-photo-552598.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' },
+  giant: { uri: 'https://images.pexels.com/photos/1629781/pexels-photo-1629781.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' },
 };
 
 /**
@@ -127,7 +127,7 @@ export function getDogBreedAvatar(breed: string, sizeCategory?: string): string 
   
   // Try exact match first
   if (BREED_AVATARS[normalizedBreed]) {
-    return BREED_AVATARS[normalizedBreed];
+    return { uri: BREED_AVATARS[normalizedBreed] };
   }
   
   // Try partial matches for common breed variations
@@ -137,7 +137,7 @@ export function getDogBreedAvatar(breed: string, sizeCategory?: string): string 
   );
   
   if (partialMatch) {
-    return BREED_AVATARS[partialMatch];
+    return { uri: BREED_AVATARS[partialMatch] };
   }
   
   // Fallback based on size category
@@ -146,7 +146,7 @@ export function getDogBreedAvatar(breed: string, sizeCategory?: string): string 
   }
   
   // Final fallback
-  return DEFAULT_AVATARS.medium;
+  return DEFAULT_AVATARS.medium; 
 }
 
 /**
@@ -166,8 +166,7 @@ export function getDogAvatarSource(
   if (photoURL) {
     return { uri: photoURL };
   }
-  
-  // Use breed-specific avatar as fallback
-  const breedAvatarUrl = getDogBreedAvatar(breed || '', sizeCategory);
-  return { uri: breedAvatarUrl };
+
+  // Return the breed-specific avatar object
+  return getDogBreedAvatar(breed || '', sizeCategory);
 }

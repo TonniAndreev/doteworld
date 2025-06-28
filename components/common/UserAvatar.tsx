@@ -38,7 +38,7 @@ export default function UserAvatar({
   // Determine the final photo URL to use
   const finalPhotoUrl = isDogAvatar ? (dogPhotoUrl || photoURL) : (userPhotoUrl || photoURL);
   
-  const avatarStyle = [
+  const avatarStyle: any = [
     {
       width: size,
       height: size,
@@ -47,7 +47,7 @@ export default function UserAvatar({
     style
   ];
 
-  const containerStyles = [
+  const containerStyles: any = [
     {
       width: size,
       height: size,
@@ -85,7 +85,7 @@ export default function UserAvatar({
   return (
     <View style={containerStyles}>
       <Image
-        source={finalPhotoUrl ? { uri: finalPhotoUrl } : require('@/assets/images/icon.png')}
+        source={finalPhotoUrl ? { uri: finalPhotoUrl } : { uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' }}
         style={avatarStyle}
         onError={() => setImageError(true)}
         resizeMode="cover"
