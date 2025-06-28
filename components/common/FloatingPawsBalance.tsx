@@ -13,10 +13,14 @@ export default function FloatingPawsBalance({ balance }: FloatingPawsBalanceProp
   
   const displayBalance = balance !== undefined ? balance : pawsBalance;
 
+  const handlePress = () => {
+    router.push('/(tabs)/store');
+  };
+
   return (
     <TouchableOpacity 
       style={[styles.container, isSubscribed && styles.subscribedContainer]}
-      onPress={() => router.push('/(tabs)/store')}
+      onPress={handlePress}
     >
       {isSubscribed ? (
         <>

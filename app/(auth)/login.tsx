@@ -26,11 +26,15 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [facebookLoading, setFacebookLoading] = useState(false);
   const [error, setError] = useState('');
   
   const { login, loginWithGoogle, loginWithFacebook } = useAuth();
   
   const handleEmailLogin = async () => {
+    console.log('🔵 Email login button pressed');
+    
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
@@ -40,9 +44,12 @@ export default function LoginScreen() {
     setError('');
     
     try {
+      console.log('🔵 Attempting email login for:', email);
       await login(email, password);
+      console.log('🔵 Email login successful, navigating to tabs');
       router.replace('/(tabs)');
     } catch (error: any) {
+      console.error('🔴 Email login error:', error);
       setError(error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
@@ -50,30 +57,38 @@ export default function LoginScreen() {
   };
   
   const handleGoogleLogin = async () => {
-    setIsLoading(true);
+    console.log('🟢 Google login button pressed');
+    setGoogleLoading(true);
     setError('');
     
     try {
+      console.log('🟢 Calling loginWithGoogle function');
       await loginWithGoogle();
-      router.replace('/(tabs)');
+      console.log('🟢 Google login completed successfully');
+      // The auth state change listener will handle navigation after successful login
     } catch (error: any) {
+      console.error('🔴 Google login error:', error);
       setError(error.message || 'Google login failed');
     } finally {
-      setIsLoading(false);
+      setGoogleLoading(false);
     }
   };
   
   const handleFacebookLogin = async () => {
-    setIsLoading(true);
+    console.log('🔵 Facebook login button pressed');
+    setFacebookLoading(true);
     setError('');
     
     try {
+      console.log('🔵 Calling loginWithFacebook function');
       await loginWithFacebook();
-      router.replace('/(tabs)');
+      console.log('🔵 Facebook login completed successfully');
+      // The auth state change listener will handle navigation after successful login
     } catch (error: any) {
+      console.error('🔴 Facebook login error:', error);
       setError(error.message || 'Facebook login failed');
     } finally {
-      setIsLoading(false);
+      setFacebookLoading(false);
     }
   };
 
@@ -192,22 +207,34 @@ export default function LoginScreen() {
               <TouchableOpacity 
                 style={[styles.socialButton, styles.googleButton]}
                 onPress={handleGoogleLogin}
-                disabled={isLoading}
+                disabled={googleLoading || isLoading || facebookLoading}
               >
-                <Image
-                  source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
-                  style={styles.googleIcon}
-                />
-                <Text style={styles.socialButtonText}>Google</Text>
+                {googleLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.neutralDark} />
+                ) : (
+                  <>
+                    <Image
+                      source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
+                      style={styles.googleIcon}
+                    />
+                    <Text style={styles.socialButtonText}>Google</Text>
+                  </>
+                )}
               </TouchableOpacity>
               
               <TouchableOpacity 
                 style={[styles.socialButton, styles.facebookButton]}
                 onPress={handleFacebookLogin}
-                disabled={isLoading}
+                disabled={facebookLoading || isLoading || googleLoading}
               >
-                <Facebook size={20} color={COLORS.white} />
-                <Text style={[styles.socialButtonText, styles.facebookButtonText]}>Facebook</Text>
+                {facebookLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <>
+                    <Facebook size={20} color={COLORS.white} />
+                    <Text style={[styles.socialButtonText, styles.facebookButtonText]}>Facebook</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
             

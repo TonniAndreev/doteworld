@@ -109,7 +109,7 @@ export default function LeaderboardScreen() {
         case 'distance':
           return `${user.totalDistance} km`;
         case 'achievements':
-          return `${user.achievementCount}`;
+          return `${user.badgeCount}`;
         case 'paws':
           return `${user.pawsBalance}`;
         default:

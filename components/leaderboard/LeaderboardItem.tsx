@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   avatar: {
-    marginRight: 12,
+    marginRight: 16, // Increased from 12 to 16 (4px more spacing)
   },
   highlightedAvatar: {
     borderWidth: 2,

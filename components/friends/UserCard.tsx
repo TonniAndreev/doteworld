@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatar: {
-    marginRight: 12,
+    marginRight: 16, // Increased from 12 to 16 (4px more spacing)
   },
   info: {
     flex: 1,

@@ -1,6 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/utils/supabase';
+import { Platform } from 'react-native';
+import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
+import * as Crypto from 'expo-crypto';
+
+// Complete the auth session on web
+WebBrowser.maybeCompleteAuthSession();
 
 interface Dog {
   id: string;
@@ -10,7 +17,6 @@ interface Dog {
   birthday?: string;
   bio?: string;
   weight?: number;
-  gender?: 'male' | 'female' | 'unknown';
   gender?: 'male' | 'female';
   created_at: string;
 }
@@ -26,7 +32,7 @@ interface DoteUser {
   displayName?: string;
   dogs: Dog[];
   friends?: any[];
-  achievementCount?: number;
+  badgeCount?: number;
   uid?: string;
 }
 
@@ -60,6 +66,11 @@ const isValidEmail = (email: string): boolean => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DoteUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Create redirect URI for OAuth - Use custom scheme for mobile
+ const redirectTo = AuthSession.makeRedirectUri({
+    useProxy: false,
+  });
 
   useEffect(() => {
     // Get initial session
@@ -155,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             displayName: `${basicProfile.first_name} ${basicProfile.last_name}`.trim() || 'User',
             dogs: [],
             friends: [],
-            achievementCount: 0,
+            badgeCount: 0,
             uid: supaUser.id,
           };
 
@@ -191,8 +202,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         console.log('User dogs data:', userDogs);
         
-        // Get achievement count
-        const { count: achievementCount } = await supabase
+        // Get badge count
+        const { count: badgeCount } = await supabase
           .from('profile_achievements')
           .select('*', { count: 'exact', head: true })
           .eq('profile_id', userId);
@@ -205,7 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
           dogs: userDogs?.map(ud => ud.dogs).filter(Boolean) || [],
           friends: [], // This would be fetched separately in a real app
-          achievementCount: achievementCount || 0,
+          badgeCount: badgeCount || 0,
           uid: supaUser.id,
         };
 
@@ -315,25 +326,167 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   
   const loginWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-      });
-      if (error) throw error;
+      setIsLoading(true);
+
+      if (Platform.OS === 'web') {
+        // For web platform, use signInWithOAuth
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+          }
+        });
+        
+        if (error) throw error;
+      } else {
+        // For mobile platforms, use expo-auth-session with custom scheme
+        console.log('Using redirect URI:', redirectTo);
+        
+        // Generate a secure random state parameter
+        const state = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          Math.random().toString(36),
+          { encoding: Crypto.CryptoEncoding.HEX }
+        );
+
+        // Create the authorization URL
+        const authUrl = `https://uufihbvqnvniaszmfufi.supabase.co/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}&state=${state}`;
+
+        console.log('Opening Google OAuth URL:', authUrl);
+        console.log('Redirect URI:', redirectTo);
+
+        // Open the OAuth session
+        const result = await WebBrowser.openAuthSessionAsync(
+          authUrl,
+          redirectTo,
+          {
+            showInRecents: true,
+          }
+        );
+
+        console.log('OAuth result:', result);
+
+        if (result.type === 'success') {
+          const url = new URL(result.url);
+          const access_token = url.searchParams.get('access_token');
+          const refresh_token = url.searchParams.get('refresh_token');
+          const error = url.searchParams.get('error');
+          const error_description = url.searchParams.get('error_description');
+
+          if (error) {
+            throw new Error(error_description || error);
+          }
+
+          if (access_token && refresh_token) {
+            // Set the session using the tokens
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
+            if (sessionError) {
+              throw sessionError;
+            }
+
+            console.log('Google login successful:', data.user?.id);
+            // fetchUserProfile will be called automatically by the auth state change listener
+          } else {
+            throw new Error('No tokens received from Google OAuth');
+          }
+        } else if (result.type === 'cancel') {
+          throw new Error('Google login was cancelled');
+        } else {
+          throw new Error('Google login failed');
+        }
+      }
     } catch (error) {
       console.error('Google login error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
   
   const loginWithFacebook = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'facebook',
-      });
-      if (error) throw error;
+      setIsLoading(true);
+
+      if (Platform.OS === 'web') {
+        // For web platform, use signInWithOAuth
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'facebook',
+          options: {
+            redirectTo: window.location.origin,
+          }
+        });
+        
+        if (error) throw error;
+      } else {
+        // For mobile platforms, use expo-auth-session with custom scheme
+        console.log('Using redirect URI:', redirectTo);
+        
+        // Generate a secure random state parameter
+        const state = await Crypto.digestStringAsync(
+          Crypto.CryptoDigestAlgorithm.SHA256,
+          Math.random().toString(36),
+          { encoding: Crypto.CryptoEncoding.HEX }
+        );
+
+        // Create the authorization URL
+        const authUrl = `https://uufihbvqnvniaszmfufi.supabase.co/auth/v1/authorize?provider=facebook&redirect_to=${encodeURIComponent(redirectTo)}&state=${state}`;
+
+        console.log('Opening Facebook OAuth URL:', authUrl);
+        console.log('Redirect URI:', redirectTo);
+
+        // Open the OAuth session
+        const result = await WebBrowser.openAuthSessionAsync(
+          authUrl,
+          redirectTo,
+          {
+            showInRecents: true,
+          }
+        );
+
+        console.log('OAuth result:', result);
+
+        if (result.type === 'success') {
+          const url = new URL(result.url);
+          const access_token = url.searchParams.get('access_token');
+          const refresh_token = url.searchParams.get('refresh_token');
+          const error = url.searchParams.get('error');
+          const error_description = url.searchParams.get('error_description');
+
+          if (error) {
+            throw new Error(error_description || error);
+          }
+
+          if (access_token && refresh_token) {
+            // Set the session using the tokens
+            const { data, error: sessionError } = await supabase.auth.setSession({
+              access_token,
+              refresh_token,
+            });
+
+            if (sessionError) {
+              throw sessionError;
+            }
+
+            console.log('Facebook login successful:', data.user?.id);
+            // fetchUserProfile will be called automatically by the auth state change listener
+          } else {
+            throw new Error('No tokens received from Facebook OAuth');
+          }
+        } else if (result.type === 'cancel') {
+          throw new Error('Facebook login was cancelled');
+        } else {
+          throw new Error('Facebook login failed');
+        }
+      }
     } catch (error) {
       console.error('Facebook login error:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 

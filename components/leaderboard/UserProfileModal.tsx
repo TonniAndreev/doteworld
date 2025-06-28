@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   avatarContainer: {
-    marginBottom: 24,
+    marginBottom: 28, // Increased from 24 to 28 (4px more spacing)
   },
   userInfo: {
     alignItems: 'center',

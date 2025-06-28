@@ -8,6 +8,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { PawsProvider } from '@/contexts/PawsContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { TerritoryProvider } from '@/contexts/TerritoryContext';
+import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -34,21 +35,23 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <PawsProvider>
-        <NotificationProvider>
-          <TerritoryProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="welcome" options={{ headerShown: false }} />
-              <Stack.Screen name="notifications" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
-            </Stack>
-            <StatusBar style="auto" />
-          </TerritoryProvider>
-        </NotificationProvider>
-      </PawsProvider>
-    </AuthProvider>
+    <RevenueCatProvider>
+      <AuthProvider>
+        <PawsProvider>
+          <NotificationProvider>
+            <TerritoryProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="welcome" options={{ headerShown: false }} />
+                <Stack.Screen name="notifications" options={{ headerShown: false }} />
+                <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
+              </Stack>
+              <StatusBar style="auto" />
+            </TerritoryProvider>
+          </NotificationProvider>
+        </PawsProvider>
+      </AuthProvider>
+    </RevenueCatProvider>
   );
 }
