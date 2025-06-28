@@ -7,9 +7,12 @@ import MapView, { Polygon, Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'rea
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
+import { useFriends } from '@/hooks/useFriends';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
 import PawsModal from '@/components/home/PawsModal';
+import DogMarker from '@/components/map/DogMarker';
 import { calculateDistance } from '@/utils/locationUtils';
+import { USER_TERRITORY_COLOR, getColorWithOpacity } from '@/utils/mapColors';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function MapScreen() {
@@ -36,6 +39,7 @@ export default function MapScreen() {
   } = useTerritory();
   
   const { canStartConquest, startConquest, isSubscribed } = usePaws();
+  const { friends, isLoading: isFriendsLoading } = useFriends();
 
   // Initial location setup
   useEffect(() => {
@@ -208,6 +212,11 @@ export default function MapScreen() {
     return styles.startWalkButton;
   };
 
+  const handleDogMarkerPress = (dogId: string, dogName: string) => {
+    console.log(`Dog marker pressed: ${dogName} (${dogId})`);
+    // You could navigate to dog profile or show more info
+  };
+
   return (
     <GestureHandlerRootView style={styles.container}>
       {location ? (
@@ -228,16 +237,29 @@ export default function MapScreen() {
             rotateEnabled={true}
             scrollEnabled={true}
           >
-            {/* Render conquered territories */}
+            {/* Render user's conquered territories */}
             {territory.map((polygon, index) => (
               <Polygon
                 key={`territory-${index}`}
                 coordinates={polygon}
-                fillColor="rgba(241, 102, 46, 0.3)"
-                strokeColor={COLORS.primary}
+                fillColor={getColorWithOpacity(USER_TERRITORY_COLOR, 0.3)}
+                strokeColor={USER_TERRITORY_COLOR}
                 strokeWidth={2}
               />
             ))}
+            
+            {/* Render friends' territories */}
+            {!isFriendsLoading && friends.map(friend => 
+              friend.territoryPolygons?.map(territory => (
+                <Polygon
+                  key={`friend-territory-${friend.id}-${territory.id}`}
+                  coordinates={territory.coordinates}
+                  fillColor={getColorWithOpacity(territory.color, 0.3)}
+                  strokeColor={territory.color}
+                  strokeWidth={2}
+                />
+              ))
+            )}
             
             {/* Render current walk points as orange circles */}
             {currentWalkPoints.map((point, index) => (
@@ -265,11 +287,29 @@ export default function MapScreen() {
             {currentPolygon && (
               <Polygon
                 coordinates={currentPolygon}
-                fillColor="rgba(241, 102, 46, 0.15)"
-                strokeColor={COLORS.primary}
+                fillColor={getColorWithOpacity(USER_TERRITORY_COLOR, 0.15)}
+                strokeColor={USER_TERRITORY_COLOR}
                 strokeWidth={2}
                 lineDashPattern={[5, 5]}
               />
+            )}
+            
+            {/* Render dog markers at the center of each friend's territory */}
+            {!isFriendsLoading && friends.map(friend => 
+              friend.territoryPolygons?.map(territory => 
+                territory.centroid && (
+                  <DogMarker
+                    key={`dog-marker-${friend.id}-${territory.dogId}-${territory.id}`}
+                    coordinate={territory.centroid}
+                    dogId={territory.dogId}
+                    dogName={territory.dogName}
+                    dogPhotoURL={territory.dogPhotoURL}
+                    dogBreed={territory.dogBreed}
+                    color={territory.color}
+                    onPress={() => handleDogMarkerPress(territory.dogId, territory.dogName)}
+                  />
+                )
+              )
             )}
           </MapView>
 

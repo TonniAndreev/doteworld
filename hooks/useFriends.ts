@@ -1,6 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
+import * as turf from '@turf/turf';
+import { 
+  createConvexHull, 
+  coordinatesToTurfPolygon,
+  calculatePolygonArea
+} from '@/utils/locationUtils';
+import { getFriendTerritoryColor } from '@/utils/mapColors';
+
+interface Coordinate {
+  latitude: number;
+  longitude: number;
+}
 
 interface User {
   id: string;
@@ -18,6 +30,17 @@ interface User {
     name: string;
     breed?: string;
     photo_url?: string | null;
+  }>;
+  // New fields for territory visualization
+  territoryPolygons?: Array<{
+    id: string;
+    coordinates: Coordinate[];
+    color: string;
+    dogId: string;
+    dogName: string;
+    dogPhotoURL?: string | null;
+    dogBreed?: string;
+    centroid?: Coordinate;
   }>;
 }
 
@@ -121,17 +144,87 @@ export function useFriends() {
         let territorySize = 0;
         let totalDistance = 0;
         
-        if (firstDog) {
+        // Array to store territory polygons for this friend
+        const territoryPolygons: User['territoryPolygons'] = [];
+        
+        // Process each dog's territory
+        for (const dog of dogs) {
+          if (!dog || !dog.id) continue;
+          
           const { data: walkPoints, error: walkError } = await supabase
             .from('walk_points')
             .select('latitude, longitude, walk_session_id, timestamp')
-            .eq('dog_id', firstDog.id)
+            .eq('dog_id', dog.id)
             .order('timestamp', { ascending: true });
 
-          if (!walkError && walkPoints && walkPoints.length > 0) {
-            // Calculate territory size using the same method as leaderboard
-            territorySize = calculateRealTerritoryFromWalkPoints(walkPoints);
-            totalDistance = calculateRealDistanceFromWalkPoints(walkPoints);
+          if (walkError) {
+            console.error(`Error fetching walk points for dog ${dog.id}:`, walkError);
+            continue;
+          }
+
+          if (!walkPoints || walkPoints.length < 3) {
+            console.log(`No valid walk points found for dog ${dog.id}`);
+            continue;
+          }
+
+          // Group points by walk session
+          const sessionGroups = walkPoints.reduce((groups, point) => {
+            if (!groups[point.walk_session_id]) {
+              groups[point.walk_session_id] = [];
+            }
+            groups[point.walk_session_id].push(point);
+            return groups;
+          }, {} as Record<string, any[]>);
+
+          // Process each walk session to create territory polygons
+          for (const [sessionId, sessionPoints] of Object.entries(sessionGroups)) {
+            if (sessionPoints.length < 3) continue;
+            
+            // Create coordinates array
+            const coordinates = sessionPoints.map(point => ({
+              latitude: point.latitude,
+              longitude: point.longitude
+            }));
+            
+            // Create convex hull
+            const hull = createConvexHull(coordinates);
+            if (!hull) continue;
+            
+            // Calculate area
+            const area = calculatePolygonArea(hull);
+            territorySize += area;
+            
+            // Calculate centroid
+            const turfPolygon = coordinatesToTurfPolygon(hull);
+            let centroid: Coordinate | undefined;
+            
+            if (turfPolygon) {
+              const turfCentroid = turf.centroid(turfPolygon);
+              centroid = {
+                latitude: turfCentroid.geometry.coordinates[1],
+                longitude: turfCentroid.geometry.coordinates[0]
+              };
+            }
+            
+            // Get color for this friend
+            const color = await getFriendTerritoryColor(friendId);
+            
+            // Add to territory polygons
+            territoryPolygons.push({
+              id: sessionId,
+              coordinates: hull,
+              color,
+              dogId: dog.id,
+              dogName: dog.name,
+              dogPhotoURL: dog.photo_url,
+              dogBreed: dog.breed,
+              centroid
+            });
+          }
+
+          // Calculate total distance (reusing existing code)
+          if (walkPoints.length > 1) {
+            totalDistance += calculateRealDistanceFromWalkPoints(walkPoints);
           }
         }
 
@@ -146,6 +239,7 @@ export function useFriends() {
           achievementCount: achievementCount || 0,
           isFriend: true,
           dogs: dogs,
+          territoryPolygons
         });
       }
 
