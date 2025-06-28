@@ -18,6 +18,7 @@ import { Camera, ChevronDown, CircleAlert as AlertCircle, Check, Search, X, Cale
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
+import { uploadDogProfilePhoto } from '@/utils/photoStorage';
 
 const DOG_BREEDS = [
   // Popular breeds
@@ -106,6 +107,7 @@ export default function DogProfileScreen() {
   const [dogBreed, setDogBreed] = useState('');
   const [dogBirthday, setDogBirthday] = useState('');
   const [dogPhoto, setDogPhoto] = useState<string | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
@@ -188,12 +190,26 @@ export default function DogProfileScreen() {
     setError('');
     
     try {
-      await updateDogProfile(dogName, dogBreed, dogPhoto, dogBirthday);
+      // First create the dog profile
+      const dogData = await updateDogProfile(dogName, dogBreed, null, dogBirthday);
+      
+      // If there's a photo, upload it to Supabase Storage
+      if (dogPhoto && dogData?.id) {
+        setIsUploadingPhoto(true);
+        const uploadResult = await uploadDogProfilePhoto(dogData.id, dogPhoto);
+        
+        if (!uploadResult.success) {
+          console.error('Failed to upload dog photo:', uploadResult.error);
+          // Continue anyway - the dog profile was created successfully
+        }
+      }
+      
       router.replace('/(tabs)');
     } catch (error: any) {
       setError(error.message || 'Failed to save dog profile. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -455,12 +471,14 @@ export default function DogProfileScreen() {
           <TouchableOpacity 
             style={styles.saveButton}
             onPress={handleSubmit}
-            disabled={isLoading}
+            disabled={isLoading || isUploadingPhoto}
           >
-            {isLoading ? (
+            {(isLoading || isUploadingPhoto) ? (
               <ActivityIndicator color={COLORS.white} />
             ) : (
-              <Text style={styles.saveButtonText}>Save & Continue</Text>
+              <Text style={styles.saveButtonText}>
+                {isUploadingPhoto ? 'Uploading Photo...' : 'Save & Continue'}
+              </Text>
             )}
           </TouchableOpacity>
           

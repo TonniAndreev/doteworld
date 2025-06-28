@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Image, View, Text, StyleSheet, ImageStyle, ViewStyle, TextStyle } from 'react-native';
 import { COLORS } from '@/constants/theme';
-import { getAvatarSource } from '@/utils/avatarUtils';
-import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
+import { useUserProfilePhoto } from '@/hooks/useUserProfilePhoto';
+import { useDogProfilePhoto } from '@/hooks/useDogProfilePhoto';
 
 interface UserAvatarProps {
   userId: string;
@@ -30,9 +30,13 @@ export default function UserAvatar({
   dogBreed,
 }: UserAvatarProps) {
   const [imageError, setImageError] = useState(false);
-  const avatarSource = isDogAvatar 
-    ? getDogAvatarSource(userId, photoURL, dogBreed)
-    : getAvatarSource(userId, photoURL);
+  
+  // Use hooks to get photo URLs from Supabase Storage
+  const { photoUrl: userPhotoUrl } = useUserProfilePhoto(isDogAvatar ? undefined : userId);
+  const { photoUrl: dogPhotoUrl } = useDogProfilePhoto(isDogAvatar ? userId : '');
+  
+  // Determine the final photo URL to use
+  const finalPhotoUrl = isDogAvatar ? (dogPhotoUrl || photoURL) : (userPhotoUrl || photoURL);
   
   const avatarStyle = [
     {
@@ -54,7 +58,7 @@ export default function UserAvatar({
   ];
 
   // If image failed to load and we want to show fallback
-  if (imageError && showFallback) {
+  if ((imageError || !finalPhotoUrl) && showFallback) {
     return (
       <View style={[
         containerStyles,
@@ -81,7 +85,7 @@ export default function UserAvatar({
   return (
     <View style={containerStyles}>
       <Image
-        source={avatarSource}
+        source={finalPhotoUrl ? { uri: finalPhotoUrl } : require('@/assets/images/icon.png')}
         style={avatarStyle}
         onError={() => setImageError(true)}
         resizeMode="cover"
