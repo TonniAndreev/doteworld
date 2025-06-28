@@ -7,33 +7,33 @@ import {
   TouchableOpacity,
   TextInput,
   Modal,
-  ActivityIndicator
+  ActivityIndicator,
+  Platform,
+  Share
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   Search, 
   UserPlus, 
-  Users, 
   UserCheck, 
   X, 
-  Check, 
-  UserX,
-  Clock 
+  Check,
+  Bell,
+  Share2
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import { useFriends } from '@/hooks/useFriends';
-import NotificationsButton from '@/components/common/NotificationsButton';
 import UserCard from '@/components/friends/UserCard';
 import FriendRequestItem from '@/components/friends/FriendRequestItem';
-import UserAvatar from '@/components/common/UserAvatar';
+import NotificationsButton from '@/components/common/NotificationsButton';
 
 export default function FriendsScreen() {
-  const [activeTab, setActiveTab] = useState('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   
   const { 
     friends, 
@@ -46,14 +46,8 @@ export default function FriendsScreen() {
     isLoading
   } = useFriends();
 
-  // Handle search with debouncing
+  // Search for users when query changes
   useEffect(() => {
-    if (activeTab !== 'discover') {
-      setSearchResults([]);
-      setIsSearching(false);
-      return;
-    }
-
     const searchTimeout = setTimeout(async () => {
       if (searchQuery.trim()) {
         setIsSearching(true);
@@ -73,15 +67,7 @@ export default function FriendsScreen() {
     }, 500); // 500ms debounce
 
     return () => clearTimeout(searchTimeout);
-  }, [searchQuery, activeTab]);
-
-  // Filtered friends list based on search query
-  const filteredFriends = searchQuery.trim() === ''
-    ? friends
-    : friends.filter(friend => 
-        friend.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        friend.dogName.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+  }, [searchQuery]);
 
   const handleUserPress = (user) => {
     console.log('Friend card pressed, user data:', user);
@@ -95,146 +81,151 @@ export default function FriendsScreen() {
     setRefreshing(false);
   };
 
+  const handleInviteFriends = async () => {
+    try {
+      const message = 'Join me on Dote, the app that makes dog walking more fun! Download it here: https://dote.app/download';
+      
+      if (Platform.OS === 'web') {
+        // Web implementation
+        if (navigator.share) {
+          await navigator.share({
+            title: 'Join me on Dote',
+            text: message,
+            url: 'https://dote.app/download'
+          });
+        } else {
+          // Fallback for browsers that don't support navigator.share
+          setShowInviteModal(true);
+        }
+      } else {
+        // Native implementation
+        await Share.share({
+          message,
+          url: 'https://dote.app/download',
+          title: 'Join me on Dote'
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing invitation:', error);
+    }
+  };
+
+  const handleCopyInviteLink = () => {
+    // In a real app, this would copy a link to the clipboard
+    alert('Invite link copied to clipboard!');
+    setShowInviteModal(false);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Friends</Text>
-        <NotificationsButton />
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.inviteButton}
+            onPress={handleInviteFriends}
+          >
+            <UserPlus size={20} color={COLORS.primary} />
+            <Text style={styles.inviteButtonText}>Invite</Text>
+          </TouchableOpacity>
+          <NotificationsButton />
+        </View>
       </View>
 
       <View style={styles.searchContainer}>
         <Search size={20} color={COLORS.neutralDark} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder={activeTab === 'friends' ? "Search friends..." : "Find new friends..."}
+          placeholder="Find new friends..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           placeholderTextColor={COLORS.neutralMedium}
         />
       </View>
 
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
-          onPress={() => setActiveTab('friends')}
-        >
-          <Users size={20} color={activeTab === 'friends' ? COLORS.primary : COLORS.neutralDark} />
-          <Text style={[styles.tabText, activeTab === 'friends' && styles.activeTabText]}>
-            Friends
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
-          onPress={() => setActiveTab('requests')}
-        >
-          <UserPlus size={20} color={activeTab === 'requests' ? COLORS.primary : COLORS.neutralDark} />
-          <Text style={[styles.tabText, activeTab === 'requests' && styles.activeTabText]}>
-            Requests {friendRequests.length > 0 ? `(${friendRequests.length})` : ''}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'discover' && styles.activeTab]}
-          onPress={() => setActiveTab('discover')}
-        >
-          <UserPlus size={20} color={activeTab === 'discover' ? COLORS.primary : COLORS.neutralDark} />
-          <Text style={[styles.tabText, activeTab === 'discover' && styles.activeTabText]}>
-            Discover
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <FlatList
+        data={searchQuery.trim() !== '' ? searchResults : [...friendRequests, ...friends]}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => {
+          // Check if this is a friend request
+          if (friendRequests.some(request => request.id === item.id)) {
+            return (
+              <FriendRequestItem 
+                request={item}
+                onAccept={() => acceptFriendRequest(item.id)}
+                onDecline={() => declineFriendRequest(item.id)}
+              />
+            );
+          }
+          
+          // Otherwise it's a friend or search result
+          return (
+            <UserCard 
+              user={item} 
+              onPress={() => handleUserPress(item)} 
+              isFriend={friends.some(friend => friend.id === item.id)}
+            />
+          );
+        }}
+        contentContainerStyle={styles.listContent}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {isSearching 
+                ? 'Searching...'
+                : searchQuery.trim() !== '' 
+                ? 'No users found' 
+                : friendRequests.length === 0 && friends.length === 0
+                ? 'No friends or requests yet'
+                : ''}
+            </Text>
+          </View>
+        }
+      />
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+      {/* Invite Friends Modal (for web fallback) */}
+      <Modal
+        visible={showInviteModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowInviteModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Invite Friends</Text>
+              <TouchableOpacity 
+                onPress={() => setShowInviteModal(false)}
+                style={styles.closeButton}
+              >
+                <X size={24} color={COLORS.neutralDark} />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalText}>
+              Share this link with your friends to invite them to Dote:
+            </Text>
+            
+            <View style={styles.linkContainer}>
+              <Text style={styles.linkText} numberOfLines={1}>
+                https://dote.app/invite/your-unique-code
+              </Text>
+            </View>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.modalButton}
+                onPress={handleCopyInviteLink}
+              >
+                <Share2 size={20} color={COLORS.white} />
+                <Text style={styles.modalButtonText}>Copy Link</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      ) : (
-        <>
-          {activeTab === 'friends' && (
-            <FlatList
-              data={filteredFriends}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <UserCard 
-                  user={item} 
-                  onPress={() => handleUserPress(item)} 
-                  isFriend={true}
-                />
-              )}
-              contentContainerStyle={styles.listContent}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>
-                    {searchQuery.trim() !== '' 
-                      ? 'No friends match your search' 
-                      : 'You have no friends yet'}
-                  </Text>
-                  <TouchableOpacity 
-                    style={styles.addFriendsButton}
-                    onPress={() => setActiveTab('discover')}
-                  >
-                    <Text style={styles.addFriendsButtonText}>Find Friends</Text>
-                  </TouchableOpacity>
-                </View>
-              }
-            />
-          )}
-
-          {activeTab === 'requests' && (
-            <FlatList
-              data={friendRequests}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <FriendRequestItem 
-                  request={item}
-                  onAccept={() => acceptFriendRequest(item.id)}
-                  onDecline={() => declineFriendRequest(item.id)}
-                />
-              )}
-              contentContainerStyle={styles.listContent}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No friend requests</Text>
-                </View>
-              }
-            />
-          )}
-
-          {activeTab === 'discover' && (
-            <FlatList
-              data={searchResults}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <UserCard 
-                  user={item} 
-                  onPress={() => handleUserPress(item)} 
-                  isFriend={false}
-                />
-              )}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>
-                    {isSearching 
-                      ? 'Searching...'
-                      : searchQuery.trim() !== '' 
-                      ? 'No users found' 
-                      : 'Search for users to add as friends'}
-                  </Text>
-                </View>
-              }
-            />
-          )}
-        </>
-      )}
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -256,6 +247,25 @@ const styles = StyleSheet.create({
     fontSize: 28,
     color: COLORS.neutralDark,
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  inviteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    gap: 6,
+  },
+  inviteButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -275,41 +285,9 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     padding: 10,
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    marginHorizontal: 4,
-    borderRadius: 12,
-    backgroundColor: COLORS.neutralLight,
-  },
-  activeTab: {
-    backgroundColor: COLORS.primaryLight,
-  },
-  tabText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 13,
-    marginLeft: 4,
-    color: COLORS.neutralDark,
-  },
-  activeTabText: {
-    color: COLORS.primary,
-  },
   listContent: {
     paddingHorizontal: 16,
     paddingBottom: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   emptyContainer: {
     padding: 24,
@@ -322,15 +300,73 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
     marginBottom: 16,
   },
-  addFriendsButton: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  addFriendsButtonText: {
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: COLORS.neutralDark,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    marginBottom: 16,
+    lineHeight: 22,
+  },
+  linkContainer: {
+    backgroundColor: COLORS.neutralLight,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 24,
+  },
+  linkText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
+    color: COLORS.primary,
+  },
+  modalActions: {
+    alignItems: 'center',
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
+  },
+  modalButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
     color: COLORS.white,
   },
 });

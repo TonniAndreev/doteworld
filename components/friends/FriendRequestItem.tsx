@@ -27,6 +27,14 @@ export default function FriendRequestItem({ request, onAccept, onDecline }: Frie
   const hasDogs = request.senderDogs && request.senderDogs.length > 0;
   const dogCount = request.senderDogs?.length || 0;
   
+  // Format dog names as comma-separated list
+  const getDogNames = () => {
+    if (!hasDogs) return request.senderDogName || 'No dog';
+    
+    const names = request.senderDogs.map(dog => dog.name);
+    return names.join(', ');
+  };
+  
   return (
     <View style={styles.container}>
       <View style={styles.userInfo}>
@@ -49,7 +57,7 @@ export default function FriendRequestItem({ request, onAccept, onDecline }: Frie
                     userId={`dog-${request.senderDogs[0].id}`}
                     photoURL={request.senderDogs[0].photo_url}
                     userName={request.senderDogs[0].name}
-                    size={34}
+                    size={28}
                     isDogAvatar={true}
                     dogBreed={request.senderDogs[0].breed}
                     style={styles.dogAvatar}
@@ -64,7 +72,7 @@ export default function FriendRequestItem({ request, onAccept, onDecline }: Frie
                     userId={`dog-${request.senderDogs[1].id}`}
                     photoURL={request.senderDogs[1].photo_url}
                     userName={request.senderDogs[1].name}
-                    size={34}
+                    size={28}
                     isDogAvatar={true}
                     dogBreed={request.senderDogs[1].breed}
                     style={styles.dogAvatar}
@@ -89,7 +97,7 @@ export default function FriendRequestItem({ request, onAccept, onDecline }: Frie
                   userId={`dog-${request.senderId}`}
                   photoURL={null}
                   userName={request.senderDogName}
-                  size={34}
+                  size={28}
                   isDogAvatar={true}
                   style={styles.dogAvatar}
                 />
@@ -100,7 +108,7 @@ export default function FriendRequestItem({ request, onAccept, onDecline }: Frie
 
         <View style={styles.details}>
           <Text style={styles.name}>{request.senderName}</Text>
-          <Text style={styles.dogName}>with {request.senderDogName}</Text>
+          <Text style={styles.dogName} numberOfLines={1}>{getDogNames()}</Text>
           <Text style={styles.timestamp}>
             {new Date(request.timestamp).toLocaleDateString()}
           </Text>
@@ -131,10 +139,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.primaryExtraLight,
     padding: 16,
     marginBottom: 12,
     borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.primary,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -148,7 +158,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 20, // Increased spacing between avatar and text
+    marginRight: 16,
     width: 50,
     height: 50,
   },
@@ -161,31 +171,25 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -6,
     left: -6,
+    flexDirection: 'row',
   },
   dogAvatarWrapper: {
     borderWidth: 2,
     borderColor: COLORS.white,
-    borderRadius: 17, // Half of the dog avatar size
+    borderRadius: 14,
     overflow: 'hidden',
-    position: 'absolute',
+    marginRight: -10, // Negative margin for overlapping effect
   },
   firstDogAvatar: {
-    bottom: 0,
-    left: 0,
     zIndex: 2,
   },
   secondDogAvatar: {
-    bottom: 10,
-    left: 10,
     zIndex: 1,
   },
   dogAvatar: {
-    borderRadius: 17, // Half of the dog avatar size
+    borderRadius: 14,
   },
   moreDogsBadge: {
-    position: 'absolute',
-    bottom: 0,
-    left: 20,
     width: 28,
     height: 28,
     borderRadius: 14,
@@ -195,6 +199,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 3,
+    marginLeft: -10, // Negative margin for overlapping effect
   },
   moreDogsBadgeText: {
     fontFamily: 'Inter-Bold',
@@ -205,7 +210,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.neutralDark,
     marginBottom: 2,
@@ -222,8 +227,8 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
   },
   actions: {
-    flexDirection: 'row',
-    marginLeft: 12,
+    flexDirection: 'column',
+    gap: 8,
   },
   actionButton: {
     width: 36,
@@ -231,7 +236,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 8,
   },
   acceptButton: {
     backgroundColor: COLORS.success,
