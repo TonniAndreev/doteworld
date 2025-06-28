@@ -71,28 +71,69 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           if (payload.new.status === 'accepted') {
             await handleFriendAcceptedNotification(payload.new);
           }
-          event: 'INSERT',
-          schema: 'public',
-          table: 'friendships',
-          filter: `receiver_id=eq.${user.id}`,
-        }, async (payload) => {
-          console.log('New friendship notification:', payload);
-          await handleFriendshipNotification(payload.new);
-        })
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'friendships',
-          filter: `requester_id=eq.${user.id}`,
-        }, async (payload) => {
-          console.log('Friendship status update:', payload);
-          if (payload.new.status === 'accepted') {
-            await handleFriendAcceptedNotification(payload.new);
-          }
         })
         .on('postgres_changes', {
           event: 'INSERT',
-        }
+          schema: 'public',
+          table: 'dog_ownership_invites',
+          filter: `invitee_id=eq.${user.id}`,
+        }, async (payload) => {
+          console.log('New dog invite notification:', payload);
+          await handleDogInviteNotification(payload.new);
+        })
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'profile_achievements',
+          filter: `profile_id=eq.${user.id}`,
+        }, async (payload) => {
+          console.log('New achievement notification:', payload);
+          await handleAchievementNotification(payload.new);
+        })
+        .subscribe();
+
+        loadNotifications();
+
+        return () => {
+          // Clean up by removing the single channel
+          supabase.removeChannel(notificationsChannel);
+        };
+      } else {
+        // Channel already exists, just load notifications
+        loadNotifications();
+        return () => {};
+      }
+    }
+  }, [user]);
+
+  const loadNotifications = async () => {
+    if (!user) return;
+
+    try {
+      // For now, we'll use local storage for notifications
+      // In a production app, you'd want to store these in the database
+      const storedNotifications = localStorage.getItem(`notifications_${user.id}`);
+      const notifications = storedNotifications ? JSON.parse(storedNotifications) : [];
+
+      setNotifications(notifications);
+      setUnreadCount(notifications.filter((n: Notification) => !n.read).length);
+    } catch (error) {
+      console.error('Error loading notifications:', error);
+    }
+  };
+
+  const saveNotifications = async (newNotifications: Notification[]) => {
+    if (!user) return;
+
+    try {
+      localStorage.setItem(
+        `notifications_${user.id}`,
+        JSON.stringify(newNotifications)
+      );
+    } catch (error) {
+      console.error('Error saving notifications:', error);
+    }
+  };
         )
         return () => {
           // Clean up by removing the single channel
