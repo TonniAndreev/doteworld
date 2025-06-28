@@ -33,6 +33,8 @@ export default function LoginScreen() {
   const { login, loginWithGoogle, loginWithFacebook } = useAuth();
   
   const handleEmailLogin = async () => {
+    console.log('🔵 Email login button pressed');
+    
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
@@ -42,9 +44,12 @@ export default function LoginScreen() {
     setError('');
     
     try {
+      console.log('🔵 Attempting email login for:', email);
       await login(email, password);
+      console.log('🔵 Email login successful, navigating to tabs');
       router.replace('/(tabs)');
     } catch (error: any) {
+      console.error('🔴 Email login error:', error);
       setError(error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
@@ -52,14 +57,17 @@ export default function LoginScreen() {
   };
   
   const handleGoogleLogin = async () => {
+    console.log('🟢 Google login button pressed');
     setGoogleLoading(true);
     setError('');
     
     try {
+      console.log('🟢 Calling loginWithGoogle function');
       await loginWithGoogle();
+      console.log('🟢 Google login completed successfully');
       // The auth state change listener will handle navigation after successful login
     } catch (error: any) {
-      console.error('Google login error:', error);
+      console.error('🔴 Google login error:', error);
       setError(error.message || 'Google login failed');
     } finally {
       setGoogleLoading(false);
@@ -67,14 +75,17 @@ export default function LoginScreen() {
   };
   
   const handleFacebookLogin = async () => {
+    console.log('🔵 Facebook login button pressed');
     setFacebookLoading(true);
     setError('');
     
     try {
+      console.log('🔵 Calling loginWithFacebook function');
       await loginWithFacebook();
+      console.log('🔵 Facebook login completed successfully');
       // The auth state change listener will handle navigation after successful login
     } catch (error: any) {
-      console.error('Facebook login error:', error);
+      console.error('🔴 Facebook login error:', error);
       setError(error.message || 'Facebook login failed');
     } finally {
       setFacebookLoading(false);
