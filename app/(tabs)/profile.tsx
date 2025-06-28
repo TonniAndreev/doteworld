@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Award, Users, Map, Route, PawPrint, LogOut, CreditCard as Edit } from 'lucide-react-native';
+import { Award, Users, Map, Route, LogOut, CreditCard as Edit } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
-import { usePaws } from '@/contexts/PawsContext';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import StatsCard from '@/components/profile/StatsCard';
 import BadgesRow from '@/components/profile/BadgesRow';
@@ -25,10 +24,23 @@ import UserAvatar from '@/components/common/UserAvatar';
 export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [showInvites, setShowInvites] = useState(false);
+  const [thisMonthDistance, setThisMonthDistance] = useState(0);
   
   const { user, logout } = useAuth();
-  const { pawsBalance } = usePaws();
   const { territorySize, totalDistance } = useTerritory();
+
+  useEffect(() => {
+    // Calculate this month's distance (for now, we'll use 30% of total as a placeholder)
+    // In a real implementation, you would filter walk data by current month
+    if (user) {
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      // Simulate monthly distance (30% of total)
+      // In a real app, you would query the database for walks in the current month
+      setThisMonthDistance(totalDistance * 0.3);
+    }
+  }, [user, totalDistance]);
 
   if (!user) {
     return (
@@ -105,27 +117,28 @@ export default function ProfileScreen() {
         <View style={styles.statsSection}>
           <View style={styles.statsRow}>
             <StatsCard
-              icon={<PawPrint size={24} color={COLORS.primary} />}
-              value={pawsBalance.toString()}
-              label="Paws"
+              icon={<Map size={24} color={COLORS.primary} />}
+              value={`${(territorySize * 1000000).toFixed(0)} m²`}
+              label="Territory"
+              emphasis={true}
             />
             <StatsCard
-              icon={<Map size={24} color={COLORS.primary} />}
-              value={`${territorySize.toFixed(2)} km²`}
-              label="Territory"
+              icon={<Award size={24} color={COLORS.primary} />}
+              value={(user.achievementCount || 0).toString()}
+              label="Badges"
             />
           </View>
           
           <View style={styles.statsRow}>
             <StatsCard
               icon={<Route size={24} color={COLORS.primary} />}
-              value={`${totalDistance.toFixed(1)} km`}
-              label="Walked"
+              value={`${(thisMonthDistance * 1000).toFixed(0)} m`}
+              label="This Month"
             />
             <StatsCard
-              icon={<Award size={24} color={COLORS.primary} />}
-              value={(user.achievementCount || 0).toString()}
-              label="Badges"
+              icon={<Route size={24} color={COLORS.primary} />}
+              value={`${(totalDistance * 1000).toFixed(0)} m`}
+              label="Total Distance"
             />
           </View>
         </View>
