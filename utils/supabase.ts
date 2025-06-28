@@ -53,6 +53,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Info': 'dote-app-mobile',
     },
   },
+  db: {
+    schema: 'public',
+  },
+  // Disable cache to always fetch fresh data
+  auth: {
+    storage: new CustomAsyncStorage(),
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+    // Disable email confirmation
+    flowType: 'pkce',
+    debug: __DEV__, // Enable debug logs in development
+  },
 })
 
 // Add helper function to log all active channels

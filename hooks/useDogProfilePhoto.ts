@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase, safelyCreateChannel } from '@/utils/supabase';
+import { supabase } from '@/utils/supabase';
 import { getDogProfilePhotoUrl } from '@/utils/photoStorage';
 
 interface UseDogProfilePhotoResult {
@@ -24,10 +24,12 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
       setIsLoading(true);
       setError(null);
 
-      // Fetch dog profile to get photo_path
+      console.log('Fetching photo for dog:', dogId);
+
+      // Fetch dog profile to get photo_path or photo_url
       const { data: dog, error: dogError } = await supabase
         .from('dogs')
-        .select('photo_path, photo_url')
+        .select('photo_path, photo_url, photo_uploaded_at')
         .eq('id', dogId)
         .single();
 
@@ -38,13 +40,27 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
       }
 
       if (dog?.photo_path) {
+        console.log('Found photo_path:', dog.photo_path, 'Last updated:', dog.photo_uploaded_at);
+        
         // Get public URL from Supabase Storage
         const publicUrl = getDogProfilePhotoUrl(dog.photo_path);
-        setPhotoUrl(publicUrl);
+        
+        // Add cache-busting parameter to the URL
+        if (publicUrl && dog.photo_uploaded_at) {
+          const timestamp = new Date(dog.photo_uploaded_at).getTime();
+          const urlWithTimestamp = `${publicUrl}?t=${timestamp}`;
+          console.log('Using URL with timestamp:', urlWithTimestamp);
+          setPhotoUrl(urlWithTimestamp);
+        } else {
+          console.log('Using basic URL:', publicUrl);
+          setPhotoUrl(publicUrl);
+        }
       } else if (dog?.photo_url) {
         // Fallback to legacy photo_url
+        console.log('Falling back to photo_url:', dog.photo_url);
         setPhotoUrl(dog.photo_url);
       } else {
+        console.log('No photo found for dog');
         setPhotoUrl(null);
       }
     } catch (err) {
@@ -64,43 +80,31 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
     if (!dogId) return;
 
     const channelName = `dog_photo_${dogId}`;
-    let subscription: any = null;
     
-    try {
-      // Create channel safely (checks if it already exists)
-      const channel = safelyCreateChannel(channelName);
-      
-      // Set up subscription
-      subscription = channel
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'dogs',
-            filter: `id=eq.${dogId}`,
-          },
-          (payload) => {
-            console.log('Dog photo updated:', payload);
-            fetchPhoto();
-          }
-        )
-        .subscribe((status) => {
-          console.log(`Dog photo channel ${channelName} status: ${status}`);
-        });
-    } catch (err) {
-      console.error('Error setting up dog photo subscription:', err);
-    }
+    // Use a clean subscription approach
+    const channel = supabase.channel(channelName);
+    
+    const subscription = channel
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'dogs',
+          filter: `id=eq.${dogId}`,
+        },
+        (payload) => {
+          console.log('Dog photo updated:', payload);
+          fetchPhoto();
+        }
+      )
+      .subscribe((status) => {
+        console.log(`Dog photo channel ${channelName} status: ${status}`);
+      });
     
     // Return cleanup function to unsubscribe
     return () => {
-      try {
-        if (subscription) {
-          supabase.removeChannel(subscription);
-        }
-      } catch (err) {
-        console.error('Error removing dog photo channel:', err);
-      }
+      supabase.removeChannel(channel);
     };
   }, [dogId]); // Only re-run when dogId changes
 

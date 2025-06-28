@@ -233,7 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Unexpected error in fetchUserProfile:', error);
       setUser(null);
     } finally {
-      setIsLoading(false);
+      setIsLoading(false); 
     }
   };
 
@@ -508,6 +508,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         dogData.birthday = birthday;
       }
       
+      // First upload to database without photo to get the ID
       const { data: dog, error: dogError } = await supabase
         .from('dogs')
         .insert(dogData)
@@ -534,7 +535,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw linkError;
       }
 
-      // Optionally upload dog photo if provided
+      // Separately upload dog photo if provided
       if (dogPhoto && dog) {
         try {
           console.log('Uploading dog photo...');

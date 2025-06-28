@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase, safelyCreateChannel } from '@/utils/supabase';
+import { supabase } from '@/utils/supabase';
 import { getUserProfilePhotoUrl } from '@/utils/photoStorage';
 
 interface UseUserProfilePhotoResult {
@@ -28,10 +28,12 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
       setIsLoading(true);
       setError(null);
 
-      // Fetch user profile to get photo_path
+      console.log('Fetching profile photo for user:', targetUserId);
+      
+      // Fetch user profile to get photo_path - force cache refresh with random param
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('photo_path, avatar_url')
+        .select('photo_path, avatar_url, photo_uploaded_at')
         .eq('id', targetUserId)
         .single();
 
@@ -42,13 +44,27 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
       }
 
       if (profile?.photo_path) {
+        console.log('Found photo_path:', profile.photo_path, 'Last updated:', profile.photo_uploaded_at);
+        
         // Get public URL from Supabase Storage
         const publicUrl = getUserProfilePhotoUrl(profile.photo_path);
-        setPhotoUrl(publicUrl);
+        
+        // Add cache-busting parameter to the URL
+        if (publicUrl && profile.photo_uploaded_at) {
+          const timestamp = new Date(profile.photo_uploaded_at).getTime();
+          const urlWithTimestamp = `${publicUrl}?t=${timestamp}`;
+          console.log('Using URL with timestamp:', urlWithTimestamp);
+          setPhotoUrl(urlWithTimestamp);
+        } else {
+          console.log('Using basic URL:', publicUrl);
+          setPhotoUrl(publicUrl);
+        }
       } else if (profile?.avatar_url) {
         // Fallback to legacy avatar_url
+        console.log('Falling back to avatar_url:', profile.avatar_url);
         setPhotoUrl(profile.avatar_url);
       } else {
+        console.log('No photo found for user');
         setPhotoUrl(null);
       }
     } catch (err) {
@@ -68,43 +84,31 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
     if (!targetUserId) return;
 
     const channelName = `profile_photo_${targetUserId}`;
-    let subscription: any = null;
     
-    try {
-      // Create channel safely (checks if it already exists)
-      const channel = safelyCreateChannel(channelName);
-      
-      // Set up subscription
-      subscription = channel
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles',
-            filter: `id=eq.${targetUserId}`,
-          },
-          (payload) => {
-            console.log('Profile photo updated:', payload);
-            fetchPhoto();
-          }
-        )
-        .subscribe((status) => {
-          console.log(`Profile photo channel ${channelName} status: ${status}`);
-        });
-    } catch (err) {
-      console.error('Error setting up profile photo subscription:', err);
-    }
+    // Use a clean subscription approach
+    const channel = supabase.channel(channelName);
+    
+    const subscription = channel
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${targetUserId}`,
+        },
+        (payload) => {
+          console.log('Profile photo updated:', payload);
+          fetchPhoto();
+        }
+      )
+      .subscribe((status) => {
+        console.log(`Profile photo channel ${channelName} status: ${status}`);
+      });
     
     // Return cleanup function to unsubscribe
     return () => {
-      try {
-        if (subscription) {
-          supabase.removeChannel(subscription);
-        }
-      } catch (err) {
-        console.error('Error removing profile photo channel:', err);
-      }
+      supabase.removeChannel(channel);
     };
   }, [targetUserId]); // Only re-run when targetUserId changes
 

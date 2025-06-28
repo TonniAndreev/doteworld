@@ -111,6 +111,7 @@ export default function DogProfileScreen() {
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -189,9 +190,27 @@ export default function DogProfileScreen() {
     setIsLoading(true);
     setError('');
     
+    let createdDog;
     let dogData;
     try {
-      // First create the dog profile
+      console.log('Creating dog profile with name:', dogName, 'breed:', dogBreed);
+      
+      // First create the dog profile without the photo
+      createdDog = await updateDogProfile(dogName, dogBreed, null, dogBirthday);
+      
+      // Then separately upload the photo if one was provided
+      if (dogPhoto && createdDog?.id) {
+        console.log('Uploading dog photo for dogId:', createdDog.id);
+        setIsUploadingPhoto(true);
+        
+        const photoResult = await uploadDogProfilePhoto(createdDog.id, dogPhoto);
+        console.log('Dog photo upload result:', photoResult);
+        
+        if (!photoResult.success) {
+          console.warn('Photo upload failed, but continuing with dog profile creation');
+        }
+      }
+      
       dogData = await updateDogProfile(dogName, dogBreed, null, dogBirthday);
       
       // If there's a photo, upload it to Supabase Storage
@@ -210,6 +229,7 @@ export default function DogProfileScreen() {
       setError(error.message || 'Failed to save dog profile. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsUploadingPhoto(false);
       setIsUploadingPhoto(false);
     }
   };
@@ -478,6 +498,8 @@ export default function DogProfileScreen() {
               <ActivityIndicator color={COLORS.white} />
             ) : (
               <Text style={styles.saveButtonText}>
+                {isUploadingPhoto ? 'Uploading Photo...' : 'Save & Continue'}
+              </Text>
                 {isUploadingPhoto ? 'Uploading Photo...' : 'Save & Continue'}
               </Text>
             )}

@@ -122,6 +122,7 @@ export default function DogProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -141,7 +142,7 @@ export default function DogProfileScreen() {
   useEffect(() => {
     if (user) {
       fetchUserDogs();
-    }
+    } 
   }, [user]);
 
   const fetchUserDogs = async () => {
@@ -149,6 +150,8 @@ export default function DogProfileScreen() {
 
     try {
       setIsLoading(true);
+
+      console.log('Fetching user dogs for user ID:', user.id);
 
       // Fetch user's dogs with all details
       const { data: userDogs, error } = await supabase
@@ -167,6 +170,8 @@ export default function DogProfileScreen() {
           )
         `)
         .eq('profile_id', user.id);
+        
+      console.log('Received dog data:', userDogs);
 
       if (error) {
         console.error('Error fetching user dogs:', error);
@@ -174,11 +179,49 @@ export default function DogProfileScreen() {
       }
 
       const dogsData = userDogs?.map(ud => ud.dogs).filter(Boolean) || [];
+      console.log('Processed dogs data:', dogsData);
       setDogs(dogsData as Dog[]);
     } catch (error) {
       console.error('Error fetching dogs:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePhotoUpload = async (dogId: string) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'We need camera roll permissions to upload photos.');
+      return;
+    }
+    
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    
+    if (!result.canceled) {
+      setIsUploadingPhoto(true);
+      
+      try {
+        console.log('Uploading photo for dog:', dogId);
+        const uploadResult = await uploadDogProfilePhoto(dogId, result.assets[0].uri);
+        
+        if (uploadResult.success) {
+          Alert.alert('Success', 'Photo uploaded successfully!');
+          await fetchUserDogs(); // Refresh the dogs list to show the new photo
+        } else {
+          Alert.alert('Error', uploadResult.error || 'Failed to upload photo');
+        }
+      } catch (error) {
+        console.error('Error uploading photo:', error);
+        Alert.alert('Error', 'Failed to upload photo');
+      } finally {
+        setIsUploadingPhoto(false);
+      }
     }
   };
 
@@ -446,13 +489,30 @@ export default function DogProfileScreen() {
                 <Text style={styles.inputLabel}>Breed *</Text>
                 <TouchableOpacity 
                   style={styles.breedSelector}
-                  onPress={() => setShowBreedDropdown(!showBreedDropdown)}
-                >
-                  <Text style={editForm.breed ? styles.breedText : styles.breedPlaceholder}>
-                    {editForm.breed || 'Select breed'}
-                  </Text>
-                  <ChevronDown size={20} color={COLORS.neutralDark} />
-                </TouchableOpacity>
+                <View style={styles.dogActions}>
+                  <TouchableOpacity 
+                    style={styles.photoButton}
+                    onPress={() => handlePhotoUpload(dog.id)}
+                    disabled={isUploadingPhoto}
+                  >
+                    {isUploadingPhoto ? (
+                      <ActivityIndicator size="small" color={COLORS.white} />
+                    ) : (
+                      <>
+                        <Camera size={14} color={COLORS.white} />
+                        <Text style={styles.photoButtonText}>Photo</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.editButton}
+                    onPress={() => handleEditDog(dog)}
+                  >
+                    <Edit3 size={14} color={COLORS.white} />
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
                 
                 {showBreedDropdown && (
                   <View style={styles.dropdownContainer}>
@@ -720,6 +780,24 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginLeft: 4,
   },
+  dogActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  photoButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.white,
+    marginLeft: 4,
+  },
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -852,8 +930,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.neutralExtraLight,
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     paddingVertical: 8,
   },
   searchIcon: {
@@ -870,7 +948,7 @@ const styles = StyleSheet.create({
   },
   closeDropdownButton: {
     padding: 8,
-    marginLeft: 8,
+    marginLeft: 4,
   },
   resultsHeader: {
     paddingHorizontal: 16,

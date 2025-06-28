@@ -32,24 +32,16 @@ export default function UserAvatar({
   const [imageError, setImageError] = useState(false);
   
   // Use hooks to get photo URLs from Supabase Storage
-  const { photoUrl: userPhotoUrl } = useUserProfilePhoto(isDogAvatar ? undefined : userId);
-  const { photoUrl: dogPhotoUrl } = useDogProfilePhoto(isDogAvatar ? userId : '');
+  const { photoUrl: userPhotoUrl, isLoading: userPhotoLoading } = useUserProfilePhoto(isDogAvatar ? undefined : userId);
+  const { photoUrl: dogPhotoUrl, isLoading: dogPhotoLoading } = useDogProfilePhoto(isDogAvatar ? userId : '');
   
-  // Determine the final photo URL to use (added error handling for URLs)
+  // Determine the final photo URL to use
   let finalPhotoUrl = isDogAvatar ? (dogPhotoUrl || photoURL) : (userPhotoUrl || photoURL);
   
-  // Add error handling for potentially malformed URLs
-  if (finalPhotoUrl && typeof finalPhotoUrl === 'string') {
-    // Ensure the URL is properly formed
-    try {
-      new URL(finalPhotoUrl);
-    } catch (e) {
-      console.warn(`Invalid URL for ${isDogAvatar ? 'dog' : 'user'} avatar:`, finalPhotoUrl);
-      finalPhotoUrl = null;
-    }
-  }
+  // For debugging - remove in production
+  console.log(`Avatar for ${isDogAvatar ? 'dog' : 'user'} ${userId}: using ${finalPhotoUrl}`);
   
-  const avatarStyle: any = [
+  const avatarStyle = [
     {
       width: size,
       height: size,
@@ -58,7 +50,7 @@ export default function UserAvatar({
     style
   ];
 
-  const containerStyles: any = [
+  const containerStyles = [
     {
       width: size,
       height: size,
@@ -67,6 +59,9 @@ export default function UserAvatar({
     },
     containerStyle
   ];
+
+  // If image is still loading, show loading state
+  const isLoading = isDogAvatar ? dogPhotoLoading : userPhotoLoading;
 
   // If image failed to load and we want to show fallback
   if ((imageError || !finalPhotoUrl) && showFallback) {
@@ -93,8 +88,10 @@ export default function UserAvatar({
     );
   }
 
-  // Default fallback image
-  const defaultImage = { uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' };
+  // Default fallback image for different entities
+  const defaultImage = isDogAvatar 
+    ? { uri: `https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=${size*2}&h=${size*2}` }
+    : { uri: `https://images.pexels.com/photos/1851164/pexels-photo-1851164.jpeg?auto=compress&cs=tinysrgb&w=${size*2}&h=${size*2}` };
 
   return (
     <View style={containerStyles}>
@@ -104,8 +101,11 @@ export default function UserAvatar({
           defaultImage
         }
         style={avatarStyle}
-        onError={() => setImageError(true)}
-        resizeMode="cover"  
+        onError={(e) => {
+          console.warn(`Image load error for ${isDogAvatar ? 'dog' : 'user'} ${userId}:`, e.nativeEvent.error);
+          setImageError(true);
+        }}
+        resizeMode="cover"
       />
     </View>
   );
