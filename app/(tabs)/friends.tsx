@@ -20,13 +20,13 @@ import {
   UserX,
   Clock 
 } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import { useFriends } from '@/hooks/useFriends';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import UserCard from '@/components/friends/UserCard';
 import FriendRequestItem from '@/components/friends/FriendRequestItem';
 import UserAvatar from '@/components/common/UserAvatar';
-import UserProfileModal from '@/components/leaderboard/UserProfileModal';
 
 export default function FriendsScreen() {
   const [activeTab, setActiveTab] = useState('friends');
@@ -34,8 +34,6 @@ export default function FriendsScreen() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [isProfileModalVisible, setProfileModalVisible] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
   
   const { 
     friends, 
@@ -87,26 +85,14 @@ export default function FriendsScreen() {
 
   const handleUserPress = (user) => {
     console.log('Friend card pressed, user data:', user);
-    setSelectedUser(user);
-    setProfileModalVisible(true);
-  };
-
-  const closeUserModal = () => {
-    setProfileModalVisible(false);
-    setSelectedUser(null);
+    // Navigate directly to the public profile page
+    router.push(`/user/${user.id}`);
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await refetch();
     setRefreshing(false);
-  };
-
-  const handleSendRequest = () => {
-    if (selectedUser) {
-      sendFriendRequest(selectedUser.id);
-      closeUserModal();
-    }
   };
 
   return (
@@ -249,12 +235,6 @@ export default function FriendsScreen() {
           )}
         </>
       )}
-
-      <UserProfileModal
-        visible={isProfileModalVisible}
-        onClose={closeUserModal}
-        user={selectedUser}
-      />
     </SafeAreaView>
   );
 }

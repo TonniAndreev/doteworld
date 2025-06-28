@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import UserAvatar from '@/components/common/UserAvatar';
 
@@ -41,16 +42,19 @@ export default function LeaderboardItem({
     }
   };
 
-  const ItemComponent = onPress ? TouchableOpacity : View;
+  const handlePress = () => {
+    // Navigate directly to the public profile page
+    router.push(`/user/${user.id}`);
+  };
 
   return (
-    <ItemComponent 
+    <TouchableOpacity 
       style={[
         styles.container,
         isCurrentUser && styles.highlightedContainer
       ]}
-      onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
+      onPress={handlePress}
+      activeOpacity={0.7}
     >
       <View style={[
         styles.rankContainer,
@@ -90,7 +94,7 @@ export default function LeaderboardItem({
           isCurrentUser && styles.highlightedScoreText
         ]}>{getValue()}</Text>
       </View>
-    </ItemComponent>
+    </TouchableOpacity>
   );
 }
 
@@ -139,7 +143,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
   },
   avatar: {
-    marginRight: 16, // Increased from 12 to 16 (4px more spacing)
+    marginRight: 16,
   },
   highlightedAvatar: {
     borderWidth: 2,

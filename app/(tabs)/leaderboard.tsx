@@ -10,11 +10,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, Crown, Map, Route, Award, Coins } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import LeaderboardItem from '@/components/leaderboard/LeaderboardItem';
 import UserAvatar from '@/components/common/UserAvatar';
-import UserProfileModal from '@/components/leaderboard/UserProfileModal';
 import { fetchLeaderboard } from '@/services/leaderboardService';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -26,8 +26,6 @@ export default function LeaderboardScreen() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isProfileModalVisible, setProfileModalVisible] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
   const { user } = useAuth();
 
   // Load leaderboard data
@@ -65,13 +63,8 @@ export default function LeaderboardScreen() {
   };
 
   const handleUserPress = (userData) => {
-    setSelectedUser(userData);
-    setProfileModalVisible(true);
-  };
-
-  const closeUserModal = () => {
-    setProfileModalVisible(false);
-    setSelectedUser(null);
+    // Navigate directly to the public profile page
+    router.push(`/user/${userData.id}`);
   };
 
   // Find current user's position in the full leaderboard
@@ -362,12 +355,6 @@ export default function LeaderboardScreen() {
           />
         </>
       )}
-
-      <UserProfileModal
-        visible={isProfileModalVisible}
-        onClose={closeUserModal}
-        user={selectedUser}
-      />
     </SafeAreaView>
   );
 }
@@ -522,7 +509,7 @@ const styles = StyleSheet.create({
   firstPlaceName: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
-    color: COLORS.accentDark, // Darkest shade of yellow
+    color: COLORS.accentDark,
   },
   highlightedText: {
     color: COLORS.primary,
@@ -536,7 +523,7 @@ const styles = StyleSheet.create({
   },
   firstPlaceDogName: {
     fontSize: 11,
-    color: COLORS.accentDark, // Darkest shade of yellow
+    color: COLORS.accentDark,
     fontFamily: 'Inter-Medium',
   },
   highlightedDogText: {
@@ -550,7 +537,7 @@ const styles = StyleSheet.create({
   },
   firstPlaceScore: {
     fontSize: 13,
-    color: COLORS.accentDark, // Darkest shade of yellow
+    color: COLORS.accentDark,
   },
   highlightedScore: {
     color: COLORS.primary,

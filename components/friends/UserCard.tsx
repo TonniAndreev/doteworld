@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { UserCheck } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import UserAvatar from '@/components/common/UserAvatar';
 
@@ -14,18 +15,15 @@ interface UserCardProps {
     totalDistance: number;
     achievementCount: number;
   };
-  onPress: () => void;
+  onPress?: () => void;
   isFriend: boolean;
 }
 
 export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
-  console.log('UserCard: Rendering card for user:', user.name, 'onPress defined:', !!onPress);
-  
   const handlePress = () => {
     console.log('UserCard: Card pressed for user:', user.name, user.id);
-    if (onPress) {
-      onPress();
-    }
+    // Navigate directly to the public profile page
+    router.push(`/user/${user.id}`);
   };
   
   return (
@@ -78,7 +76,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatar: {
-    marginRight: 16, // Increased from 12 to 16 (4px more spacing)
+    marginRight: 16,
   },
   info: {
     flex: 1,
