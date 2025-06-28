@@ -71,8 +71,9 @@ export function useFriends() {
       loadData();
       
       // Set up real-time listeners for friendship changes
+      // IMPORTANT: Create only one channel with a unique name
       const friendshipsChannel = supabase
-        .channel('friendships-changes')
+        .channel('friendships-changes-' + user.id)
         .on(
           'postgres_changes',
           {
