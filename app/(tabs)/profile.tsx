@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Award, Users, Map, Route, LogOut, Edit, Pencil } from 'lucide-react-native';
+import { Award, Users, Map, Route, LogOut, CreditCard as Edit, Pencil } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTerritory } from '@/contexts/TerritoryContext';
