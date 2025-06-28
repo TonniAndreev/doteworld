@@ -21,12 +21,14 @@ import BadgesRow from '@/components/profile/BadgesRow';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import DogOwnershipInvites from '@/components/dog/DogOwnershipInvites';
 import UserAvatar from '@/components/common/UserAvatar';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showInvites, setShowInvites] = useState(false);
   
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserProfilePhoto } = useAuth();
   const { pawsBalance } = usePaws();
   const { territorySize, totalDistance } = useTerritory();
 
@@ -61,6 +63,40 @@ export default function ProfileScreen() {
     );
   };
 
+  const handlePhotoUpload = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'We need camera roll permissions to upload photos.');
+      return;
+    }
+    
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    
+    if (!result.canceled) {
+      setIsUploadingPhoto(true);
+      
+      try {
+        const uploadResult = await updateUserProfilePhoto(result.assets[0].uri);
+        
+        if (uploadResult.success) {
+          Alert.alert('Success', 'Profile photo updated successfully!');
+        } else {
+          Alert.alert('Error', uploadResult.error || 'Failed to upload photo');
+        }
+      } catch (error) {
+        console.error('Error uploading photo:', error);
+        Alert.alert('Error', 'Failed to upload photo');
+      } finally {
+        setIsUploadingPhoto(false);
+      }
+    }
+  };
   const firstDog = user.dogs?.[0];
 
   return (
@@ -88,9 +124,14 @@ export default function ProfileScreen() {
             
             <TouchableOpacity 
               style={styles.editProfileButton}
-              onPress={() => setEditModalVisible(true)}
+              onPress={handlePhotoUpload}
+              disabled={isUploadingPhoto}
             >
-              <Edit size={16} color={COLORS.white} />
+              {isUploadingPhoto ? (
+                <ActivityIndicator size="small" color={COLORS.white} />
+              ) : (
+                <Edit size={16} color={COLORS.white} />
+              )}
             </TouchableOpacity>
           </View>
           

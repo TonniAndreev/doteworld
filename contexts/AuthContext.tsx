@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import { uploadUserProfilePhoto } from '@/utils/photoStorage';
 
 // Complete the auth session on web
 WebBrowser.maybeCompleteAuthSession();
@@ -52,6 +53,7 @@ interface AuthContextType {
   loginWithGoogle: () => Promise<void>; 
   loginWithFacebook: () => Promise<void>;
   updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null, birthday?: string) => Promise<void>;
+  updateUserProfilePhoto: (photoUri: string) => Promise<{ success: boolean; error?: string }>;
   refreshUserData: () => Promise<void>;
 }
 
@@ -500,7 +502,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const dogData: any = {
         name: dogName,
         breed: dogBreed,
-        photo_url: dogPhoto,
       };
       
       if (birthday) {
@@ -540,12 +541,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(updatedUser);
       await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
       
+      return dog; // Return the created dog for photo upload
     } catch (error) {
       console.error('Error updating dog profile:', error);
       throw error;
     }
   };
 
+  const updateUserProfilePhoto = async (photoUri: string): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: 'No user logged in' };
+    }
+
+    try {
+      const result = await uploadUserProfilePhoto(user.id, photoUri);
+      
+      if (result.success) {
+        // Refresh user data to get updated photo URL
+        await fetchUserProfile(user.id);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Error updating user profile photo:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    }
+  };
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -573,6 +597,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loginWithGoogle,
     loginWithFacebook,
     updateDogProfile,
+    updateUserProfilePhoto,
     refreshUserData: () => fetchUserProfile(user?.id || ''),
   };
 

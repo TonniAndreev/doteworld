@@ -12,13 +12,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, ChevronDown, Search, X, Check } from 'lucide-react-native';
+import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import DogProfileCard from '@/components/profile/DogProfileCard';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
+import { uploadDogProfilePhoto } from '@/utils/photoStorage';
+import * as ImagePicker from 'expo-image-picker';
 
 // Same breed list as in dog-profile creation
 const DOG_BREEDS = [
@@ -122,6 +124,7 @@ export default function DogProfileScreen() {
   const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [editForm, setEditForm] = useState({
     name: '',
     breed: '',
@@ -190,6 +193,42 @@ export default function DogProfileScreen() {
       gender: dog.gender || '',
     });
     setEditModalVisible(true);
+  };
+
+  const handlePhotoUpload = async (dogId: string) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    
+    if (status !== 'granted') {
+      Alert.alert('Permission Required', 'We need camera roll permissions to upload photos.');
+      return;
+    }
+    
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    
+    if (!result.canceled) {
+      setIsUploadingPhoto(true);
+      
+      try {
+        const uploadResult = await uploadDogProfilePhoto(dogId, result.assets[0].uri);
+        
+        if (uploadResult.success) {
+          Alert.alert('Success', 'Photo uploaded successfully!');
+          await fetchUserDogs(); // Refresh the dogs list
+        } else {
+          Alert.alert('Error', uploadResult.error || 'Failed to upload photo');
+        }
+      } catch (error) {
+        console.error('Error uploading photo:', error);
+        Alert.alert('Error', 'Failed to upload photo');
+      } finally {
+        setIsUploadingPhoto(false);
+      }
+    }
   };
 
   const handleSaveDog = async () => {
@@ -332,13 +371,30 @@ export default function DogProfileScreen() {
                   dog={dog} 
                   showFullDetails={true}
                 />
-                <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={() => handleEditDog(dog)}
-                >
-                  <Edit3 size={16} color={COLORS.white} />
-                  <Text style={styles.editButtonText}>Edit Profile</Text>
-                </TouchableOpacity>
+                <View style={styles.dogActions}>
+                  <TouchableOpacity 
+                    style={styles.photoButton}
+                    onPress={() => handlePhotoUpload(dog.id)}
+                    disabled={isUploadingPhoto}
+                  >
+                    {isUploadingPhoto ? (
+                      <ActivityIndicator size="small" color={COLORS.white} />
+                    ) : (
+                      <>
+                        <Camera size={14} color={COLORS.white} />
+                        <Text style={styles.photoButtonText}>Photo</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.editButton}
+                    onPress={() => handleEditDog(dog)}
+                  >
+                    <Edit3 size={14} color={COLORS.white} />
+                    <Text style={styles.editButtonText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </View>
@@ -643,15 +699,33 @@ const styles = StyleSheet.create({
   dogCardContainer: {
     position: 'relative',
   },
-  editButton: {
+  dogActions: {
     position: 'absolute',
     top: 16,
     right: 16,
     flexDirection: 'row',
+    gap: 8,
+  },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  photoButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.white,
+    marginLeft: 4,
+  },
+  editButton: {
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderRadius: 8,
   },
   editButtonText: {
