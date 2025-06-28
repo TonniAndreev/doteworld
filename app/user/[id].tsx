@@ -71,7 +71,7 @@ export default function PublicUserProfileScreen() {
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending' | 'sent'>('none');
   const [isProcessingFriend, setIsProcessingFriend] = useState(false);
   
-  const { friends, sendFriendRequest, removeFriend } = useFriends();
+  const { friends, sendFriendRequest, removeFriend, refetch: refetchFriends } = useFriends();
   const { user: currentUser } = useAuth();
 
   useEffect(() => {
@@ -268,21 +268,35 @@ export default function PublicUserProfileScreen() {
           'Unfriend User',
           `Are you sure you want to remove ${displayName} from your friends?`,
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: 'Cancel', style: 'cancel', onPress: () => setIsProcessingFriend(false) },
             {
               text: 'Unfriend',
               style: 'destructive',
               onPress: async () => {
-                const success = await removeFriend(id);
-                if (success) {
-                  setFriendshipStatus('none');
-                  Alert.alert('Success', `${displayName} has been removed from your friends.`);
-                } else {
-                  Alert.alert('Error', 'Failed to remove friend. Please try again.');
+                try {
+                  console.log('Removing friend with ID:', id);
+                  const success = await removeFriend(id);
+                  
+                  if (success) {
+                    console.log('Friend removed successfully');
+                    setFriendshipStatus('none');
+                    Alert.alert('Success', `${displayName} has been removed from your friends.`);
+                    // Refresh friends list
+                    await refetchFriends();
+                  } else {
+                    console.error('Failed to remove friend, no success returned');
+                    Alert.alert('Error', 'Failed to remove friend. Please try again.');
+                  }
+                } catch (error) {
+                  console.error('Error in unfriend action:', error);
+                  Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+                } finally {
+                  setIsProcessingFriend(false);
                 }
               },
             },
-          ]
+          ],
+          { cancelable: false }
         );
         return;
       }

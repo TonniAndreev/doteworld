@@ -18,13 +18,11 @@ interface User {
   id: string;
   name: string;
   dogName: string;
-  dogBreed: string;
+  dogBreed?: string;
   photoURL?: string | null;
   territorySize: number;
-  achievementCount: number;
   totalDistance: number;
-  requestSent?: boolean;
-  isFriend?: boolean;
+  achievementCount: number;
   dogs?: Array<{
     id: string;
     name: string;
@@ -513,13 +511,16 @@ export function useFriends() {
   };
 
   const removeFriend = async (friendId: string) => {
-    if (!user) return;
+    if (!user) return false;
 
     try {
+      console.log(`Removing friend with ID: ${friendId}`);
+      
+      // Delete the friendship record
       const { error } = await supabase
         .from('friendships')
         .delete()
-        .or(`and(requester_id.eq.${user.id},receiver_id.eq.${friendId}),and(requester_id.eq.${friendId},receiver_id.eq.${user.id})`)
+        .or(`and(requester_id.eq.${user.id},receiver_id.eq.${friendId}),and(requester_id.eq.${friendId},receiver_id.eq.${user.id})`);
 
       if (error) {
         console.error('Error removing friend:', error);
@@ -527,11 +528,10 @@ export function useFriends() {
       }
 
       console.log('Friend removed successfully');
-      // Refresh friends list
-      await fetchFriends();
       
-      // Also refresh friend requests in case there were any pending
-      await fetchFriendRequests();
+      // Update local state to remove the friend
+      setFriends(prevFriends => prevFriends.filter(friend => friend.id !== friendId));
+      
       return true;
     } catch (error) {
       console.error('Error removing friend:', error);
