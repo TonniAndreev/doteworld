@@ -10,18 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { 
-  ChevronLeft, 
-  ExternalLink, 
-  Package, 
-  Shield, 
-  Smartphone, 
-  Code,
-  CheckCircle,
-  AlertCircle,
-  Download,
-  Settings
-} from 'lucide-react-native';
+import { ChevronLeft, ExternalLink, Package, Shield, Smartphone, Code, CircleCheck as CheckCircle, CircleAlert as AlertCircle, Download, Settings } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { LinearGradient } from 'expo-linear-gradient';
 
