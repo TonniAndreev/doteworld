@@ -15,7 +15,7 @@ import {
 import { router } from 'expo-router';
 import { Mail, Lock, Facebook, CircleAlert as AlertCircle, Eye, EyeOff } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
+import { BlurView } from 'expo-blur'; 
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -28,6 +28,7 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [facebookLoading, setFacebookLoading] = useState(false);
+  const [loginAttempted, setLoginAttempted] = useState(false);
   const [error, setError] = useState('');
   
   const { login, loginWithGoogle, loginWithFacebook } = useAuth();
@@ -45,6 +46,7 @@ export default function LoginScreen() {
     
     try {
       console.log('🔵 Attempting email login for:', email);
+      setLoginAttempted(true);
       await login(email, password);
       console.log('🔵 Email login successful, navigating to tabs');
       router.replace('/(tabs)');
@@ -60,6 +62,7 @@ export default function LoginScreen() {
     console.log('🟢 Google login button pressed');
     setGoogleLoading(true);
     setError('');
+    setLoginAttempted(true);
     
     try {
       console.log('🟢 Calling loginWithGoogle function');
@@ -78,6 +81,7 @@ export default function LoginScreen() {
     console.log('🔵 Facebook login button pressed');
     setFacebookLoading(true);
     setError('');
+    setLoginAttempted(true);
     
     try {
       console.log('🔵 Calling loginWithFacebook function');

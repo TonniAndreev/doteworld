@@ -63,7 +63,8 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
   useEffect(() => {
     if (!dogId) return;
     
-    const channelKey = `dog_photo_${dogId}`;
+    // Create a unique channel key for this component instance
+    const channelKey = `dog_photo_${dogId}_${Math.random().toString(36).substring(2, 9)}`;
 
     // Create a unique channel for this component instance
     const channel = supabase
@@ -82,14 +83,16 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
         }
       );
     
-    // Subscribe to the channel
-    channel.subscribe();
+    // Subscribe to the channel with status callback
+    channel.subscribe((status) => {
+      console.log(`Dog photo channel status: ${status}`);
+    });
 
     return () => {
       // Properly unsubscribe when component unmounts
       supabase.removeChannel(channel);
     };
-  }, [dogId]);
+  }, [dogId]); // Only re-run when dogId changes
 
   return {
     photoUrl,

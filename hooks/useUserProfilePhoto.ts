@@ -67,7 +67,8 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
   useEffect(() => {
     if (!targetUserId) return;
     
-    const channelKey = `profile_photo_${targetUserId}`;
+    // Create a unique channel key for this component instance
+    const channelKey = `profile_photo_${targetUserId}_${Math.random().toString(36).substring(2, 9)}`;
 
     // Create a unique channel for this component instance
     const channel = supabase
@@ -86,14 +87,16 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
         }
       );
     
-    // Subscribe to the channel
-    channel.subscribe();
+    // Subscribe to the channel with status callback
+    channel.subscribe((status) => {
+      console.log(`Profile photo channel status: ${status}`);
+    });
 
     return () => {
       // Properly unsubscribe when component unmounts
       supabase.removeChannel(channel);
     };
-  }, [targetUserId]);
+  }, [targetUserId]); // Only re-run when targetUserId changes
 
   return {
     photoUrl,
