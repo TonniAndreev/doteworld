@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Create redirect URI for OAuth - Use custom scheme for mobile
  const redirectTo = AuthSession.makeRedirectUri({
-    useProxy: true,
+    useProxy: false,
   });
 
   useEffect(() => {
