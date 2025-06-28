@@ -11,7 +11,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { Camera, Edit, Save, X } from 'lucide-react-native';
+import { Camera, CreditCard as Edit, Save, X } from 'lucide-react-native';
 
 interface Dog {
   id: string;
