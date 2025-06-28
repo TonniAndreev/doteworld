@@ -46,131 +46,105 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { addPaws } = usePaws();
   const channelRef = useRef<any>(null);
-  const isInitializedRef = useRef(false);
-
-  // Clean up function to remove channel
-  const cleanupChannel = () => {
-    console.log('Cleaning up territory channel');
-    if (channelRef.current) {
-      try {
-        supabase.removeChannel(channelRef.current);
-      } catch (error) {
-        console.error('Error removing territory channel:', error);
-      }
-      channelRef.current = null;
-    }
-  };
 
   useEffect(() => {
-    console.log('TerritoryContext: User or dog changed, user ID:', user?.id, 'dog ID:', user?.dogs[0]?.id);
-    
-    // Always clean up existing channel first
-    cleanupChannel();
-    
-    // Only proceed if we have a valid user and dog
-    if (user?.id && user.dogs && user.dogs.length > 0) {
-      loadTerritoryData();
-      isInitializedRef.current = true;
-    } else {
-      // Reset state when user logs out or has no dogs
-      setTerritoryGeoJSON(null);
-      setTerritorySize(0);
-      setTotalDistance(0);
-      setCurrentWalkPoints([]);
-      setCurrentPolygon(null);
-      setCurrentWalkSessionId(null);
-      setCurrentWalkDistance(0);
-      isInitializedRef.current = false;
-    }
+    const loadTerritoryData = async () => {
+      if (user && user.dogs.length > 0) {
+        try {
+          const dogId = user.dogs[0].id; // Use first dog for now
+          
+          // Load territory data from database
+          const { data: territoryPoints, error } = await supabase
+            .from('territory')
+            .select(`
+              walk_points (
+                latitude,
+                longitude
+              )
+            `)
+            .eq('dog_id', dogId);
 
-    // Clean up on unmount or when user/dog changes
-    return cleanupChannel;
-  }, [user?.id, user?.dogs?.length]); // Re-run when user ID or dogs array length changes
+          if (error) {
+            console.error('Error loading territory data:', error);
+            return;
+          }
 
-  const loadTerritoryData = async () => {
-    if (!user?.id || !user.dogs || user.dogs.length === 0) return;
-    
-    try {
-      console.log('Loading territory data for user:', user.id, 'dog:', user.dogs[0].id);
-      const dogId = user.dogs[0].id; // Use first dog for now
-      
-      // Load territory data from database
-      const { data: territoryPoints, error } = await supabase
-        .from('territory')
-        .select(`
-          walk_points (
-            latitude,
-            longitude
-          )
-        `)
-        .eq('dog_id', dogId);
-
-      if (error) {
-        console.error('Error loading territory data:', error);
-        return;
-      }
-
-      // Convert territory points to polygons and calculate total area
-      if (territoryPoints && territoryPoints.length > 0) {
-        // This is a simplified approach - in reality you'd need to reconstruct
-        // the actual territory polygons from the stored walk points
-        const allPoints = territoryPoints.map(tp => tp.walk_points).filter(Boolean);
-        
-        if (allPoints.length >= 3) {
-          const hull = createConvexHull(allPoints);
-          if (hull && isValidPolygon(hull)) {
-            const polygon = coordinatesToTurfPolygon(hull);
-            if (polygon) {
-              setTerritoryGeoJSON(polygon);
-              setTerritorySize(calculatePolygonArea(hull));
+          // Convert territory points to polygons and calculate total area
+          if (territoryPoints && territoryPoints.length > 0) {
+            // This is a simplified approach - in reality you'd need to reconstruct
+            // the actual territory polygons from the stored walk points
+            const allPoints = territoryPoints.map(tp => tp.walk_points).filter(Boolean);
+            
+            if (allPoints.length >= 3) {
+              const hull = createConvexHull(allPoints);
+              if (hull && isValidPolygon(hull)) {
+                const polygon = coordinatesToTurfPolygon(hull);
+                if (polygon) {
+                  setTerritoryGeoJSON(polygon);
+                  setTerritorySize(calculatePolygonArea(hull));
+                }
+              }
             }
           }
+
+          // Load from local storage as fallback
+          const [savedTerritoryGeoJSON, savedTerritorySize, savedTotalDistance] = await Promise.all([
+            AsyncStorage.getItem(`dote_territory_geojson_${user.uid}`),
+            AsyncStorage.getItem(`dote_territory_size_${user.uid}`),
+            AsyncStorage.getItem(`dote_total_distance_${user.uid}`),
+          ]);
+
+          if (savedTerritoryGeoJSON && !territoryGeoJSON) {
+            const parsedGeoJSON = JSON.parse(savedTerritoryGeoJSON);
+            setTerritoryGeoJSON(parsedGeoJSON);
+          }
+
+          if (savedTerritorySize && territorySize === 0) {
+            setTerritorySize(parseFloat(savedTerritorySize));
+          }
+
+          if (savedTotalDistance) {
+            setTotalDistance(parseFloat(savedTotalDistance));
+          }
+          
+          // Clean up any existing channel
+          if (channelRef.current) {
+            supabase.removeChannel(channelRef.current);
+            channelRef.current = null;
+          }
+          
+          // Set up real-time listener for territory changes
+          channelRef.current = supabase
+            .channel('territory-changes')
+            .on(
+              'postgres_changes',
+              {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'territory',
+                filter: `dog_id=eq.${dogId}`,
+              },
+              (payload) => {
+                console.log('Territory change detected:', payload);
+                loadTerritoryData();
+              }
+            )
+            .subscribe();
+        } catch (error) {
+          console.error('Error loading territory data:', error);
         }
       }
+    };
 
-      // Load from local storage as fallback
-      const [savedTerritoryGeoJSON, savedTerritorySize, savedTotalDistance] = await Promise.all([
-        AsyncStorage.getItem(`dote_territory_geojson_${user.id}`),
-        AsyncStorage.getItem(`dote_territory_size_${user.id}`),
-        AsyncStorage.getItem(`dote_total_distance_${user.id}`),
-      ]);
-
-      if (savedTerritoryGeoJSON && !territoryGeoJSON) {
-        const parsedGeoJSON = JSON.parse(savedTerritoryGeoJSON);
-        setTerritoryGeoJSON(parsedGeoJSON);
+    loadTerritoryData();
+    
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
-
-      if (savedTerritorySize && territorySize === 0) {
-        setTerritorySize(parseFloat(savedTerritorySize));
-      }
-
-      if (savedTotalDistance) {
-        setTotalDistance(parseFloat(savedTotalDistance));
-      }
-      
-      // Set up real-time listener for territory changes
-      channelRef.current = supabase
-        .channel('territory-changes-' + user.id + '-' + dogId)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'territory',
-            filter: `dog_id=eq.${dogId}`,
-          },
-          (payload) => {
-            console.log('Territory change detected:', payload);
-            loadTerritoryData();
-          }
-        )
-        .subscribe();
-        
-      console.log('Territory channel set up successfully');
-    } catch (error) {
-      console.error('Error loading territory data:', error);
-    }
-  };
+    };
+  }, [user]);
 
   const startWalk = () => {
     setCurrentWalkPoints([]);
@@ -181,7 +155,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   };
 
   const addWalkPoint = async (coordinates: Coordinate) => {
-    if (!user?.id || !user.dogs.length || !currentWalkSessionId) return;
+    if (!user || !user.dogs.length || !currentWalkSessionId) return;
 
     // Calculate distance from previous point
     if (currentWalkPoints.length > 0) {
@@ -230,7 +204,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   };
 
   const endWalk = async () => {
-    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user?.id || !user.dogs.length || !currentWalkSessionId) {
+    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user || !user.dogs.length || !currentWalkSessionId) {
       console.log('Cannot end walk: insufficient points, no user, or no session');
       return;
     }
@@ -320,8 +294,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
 
       // Save to storage
       await Promise.all([
-        AsyncStorage.setItem(`dote_territory_geojson_${user.id}`, JSON.stringify(updatedTerritoryGeoJSON)),
-        AsyncStorage.setItem(`dote_territory_size_${user.id}`, newTerritorySize.toString()),
+        AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
+        AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
       ]);
 
       // Award paws based on the NEW polygon area only (not total territory)

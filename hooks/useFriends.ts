@@ -66,33 +66,20 @@ export function useFriends() {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const channelRef = useRef<any>(null);
-  const isInitializedRef = useRef(false);
-
-  // Clean up function to remove channel
-  const cleanupChannel = () => {
-    console.log('Cleaning up friends channel');
-    if (channelRef.current) {
-      try {
-        supabase.removeChannel(channelRef.current);
-      } catch (error) {
-        console.error('Error removing friends channel:', error);
-      }
-      channelRef.current = null;
-    }
-  };
 
   useEffect(() => {
-    console.log('useFriends: User changed, user ID:', user?.id);
-    
-    // Always clean up existing channel first
-    cleanupChannel();
-    
-    if (user?.id) {
+    if (user) {
       loadData();
+      
+      // Clean up any existing channel
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
       
       // Set up real-time listeners for friendship changes
       channelRef.current = supabase
-        .channel('friendships-changes-' + user.id)
+        .channel('friendships-changes')
         .on(
           'postgres_changes',
           {
@@ -107,33 +94,26 @@ export function useFriends() {
           }
         )
         .subscribe();
-      
-      isInitializedRef.current = true;
-    } else {
-      // Reset state when user logs out
-      setFriends([]);
-      setFriendRequests([]);
-      isInitializedRef.current = false;
+        
+      return () => {
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+      };
     }
-
-    // Clean up on unmount or when user changes
-    return cleanupChannel;
-  }, [user?.id]); // Only re-run when user ID changes
+  }, [user]);
 
   const loadData = async () => {
-    if (!user?.id) return;
-    
     setIsLoading(true);
     await Promise.all([fetchFriends(), fetchFriendRequests()]);
     setIsLoading(false);
   };
 
   const fetchFriends = async () => {
-    if (!user?.id) return;
+    if (!user) return;
 
     try {
-      console.log('Fetching friends for user:', user.id);
-      
       // Get accepted friendships where current user is either requester or receiver
       const { data: friendships, error: friendshipsError } = await supabase
         .from('friendships')
@@ -146,7 +126,6 @@ export function useFriends() {
         return;
       }
 
-      console.log('Found friendships:', friendships?.length || 0);
       const friendsData: User[] = [];
 
       for (const friendship of friendships || []) {
@@ -297,18 +276,15 @@ export function useFriends() {
       }
 
       setFriends(friendsData);
-      console.log('Friends data loaded:', friendsData.length);
     } catch (error) {
       console.error('Error fetching friends:', error);
     }
   };
 
   const fetchFriendRequests = async () => {
-    if (!user?.id) return;
+    if (!user) return;
 
     try {
-      console.log('Fetching friend requests for user:', user.id);
-      
       // Get pending friend requests where current user is the receiver
       const { data: requests, error: requestsError } = await supabase
         .from('friendships')
@@ -321,7 +297,6 @@ export function useFriends() {
         return;
       }
 
-      console.log('Found friend requests:', requests?.length || 0);
       const requestsData: FriendRequest[] = [];
 
       for (const request of requests || []) {
@@ -370,7 +345,6 @@ export function useFriends() {
       }
 
       setFriendRequests(requestsData);
-      console.log('Friend requests loaded:', requestsData.length);
     } catch (error) {
       console.error('Error fetching friend requests:', error);
     }
@@ -382,11 +356,9 @@ export function useFriends() {
   };
 
   const searchUsersAsync = async (query: string): Promise<User[]> => {
-    if (!user?.id || !query.trim()) return [];
+    if (!user || !query.trim()) return [];
 
     try {
-      console.log('Searching users with query:', query);
-      
       // Search profiles by name
       const { data: profiles, error } = await supabase
         .from('profiles')
@@ -400,7 +372,6 @@ export function useFriends() {
         return [];
       }
 
-      console.log('Found profiles:', profiles?.length || 0);
       const searchResults: User[] = [];
 
       for (const profile of profiles || []) {
@@ -481,11 +452,9 @@ export function useFriends() {
   };
 
   const sendFriendRequest = async (userId: string) => {
-    if (!user?.id) return;
+    if (!user) return;
 
     try {
-      console.log('Sending friend request to user:', userId);
-      
       // Check if friendship already exists
       const { data: existingFriendship } = await supabase
         .from('friendships')
@@ -522,11 +491,9 @@ export function useFriends() {
   };
 
   const acceptFriendRequest = async (requestId: string) => {
-    if (!user?.id) return false;
+    if (!user) return;
 
     try {
-      console.log('Accepting friend request:', requestId);
-      
       const { error } = await supabase
         .from('friendships')
         .update({ 
@@ -538,7 +505,7 @@ export function useFriends() {
 
       if (error) {
         console.error('Error accepting friend request:', error);
-        return false;
+        return;
       }
 
       console.log('Friend request accepted');
@@ -557,11 +524,9 @@ export function useFriends() {
   };
 
   const declineFriendRequest = async (requestId: string) => {
-    if (!user?.id) return false;
+    if (!user) return;
 
     try {
-      console.log('Declining friend request:', requestId);
-      
       const { error } = await supabase
         .from('friendships')
         .update({ 
@@ -573,7 +538,7 @@ export function useFriends() {
 
       if (error) {
         console.error('Error declining friend request:', error);
-        return false;
+        return;
       }
 
       console.log('Friend request declined');
@@ -589,7 +554,7 @@ export function useFriends() {
   };
 
   const removeFriend = async (friendId: string) => {
-    if (!user?.id) return false;
+    if (!user) return false;
 
     try {
       console.log(`Removing friend with ID: ${friendId}`);

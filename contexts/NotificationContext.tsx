@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/utils/supabase';
 
@@ -37,132 +36,97 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
-  const channelsRef = useRef<{[key: string]: any}>({});
-  const isInitializedRef = useRef(false);
-
-  // Clean up function to remove all channels
-  const cleanupChannels = () => {
-    console.log('Cleaning up notification channels');
-    Object.values(channelsRef.current).forEach(channel => {
-      if (channel) {
-        try {
-          supabase.removeChannel(channel);
-        } catch (error) {
-          console.error('Error removing channel:', error);
-        }
-      }
-    });
-    channelsRef.current = {};
-  };
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
-    console.log('NotificationContext: User changed, user ID:', user?.id);
-    
-    // Always clean up existing channels first
-    cleanupChannels();
-    
-    if (user?.id) {
+    if (user) {
       // Set up real-time listeners for various notifications
       setupNotificationListeners();
       
       // Load existing notifications
       loadNotifications();
-      
-      isInitializedRef.current = true;
-    } else {
-      // Reset state when user logs out
-      setNotifications([]);
-      setUnreadCount(0);
-      isInitializedRef.current = false;
-    }
 
-    // Clean up on unmount or when user changes
-    return cleanupChannels;
-  }, [user?.id]); // Only re-run when user ID changes
+      return () => {
+        // Clean up channel when component unmounts
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
+      };
+    }
+  }, [user]);
 
   const setupNotificationListeners = () => {
-    if (!user?.id) return;
+    if (!user) return;
     
-    console.log('Setting up notification listeners for user:', user.id);
-    
-    try {
-      // Set up friend requests channel
-      channelsRef.current.friendships = supabase
-        .channel('friendships-notifications-' + user.id)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'friendships',
-            filter: `receiver_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('New friendship notification:', payload);
-            await handleFriendshipNotification(payload.new);
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'friendships',
-            filter: `requester_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('Friendship status update:', payload);
-            if (payload.new.status === 'accepted') {
-              await handleFriendAcceptedNotification(payload.new);
-            }
-          }
-        )
-        .subscribe();
-
-      // Set up dog ownership invites channel
-      channelsRef.current.dogInvites = supabase
-        .channel('dog-invites-notifications-' + user.id)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'dog_ownership_invites',
-            filter: `invitee_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('New dog invite notification:', payload);
-            await handleDogInviteNotification(payload.new);
-          }
-        )
-        .subscribe();
-
-      // Set up achievements channel
-      channelsRef.current.achievements = supabase
-        .channel('achievements-notifications-' + user.id)
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'profile_achievements',
-            filter: `profile_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('New achievement notification:', payload);
-            await handleAchievementNotification(payload.new);
-          }
-        )
-        .subscribe();
-        
-      console.log('Notification channels set up successfully');
-    } catch (error) {
-      console.error('Error setting up notification listeners:', error);
+    // Clean up any existing channel first
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
+    
+    // Create a single channel with multiple subscriptions
+    channelRef.current = supabase
+      .channel('notifications-channel')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'friendships',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log('New friendship notification:', payload);
+          await handleFriendshipNotification(payload.new);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'friendships',
+          filter: `requester_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log('Friendship status update:', payload);
+          if (payload.new.status === 'accepted') {
+            await handleFriendAcceptedNotification(payload.new);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'dog_ownership_invites',
+          filter: `invitee_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log('New dog invite notification:', payload);
+          await handleDogInviteNotification(payload.new);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'profile_achievements',
+          filter: `profile_id=eq.${user.id}`,
+        },
+        async (payload) => {
+          console.log('New achievement notification:', payload);
+          await handleAchievementNotification(payload.new);
+        }
+      )
+      .subscribe();
   };
 
   const loadNotifications = async () => {
-    if (!user?.id) return;
+    if (!user) return;
 
     try {
       // For now, we'll use local storage for notifications
@@ -182,7 +146,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const saveNotifications = async (newNotifications: Notification[]) => {
-    if (!user?.id) return;
+    if (!user) return;
 
     try {
       const AsyncStorage = await import('@react-native-async-storage/async-storage');
@@ -366,7 +330,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const markAsRead = (notificationId: string) => {
-    if (!user?.id) return;
+    if (!user) return;
     
     setNotifications(prev => {
       const updated = prev.map(notification => 
@@ -382,7 +346,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const markAllAsRead = () => {
-    if (!user?.id) return;
+    if (!user) return;
     
     setNotifications(prev => {
       const updated = prev.map(notification => ({ ...notification, read: true }));
@@ -394,20 +358,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const removeNotification = (notificationId: string) => {
-    if (!user?.id) return;
+    if (!user) return;
 
     setNotifications(prev => {
-      const notification = prev.find(n => n.id === notificationId);
       const updated = prev.filter(notification => notification.id !== notificationId);
       saveNotifications(updated);
-      
-      // Update unread count if needed
-      if (notification && !notification.read) {
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-      
       return updated;
     });
+
+    // Update unread count
+    const notification = notifications.find(n => n.id === notificationId);
+    if (notification && !notification.read) {
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
   };
 
   const value: NotificationContextType = {
