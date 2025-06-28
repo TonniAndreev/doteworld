@@ -19,6 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import DogProfileCard from '@/components/profile/DogProfileCard';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
+import DogPhotoUploader from '@/components/dog/DogPhotoUploader';
 
 // Same breed list as in dog-profile creation
 const DOG_BREEDS = [
@@ -119,6 +120,7 @@ export default function DogProfileScreen() {
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
@@ -190,6 +192,27 @@ export default function DogProfileScreen() {
       gender: dog.gender || '',
     });
     setEditModalVisible(true);
+  };
+
+  const handleEditPhoto = (dog: Dog) => {
+    setSelectedDog(dog);
+    setPhotoModalVisible(true);
+  };
+
+  const handlePhotoUploaded = (photoUrl: string | null) => {
+    if (selectedDog) {
+      // Update the dog in the local state
+      setDogs(prevDogs => 
+        prevDogs.map(dog => 
+          dog.id === selectedDog.id 
+            ? { ...dog, photo_url: photoUrl } 
+            : dog
+        )
+      );
+      
+      // Update the selected dog
+      setSelectedDog(prev => prev ? { ...prev, photo_url: photoUrl } : null);
+    }
   };
 
   const handleSaveDog = async () => {
@@ -332,13 +355,22 @@ export default function DogProfileScreen() {
                   dog={dog} 
                   showFullDetails={true}
                 />
-                <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={() => handleEditDog(dog)}
-                >
-                  <Edit3 size={16} color={COLORS.white} />
-                  <Text style={styles.editButtonText}>Edit Profile</Text>
-                </TouchableOpacity>
+                <View style={styles.dogActionButtons}>
+                  <TouchableOpacity 
+                    style={styles.editButton}
+                    onPress={() => handleEditDog(dog)}
+                  >
+                    <Edit3 size={16} color={COLORS.white} />
+                    <Text style={styles.editButtonText}>Edit Profile</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.photoButton}
+                    onPress={() => handleEditPhoto(dog)}
+                  >
+                    <Camera size={16} color={COLORS.white} />
+                    <Text style={styles.photoButtonText}>Update Photo</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </View>
@@ -552,6 +584,47 @@ export default function DogProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Photo Upload Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={photoModalVisible}
+        onRequestClose={() => {
+          setPhotoModalVisible(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Dog Photo</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setPhotoModalVisible(false);
+                }}
+                style={styles.modalCloseButton}
+              >
+                <Text style={styles.modalCloseText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.photoModalContent}>
+              {selectedDog && (
+                <DogPhotoUploader
+                  dogId={selectedDog.id}
+                  dogBreed={selectedDog.breed}
+                  currentPhotoUrl={selectedDog.photo_url || null}
+                  onPhotoUploaded={handlePhotoUploaded}
+                />
+              )}
+              
+              <Text style={styles.photoInstructions}>
+                Take a new photo or choose one from your gallery. The photo will be cropped to a square.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -643,10 +716,14 @@ const styles = StyleSheet.create({
   dogCardContainer: {
     position: 'relative',
   },
-  editButton: {
+  dogActionButtons: {
+    flexDirection: 'row',
     position: 'absolute',
     top: 16,
     right: 16,
+    gap: 8,
+  },
+  editButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primary,
@@ -655,6 +732,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   editButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.white,
+    marginLeft: 4,
+  },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  photoButtonText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
     color: COLORS.white,
@@ -694,6 +785,17 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 20,
+  },
+  photoModalContent: {
+    padding: 20,
+  },
+  photoInstructions: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 20,
   },
   inputGroup: {
     marginBottom: 20,
