@@ -9,10 +9,6 @@ import { PawsProvider } from '@/contexts/PawsContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { TerritoryProvider } from '@/contexts/TerritoryContext';
 import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
-import * as WebBrowser from 'expo-web-browser';
-
-// Complete the auth session on web - moved here to ensure it's called early
-WebBrowser.maybeCompleteAuthSession();
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();

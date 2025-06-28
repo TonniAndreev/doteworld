@@ -3,7 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/utils/supabase';
 import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
+import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+
+// Complete the auth session on web
+WebBrowser.maybeCompleteAuthSession();
 
 interface Dog {
   id: string;
@@ -63,12 +67,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DoteUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Create redirect URI for OAuth - Include auth/callback path for consistency
+  // Create redirect URI for OAuth - Use custom scheme for mobile
   const redirectTo = Platform.OS === 'web' 
     ? window.location.origin 
     : AuthSession.makeRedirectUri({
-        scheme: 'doteapp',
-        path: 'auth/callback',
+        scheme: 'doteapp', // Use your custom scheme instead of proxy
       });
 
   useEffect(() => {
@@ -355,10 +358,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Redirect URI:', redirectTo);
 
         // Open the OAuth session
-        const result = await AuthSession.startAsync({
+        const result = await WebBrowser.openAuthSessionAsync(
           authUrl,
-          returnUrl: redirectTo,
-        });
+          redirectTo,
+          {
+            showInRecents: true,
+          }
+        );
 
         console.log('OAuth result:', result);
 
@@ -435,10 +441,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Redirect URI:', redirectTo);
 
         // Open the OAuth session
-        const result = await AuthSession.startAsync({
+        const result = await WebBrowser.openAuthSessionAsync(
           authUrl,
-          returnUrl: redirectTo,
-        });
+          redirectTo,
+          {
+            showInRecents: true,
+          }
+        );
 
         console.log('OAuth result:', result);
 
