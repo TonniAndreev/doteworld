@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,12 +9,14 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { User, Mail, Phone, Lock, CircleAlert as AlertCircle, ChevronLeft, ChevronRight, CircleCheck as CheckCircle } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDogOwnership } from '@/hooks/useDogOwnership';
 
 export default function RegisterScreen() {
   const [step, setStep] = useState(1);
@@ -29,6 +31,49 @@ export default function RegisterScreen() {
   const [registrationComplete, setRegistrationComplete] = useState(false);
   
   const { register } = useAuth();
+  const { acceptInvite } = useDogOwnership();
+  const params = useLocalSearchParams();
+  
+  // Check if this is an invite flow
+  const isInviteFlow = params.inviteToken && params.dogName && params.role;
+
+  useEffect(() => {
+    if (isInviteFlow) {
+      console.log('Registration with invite context:', params);
+    }
+  }, [isInviteFlow, params]);
+
+  const handlePostRegistrationInvite = async () => {
+    if (!isInviteFlow) return;
+
+    try {
+      // Get stored invite data
+      const storedInvite = localStorage.getItem('pendingDogInvite');
+      if (storedInvite) {
+        const inviteData = JSON.parse(storedInvite);
+        
+        // Accept the invite
+        const result = await acceptInvite(inviteData.inviteId || 'mock-invite-id');
+        
+        if (result.success) {
+          Alert.alert(
+            'Welcome to Dote!', 
+            `You're now a ${inviteData.role} of ${inviteData.dogName}! You can start exploring the app.`,
+            [{ text: 'Get Started', onPress: () => router.replace('/(tabs)') }]
+          );
+        } else {
+          Alert.alert('Welcome!', 'Registration successful! You can accept the dog invitation from your profile.');
+          router.replace('/(tabs)');
+        }
+        
+        // Clean up stored invite
+        localStorage.removeItem('pendingDogInvite');
+      }
+    } catch (error) {
+      console.error('Error handling post-registration invite:', error);
+      router.replace('/(tabs)');
+    }
+  };
 
   const validateStep1 = () => {
     if (!firstName || !lastName) {
@@ -90,7 +135,12 @@ export default function RegisterScreen() {
     
     try {
       await register(email, password, firstName, lastName, phone);
-      router.replace('/(auth)/dog-profile');
+      
+      if (isInviteFlow) {
+        await handlePostRegistrationInvite();
+      } else {
+        router.replace('/(auth)/dog-profile');
+      }
     } catch (error: any) {
       console.error(error);
       setError(error.message || 'Registration failed. Please try again.');
@@ -128,13 +178,24 @@ export default function RegisterScreen() {
           </TouchableOpacity>
         )}
         
-        <Text style={styles.headerTitle}>Create Account</Text>
+        <Text style={styles.headerTitle}>
+          {isInviteFlow ? 'Join Dote' : 'Create Account'}
+        </Text>
         
         <View style={styles.stepIndicator}>
           <View style={[styles.stepDot, step >= 1 && styles.activeStepDot]} />
           <View style={[styles.stepDot, step >= 2 && styles.activeStepDot]} />
         </View>
       </View>
+
+      {/* Invite Context Banner */}
+      {isInviteFlow && (
+        <View style={styles.inviteBanner}>
+          <Text style={styles.inviteBannerText}>
+            Create account to accept invitation for {params.dogName} as {params.role}
+          </Text>
+        </View>
+      )}
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -248,7 +309,7 @@ export default function RegisterScreen() {
             ) : (
               <>
                 <Text style={styles.nextButtonText}>
-                  {step === 1 ? 'Continue' : 'Create Account'}
+                  {step === 1 ? 'Continue' : (isInviteFlow ? 'Create Account & Accept' : 'Create Account')}
                 </Text>
                 {step === 1 && (
                   <ChevronRight size={20} color={COLORS.white} />
@@ -259,7 +320,16 @@ export default function RegisterScreen() {
 
           <View style={styles.loginContainer}>
             <Text style={styles.haveAccountText}>Already have an account?</Text>
-            <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
+            <TouchableOpacity onPress={() => {
+              if (isInviteFlow) {
+                router.replace({
+                  pathname: '/(auth)/login',
+                  params: params
+                });
+              } else {
+                router.replace('/(auth)/login');
+              }
+            }}>
               <Text style={styles.loginText}>Login</Text>
             </TouchableOpacity>
           </View>
@@ -302,6 +372,22 @@ const styles = StyleSheet.create({
   },
   activeStepDot: {
     backgroundColor: COLORS.primary,
+  },
+  inviteBanner: {
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  inviteBannerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+    textAlign: 'center',
   },
   keyboardAvoid: {
     flex: 1,
@@ -421,5 +507,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.white,
   },
-
 });

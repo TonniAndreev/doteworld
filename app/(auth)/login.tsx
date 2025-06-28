@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,15 @@ import {
   ActivityIndicator,
   Linking,
   Dimensions,
+  Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Mail, Lock, Facebook, CircleAlert as AlertCircle, Eye, EyeOff } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDogOwnership } from '@/hooks/useDogOwnership';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -31,6 +33,49 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   
   const { login, loginWithGoogle, loginWithFacebook } = useAuth();
+  const { acceptInvite } = useDogOwnership();
+  const params = useLocalSearchParams();
+  
+  // Check if this is an invite flow
+  const isInviteFlow = params.inviteToken && params.dogName && params.role;
+
+  useEffect(() => {
+    if (isInviteFlow) {
+      console.log('Login with invite context:', params);
+    }
+  }, [isInviteFlow, params]);
+
+  const handlePostLoginInvite = async () => {
+    if (!isInviteFlow) return;
+
+    try {
+      // Get stored invite data
+      const storedInvite = localStorage.getItem('pendingDogInvite');
+      if (storedInvite) {
+        const inviteData = JSON.parse(storedInvite);
+        
+        // Accept the invite
+        const result = await acceptInvite(inviteData.inviteId || 'mock-invite-id');
+        
+        if (result.success) {
+          Alert.alert(
+            'Welcome!', 
+            `You're now a ${inviteData.role} of ${inviteData.dogName}!`,
+            [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+          );
+        } else {
+          Alert.alert('Error', 'Failed to accept invitation. You can try again from your profile.');
+          router.replace('/(tabs)');
+        }
+        
+        // Clean up stored invite
+        localStorage.removeItem('pendingDogInvite');
+      }
+    } catch (error) {
+      console.error('Error handling post-login invite:', error);
+      router.replace('/(tabs)');
+    }
+  };
   
   const handleEmailLogin = async () => {
     console.log('🔵 Email login button pressed');
@@ -47,7 +92,12 @@ export default function LoginScreen() {
       console.log('🔵 Attempting email login for:', email);
       await login(email, password);
       console.log('🔵 Email login successful, navigating to tabs');
-      router.replace('/(tabs)');
+      
+      if (isInviteFlow) {
+        await handlePostLoginInvite();
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (error: any) {
       console.error('🔴 Email login error:', error);
       setError(error.message || 'Invalid email or password');
@@ -65,6 +115,10 @@ export default function LoginScreen() {
       console.log('🟢 Calling loginWithGoogle function');
       await loginWithGoogle();
       console.log('🟢 Google login completed successfully');
+      
+      if (isInviteFlow) {
+        await handlePostLoginInvite();
+      }
       // The auth state change listener will handle navigation after successful login
     } catch (error: any) {
       console.error('🔴 Google login error:', error);
@@ -83,6 +137,10 @@ export default function LoginScreen() {
       console.log('🔵 Calling loginWithFacebook function');
       await loginWithFacebook();
       console.log('🔵 Facebook login completed successfully');
+      
+      if (isInviteFlow) {
+        await handlePostLoginInvite();
+      }
       // The auth state change listener will handle navigation after successful login
     } catch (error: any) {
       console.error('🔴 Facebook login error:', error);
@@ -131,6 +189,15 @@ export default function LoginScreen() {
                 resizeMode="contain"
               />
             </View>
+
+            {/* Invite Context Banner */}
+            {isInviteFlow && (
+              <View style={styles.inviteBanner}>
+                <Text style={styles.inviteBannerText}>
+                  Login to accept invitation for {params.dogName} as {params.role}
+                </Text>
+              </View>
+            )}
             
             {/* Error Display */}
             {error ? (
@@ -191,7 +258,9 @@ export default function LoginScreen() {
               {isLoading ? (
                 <ActivityIndicator color={COLORS.white} />
               ) : (
-                <Text style={styles.loginButtonText}>Login</Text>
+                <Text style={styles.loginButtonText}>
+                  {isInviteFlow ? 'Login & Accept Invite' : 'Login'}
+                </Text>
               )}
             </TouchableOpacity>
             
@@ -241,7 +310,16 @@ export default function LoginScreen() {
             {/* Register Link */}
             <View style={styles.registerContainer}>
               <Text style={styles.noAccountText}>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+              <TouchableOpacity onPress={() => {
+                if (isInviteFlow) {
+                  router.push({
+                    pathname: '/(auth)/register',
+                    params: params
+                  });
+                } else {
+                  router.push('/(auth)/register');
+                }
+              }}>
                 <Text style={styles.registerText}>Register</Text>
               </TouchableOpacity>
             </View>
@@ -298,6 +376,20 @@ const styles = StyleSheet.create({
   logoImage: {
     width: 80,
     height: 80,
+  },
+  inviteBanner: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  inviteBannerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+    textAlign: 'center',
   },
   errorContainer: {
     flexDirection: 'row',
