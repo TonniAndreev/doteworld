@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image, View, Text, StyleSheet, ImageStyle, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
 import { COLORS } from '@/constants/theme';
 import { useUserProfilePhoto } from '@/hooks/useUserProfilePhoto';
@@ -30,16 +30,17 @@ export default function UserAvatar({
   dogBreed,
 }: UserAvatarProps) {
   const [imageError, setImageError] = useState(false);
+  const [loadingImage, setLoadingImage] = useState(false);
   
-  // Use hooks to get photo URLs from Supabase Storage
-  const { photoUrl: userPhotoUrl, isLoading: userPhotoLoading } = useUserProfilePhoto(isDogAvatar ? undefined : userId);
-  const { photoUrl: dogPhotoUrl, isLoading: dogPhotoLoading } = useDogProfilePhoto(isDogAvatar ? userId : '');
+  // Only use hooks if userId is provided - to avoid unnecessary subscriptions
+  const { photoUrl: userPhotoUrl, isLoading: userPhotoLoading } = 
+    !isDogAvatar && userId ? useUserProfilePhoto(userId) : { photoUrl: null, isLoading: false };
+    
+  const { photoUrl: dogPhotoUrl, isLoading: dogPhotoLoading } = 
+    isDogAvatar && userId ? useDogProfilePhoto(userId) : { photoUrl: null, isLoading: false };
   
   // Determine the final photo URL to use
-  let finalPhotoUrl = isDogAvatar ? (dogPhotoUrl || photoURL) : (userPhotoUrl || photoURL);
-  
-  // For debugging - remove in production
-  console.log(`Avatar for ${isDogAvatar ? 'dog' : 'user'} ${userId}: using ${finalPhotoUrl || 'null'}`);
+  const finalPhotoUrl = isDogAvatar ? (dogPhotoUrl || photoURL) : (userPhotoUrl || photoURL);
   
   const avatarStyle = [
     {
@@ -61,7 +62,7 @@ export default function UserAvatar({
   ];
 
   // If image is still loading, show loading state
-  const isLoading = isDogAvatar ? dogPhotoLoading : userPhotoLoading;
+  const isLoading = (isDogAvatar ? dogPhotoLoading : userPhotoLoading) || loadingImage;
   
   if (isLoading) {
     return (
@@ -112,13 +113,16 @@ export default function UserAvatar({
     <View style={containerStyles}>
       <Image
         source={finalPhotoUrl ? 
-          (typeof finalPhotoUrl === 'string' ? { uri: finalPhotoUrl } : finalPhotoUrl) : 
+          { uri: finalPhotoUrl, cache: 'reload' } : 
           defaultImage
         }
         style={avatarStyle}
+        onLoadStart={() => setLoadingImage(true)}
+        onLoadEnd={() => setLoadingImage(false)}
         onError={(e) => {
-          console.warn(`Image load error for ${isDogAvatar ? 'dog' : 'user'} ${userId}:`, e.nativeEvent.error);
+          console.error(`Image load error for ${isDogAvatar ? 'dog' : 'user'} ${userId}:`, e.nativeEvent.error);
           setImageError(true);
+          setLoadingImage(false);
         }}
         resizeMode="cover"
       />

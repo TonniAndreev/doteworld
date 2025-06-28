@@ -15,6 +15,7 @@ interface Dog {
   name: string;
   breed: string;
   photo_url?: string;
+  photo_path?: string;
   birthday?: string;
   bio?: string;
   weight?: number;
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // Create redirect URI for OAuth - Use custom scheme for mobile
- const redirectTo = AuthSession.makeRedirectUri({
+  const redirectTo = AuthSession.makeRedirectUri({
     useProxy: false,
   });
 
