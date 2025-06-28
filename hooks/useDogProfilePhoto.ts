@@ -63,10 +63,11 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
   useEffect(() => {
     if (!dogId) return;
     
-    const channelName = `dog_photo_changes_${dogId}`;
+    const channelKey = `dog_photo_${dogId}`;
 
-    const subscription = supabase
-      .channel(channelName)
+    // Create a unique channel for this component instance
+    const channel = supabase
+      .channel(channelKey)
       .on(
         'postgres_changes',
         {
@@ -79,11 +80,14 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
           console.log('Dog photo updated:', payload);
           fetchPhoto();
         }
-      )
-      .subscribe();
+      );
+    
+    // Subscribe to the channel
+    channel.subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      // Properly unsubscribe when component unmounts
+      supabase.removeChannel(channel);
     };
   }, [dogId]);
 

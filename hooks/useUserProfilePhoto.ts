@@ -67,10 +67,11 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
   useEffect(() => {
     if (!targetUserId) return;
     
-    const channelName = `profile_photo_changes_${targetUserId}`;
+    const channelKey = `profile_photo_${targetUserId}`;
 
-    const subscription = supabase
-      .channel(channelName)
+    // Create a unique channel for this component instance
+    const channel = supabase
+      .channel(channelKey)
       .on(
         'postgres_changes',
         {
@@ -83,11 +84,14 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
           console.log('Profile photo updated:', payload);
           fetchPhoto();
         }
-      )
-      .subscribe();
+      );
+    
+    // Subscribe to the channel
+    channel.subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      // Properly unsubscribe when component unmounts
+      supabase.removeChannel(channel);
     };
   }, [targetUserId]);
 

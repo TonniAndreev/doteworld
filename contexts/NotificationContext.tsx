@@ -40,8 +40,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (user) {
       // Set up real-time listener for friend requests
-      const friendshipSubscription = supabase
-        .channel('friendships')
+      const friendshipsChannel = supabase
+        .channel('friendships_channel')
         .on(
           'postgres_changes',
           {
@@ -53,11 +53,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           async (payload) => {
             console.log('New friendship notification:', payload);
             await handleFriendshipNotification(payload.new);
-          }
-        );
-
-      const friendshipUpdateChannel = supabase
-        .channel('friendships_updates')
+          })
         .on(
           'postgres_changes',
           {
@@ -71,11 +67,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             if (payload.new.status === 'accepted') {
               await handleFriendAcceptedNotification(payload.new);
             }
-          }
-        );
+          });
 
-      friendshipSubscription.subscribe();
-      friendshipUpdateChannel.subscribe();
+      // Subscribe to the channel
+      friendshipsChannel.subscribe();
 
       // Set up listener for dog ownership invites
       const dogInviteChannel = supabase
@@ -94,6 +89,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           }
         );
 
+      // Subscribe to the channel
       dogInviteChannel.subscribe();
 
       // Set up listener for achievements
@@ -113,16 +109,16 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           }
         );
 
+      // Subscribe to the channel
       achievementChannel.subscribe();
 
       // Load existing notifications
       loadNotifications();
 
       return () => {
-        friendshipSubscription.unsubscribe();
-        friendshipUpdateChannel.unsubscribe();
-        dogInviteChannel.unsubscribe();
-        achievementChannel.unsubscribe();
+        supabase.removeChannel(friendshipsChannel);
+        supabase.removeChannel(dogInviteChannel);
+        supabase.removeChannel(achievementChannel);
       };
     }
   }, [user]);
