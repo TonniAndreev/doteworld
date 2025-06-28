@@ -62,9 +62,11 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
   // Set up real-time subscription for photo updates
   useEffect(() => {
     if (!dogId) return;
+    
+    const channelName = `dog_photo_changes_${dogId}`;
 
     const subscription = supabase
-      .channel('dog_photo_changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -81,7 +83,7 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      subscription.unsubscribe();
     };
   }, [dogId]);
 

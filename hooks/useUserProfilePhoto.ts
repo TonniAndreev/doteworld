@@ -66,9 +66,11 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
   // Set up real-time subscription for photo updates
   useEffect(() => {
     if (!targetUserId) return;
+    
+    const channelName = `profile_photo_changes_${targetUserId}`;
 
     const subscription = supabase
-      .channel('profile_photo_changes')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -85,7 +87,7 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      subscription.unsubscribe();
     };
   }, [targetUserId]);
 
