@@ -65,7 +65,7 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
                   userId={`dog-${user.dogs[0].id}`}
                   photoURL={user.dogs[0].photo_url}
                   userName={user.dogs[0].name}
-                  size={28}
+                  size={19}
                   isDogAvatar={true}
                   dogBreed={user.dogs[0].breed}
                   style={styles.dogAvatar}
@@ -80,7 +80,7 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
                   userId={`dog-${user.dogs[1].id}`}
                   photoURL={user.dogs[1].photo_url}
                   userName={user.dogs[1].name}
-                  size={28}
+                  size={19}
                   isDogAvatar={true}
                   dogBreed={user.dogs[1].breed}
                   style={styles.dogAvatar}
@@ -159,24 +159,24 @@ const styles = StyleSheet.create({
   dogAvatarWrapper: {
     borderWidth: 2,
     borderColor: COLORS.white,
-    borderRadius: 14,
+    borderRadius: 9.5,
     overflow: 'hidden',
     marginRight: -10, // Negative margin for overlapping effect
   },
   dogAvatar: {
-    borderRadius: 14,
+    borderRadius: 9.5,
   },
   moreDogsBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 19,
+    height: 19,
+    borderRadius: 9.5,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   moreDogsBadgeText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 12,
+    fontSize: 9,
     color: COLORS.white,
   },
   info: {
