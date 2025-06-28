@@ -15,10 +15,6 @@ export async function uploadUserProfilePhoto(
   fileUri: string
 ): Promise<PhotoUploadResult> {
   try {
-    // Convert file URI to blob for upload
-    const response = await fetch(fileUri);
-    const blob = await response.blob();
-    
     // Generate unique filename
     const fileExt = fileUri.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${userId}/profile-${Date.now()}.${fileExt}`;
@@ -26,7 +22,7 @@ export async function uploadUserProfilePhoto(
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('profiles')
-      .upload(fileName, blob, {
+      .upload(fileName, fileUri, {
         cacheControl: '3600',
         upsert: true,
       });
@@ -82,10 +78,6 @@ export async function uploadDogProfilePhoto(
   fileUri: string
 ): Promise<PhotoUploadResult> {
   try {
-    // Convert file URI to blob for upload
-    const response = await fetch(fileUri);
-    const blob = await response.blob();
-    
     // Generate unique filename
     const fileExt = fileUri.split('.').pop()?.toLowerCase() || 'jpg';
     const fileName = `${dogId}/profile-${Date.now()}.${fileExt}`;
@@ -93,7 +85,7 @@ export async function uploadDogProfilePhoto(
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from('dog_profiles')
-      .upload(fileName, blob, {
+      .upload(fileName, fileUri, {
         cacheControl: '3600',
         upsert: true,
       });
