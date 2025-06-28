@@ -71,34 +71,29 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           if (payload.new.status === 'accepted') {
             await handleFriendAcceptedNotification(payload.new);
           }
+          event: 'INSERT',
+          schema: 'public',
+          table: 'friendships',
+          filter: `receiver_id=eq.${user.id}`,
+        }, async (payload) => {
+          console.log('New friendship notification:', payload);
+          await handleFriendshipNotification(payload.new);
+        })
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'friendships',
+          filter: `requester_id=eq.${user.id}`,
+        }, async (payload) => {
+          console.log('Friendship status update:', payload);
+          if (payload.new.status === 'accepted') {
+            await handleFriendAcceptedNotification(payload.new);
+          }
         })
         .on('postgres_changes', {
           event: 'INSERT',
-          schema: 'public',
-          table: 'dog_ownership_invites',
-          filter: `invitee_id=eq.${user.id}`,
-        }, async (payload) => {
-          console.log('New dog invite notification:', payload);
-          await handleDogInviteNotification(payload.new);
-        })
-        .on('postgres_changes', {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'profile_achievements',
-          filter: `profile_id=eq.${user.id}`,
-        }, async (payload) => {
-          console.log('New achievement notification:', payload);
-          await handleAchievementNotification(payload.new);
-        });
-      
-        // Subscribe to the single channel
-        notificationsChannel.subscribe((status) => {
-          console.log(`Notifications channel status: ${status}`);
-        });
-        
-        // Load existing notifications
-        loadNotifications();
-
+        }
+        )
         return () => {
           // Clean up by removing the single channel
           supabase.removeChannel(notificationsChannel);

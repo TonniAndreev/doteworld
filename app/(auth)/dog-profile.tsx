@@ -19,6 +19,7 @@ import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
 import { uploadDogProfilePhoto } from '@/utils/photoStorage';
+import { uploadDogProfilePhoto } from '@/utils/photoStorage';
 
 const DOG_BREEDS = [
   // Popular breeds
@@ -108,6 +109,7 @@ export default function DogProfileScreen() {
   const [dogBirthday, setDogBirthday] = useState('');
   const [dogPhoto, setDogPhoto] = useState<string | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
@@ -189,8 +191,22 @@ export default function DogProfileScreen() {
     setIsLoading(true);
     setError('');
     
+    let dogData;
     try {
       // First create the dog profile
+      dogData = await updateDogProfile(dogName, dogBreed, null, dogBirthday);
+      
+      // If there's a photo, upload it to Supabase Storage
+      if (dogPhoto && dogData?.id) {
+        setIsUploadingPhoto(true);
+        const uploadResult = await uploadDogProfilePhoto(dogData.id, dogPhoto);
+        console.log("Dog photo upload result:", uploadResult);
+        if (!uploadResult.success) {
+          console.error('Failed to upload dog photo:', uploadResult.error);
+          // Continue anyway - the dog profile was created successfully
+        }
+      }
+      
       console.log("Test photo upload result:", result);
       
       // If there's a photo, upload it to Supabase Storage
@@ -209,6 +225,7 @@ export default function DogProfileScreen() {
       setError(error.message || 'Failed to save dog profile. Please try again.');
     } finally {
       setIsLoading(false);
+      setIsUploadingPhoto(false);
       setIsUploadingPhoto(false);
     }
   };
@@ -477,6 +494,8 @@ export default function DogProfileScreen() {
               <ActivityIndicator color={COLORS.white} />
             ) : (
               <Text style={styles.saveButtonText}>
+                {isUploadingPhoto ? 'Uploading Photo...' : 'Save & Continue'}
+              </Text>
                 {isUploadingPhoto ? 'Uploading Photo...' : 'Save & Continue'}
               </Text>
             )}

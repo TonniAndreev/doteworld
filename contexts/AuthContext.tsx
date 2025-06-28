@@ -494,14 +494,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateDogProfile = async (dogName: string, dogBreed: string, dogPhoto?: string | null, birthday?: string) => {
     if (!user) {
-      throw new Error('No user logged in');
+      throw new Error('No user logged in'); 
     }
 
     try {
       // Create or update dog
       const dogData: any = {
         name: dogName,
-        breed: dogBreed,
+        breed: dogBreed
       };
       
       if (birthday) {
@@ -517,6 +517,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (dogError) {
         console.error('Error creating dog:', dogError);
         throw dogError;
+      } else {
+        console.log('Dog created successfully:', dog.id);
       }
 
       // Link dog to user profile
@@ -532,6 +534,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw linkError;
       }
 
+      // Optionally upload dog photo if provided
+      if (dogPhoto && dog) {
+        try {
+          console.log('Uploading dog photo...');
+          const photoResult = await uploadDogProfilePhoto(dog.id, dogPhoto);
+          if (!photoResult.success) {
+            console.warn('Failed to upload dog photo:', photoResult.error);
+          }
+        } catch (photoError) {
+          console.warn('Error uploading dog photo:', photoError);
+          // Continue even if photo upload fails
+        }
+      }
+      
       // Update local user state
       const updatedUser = {
         ...user,
@@ -541,7 +557,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(updatedUser);
       await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
       
-      return dog; // Return the created dog for photo upload
+      return dog; // Return the dog object for further use if needed
     } catch (error) {
       console.error('Error updating dog profile:', error);
       throw error;
@@ -570,6 +586,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
     }
   };
+  
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
