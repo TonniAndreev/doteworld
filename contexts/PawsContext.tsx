@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
+import { adMobService, ADMOB_CONFIG } from '@/services/adMobService';
 
 interface Transaction {
   id: string;
@@ -40,10 +41,29 @@ export function PawsProvider({ children }: { children: ReactNode }) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [timeUntilNextPaw, setTimeUntilNextPaw] = useState(0);
+  const [isAdMobInitialized, setIsAdMobInitialized] = useState(false);
   const { user } = useAuth();
 
   const maxPaws = 5;
   const maxDailyAds = 2;
+
+  // Initialize AdMob when the context is created
+  useEffect(() => {
+    const initializeAdMob = async () => {
+      try {
+        console.log('PawsContext: Initializing AdMob...');
+        await adMobService.initialize(ADMOB_CONFIG);
+        setIsAdMobInitialized(true);
+        console.log('PawsContext: AdMob initialized successfully');
+      } catch (error) {
+        console.error('PawsContext: Failed to initialize AdMob:', error);
+        // Continue without AdMob - ads will fall back to mock behavior
+        setIsAdMobInitialized(false);
+      }
+    };
+
+    initializeAdMob();
+  }, []);
 
   useEffect(() => {
     const loadPawsData = async () => {
@@ -222,15 +242,20 @@ export function PawsProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // TODO: Implement Expo Ads rewarded video here
-      // For now, simulate successful ad watch
-      console.log('Showing rewarded video ad...');
+      console.log('PawsContext: Starting ad watch process...');
       
-      // Simulate ad completion
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Load the ad first
+      console.log('PawsContext: Loading rewarded ad...');
+      await adMobService.loadRewardedAd();
+      
+      // Show the ad and wait for completion
+      console.log('PawsContext: Showing rewarded ad...');
+      const reward = await adMobService.showRewardedAd();
+      
+      console.log('PawsContext: Ad completed successfully, reward:', reward);
       
       // Award paw
-      await addPaws(1, 'Watched rewarded ad');
+      await addPaws(reward.amount, 'Watched rewarded ad');
       
       // Update daily ad count
       const newAdsWatched = dailyAdsWatched + 1;
@@ -247,7 +272,16 @@ export function PawsProvider({ children }: { children: ReactNode }) {
       
       return true;
     } catch (error) {
-      console.error('Error watching ad:', error);
+      console.error('PawsContext: Error watching ad:', error);
+      
+      // If it's just a user cancellation, don't show an error
+      if (error instanceof Error && error.message.includes('closed without earning reward')) {
+        console.log('PawsContext: User closed ad without completing it');
+        return false;
+      }
+      
+      // For other errors, still return false but log the error
+      console.error('PawsContext: Ad failed to load or show:', error);
       return false;
     }
   };
