@@ -140,7 +140,7 @@ export default function FriendsScreen() {
       return (
         <View style={styles.emptyStateContainer}>
           <Image 
-            source={{ uri: 'https://images.pexels.com/photos/23692803/pexels-photo-23692803.jpeg?auto=compress&cs=tinysrgb&w=300&h=300' }}
+            source={require('@/assets/images/corgi_empty.jpg')}
             style={styles.emptyStateImage}
           />
           <Text style={styles.emptyStateTitle}>Don't keep your dog alone</Text>
@@ -357,7 +357,6 @@ const styles = StyleSheet.create({
   emptyStateImage: {
     width: 180,
     height: 180,
-    borderRadius: 90,
     marginBottom: 24,
   },
   emptyStateTitle: {
