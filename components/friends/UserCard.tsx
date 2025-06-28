@@ -60,7 +60,7 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
           <View style={styles.dogAvatarsContainer}>
             {/* First dog avatar - always shown if there's at least one dog */}
             {dogCount >= 1 && (
-              <View style={[styles.dogAvatarWrapper, styles.firstDogAvatar]}>
+              <View style={styles.dogAvatarWrapper}>
                 <UserAvatar
                   userId={`dog-${user.dogs[0].id}`}
                   photoURL={user.dogs[0].photo_url}
@@ -75,7 +75,7 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
             
             {/* Second dog avatar - shown if there are at least 2 dogs */}
             {dogCount >= 2 && (
-              <View style={[styles.dogAvatarWrapper, styles.secondDogAvatar]}>
+              <View style={styles.dogAvatarWrapper}>
                 <UserAvatar
                   userId={`dog-${user.dogs[1].id}`}
                   photoURL={user.dogs[1].photo_url}
@@ -90,8 +90,10 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
             
             {/* "+X" indicator for 3 or more dogs */}
             {dogCount > 2 && (
-              <View style={styles.moreDogsBadge}>
-                <Text style={styles.moreDogsBadgeText}>+{dogCount - 2}</Text>
+              <View style={styles.dogAvatarWrapper}>
+                <View style={styles.moreDogsBadge}>
+                  <Text style={styles.moreDogsBadgeText}>+{dogCount - 2}</Text>
+                </View>
               </View>
             )}
           </View>
@@ -161,12 +163,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginRight: -10, // Negative margin for overlapping effect
   },
-  firstDogAvatar: {
-    zIndex: 2,
-  },
-  secondDogAvatar: {
-    zIndex: 1,
-  },
   dogAvatar: {
     borderRadius: 14,
   },
@@ -175,12 +171,8 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     backgroundColor: COLORS.primary,
-    borderWidth: 2,
-    borderColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 3,
-    marginLeft: -10, // Negative margin for overlapping effect
   },
   moreDogsBadgeText: {
     fontFamily: 'Inter-Bold',
