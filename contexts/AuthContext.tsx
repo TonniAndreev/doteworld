@@ -67,12 +67,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DoteUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Create redirect URI for OAuth
-  const redirectTo = AuthSession.makeRedirectUri({
-    scheme: 'doteapp',
-    path: '/auth/callback',
-    useProxy: true, // Force use of custom scheme instead of Expo proxy
-  });
+  // Create redirect URI for OAuth - Force use of Expo proxy for mobile
+  const redirectTo = Platform.OS === 'web' 
+    ? window.location.origin 
+    : AuthSession.makeRedirectUri({
+        useProxy: true, // This should generate https://auth.expo.io URL
+      });
 
   useEffect(() => {
     // Get initial session
@@ -342,6 +342,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       } else {
         // For mobile platforms, use expo-auth-session
+        console.log('Using redirect URI:', redirectTo);
         
         // Generate a secure random state parameter
         const state = await Crypto.digestStringAsync(
@@ -424,6 +425,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       } else {
         // For mobile platforms, use expo-auth-session
+        console.log('Using redirect URI:', redirectTo);
         
         // Generate a secure random state parameter
         const state = await Crypto.digestStringAsync(
