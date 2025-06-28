@@ -1,12 +1,11 @@
 import { Tabs } from 'expo-router';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   MapPin, 
   Trophy, 
   Award, 
-  Users,
-  User
+  Users
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -74,18 +73,13 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color, focused }) => (
             <View style={[styles.avatarContainer, focused && styles.avatarContainerActive]}>
-              {user?.avatar_url ? (
-                <Image 
-                  source={{ uri: user.avatar_url }} 
-                  style={styles.avatar} 
-                />
-              ) : (
-                <View style={[styles.avatarPlaceholder, focused && styles.avatarPlaceholderActive]}>
-                  <Text style={[styles.avatarText, focused && styles.avatarTextActive]}>
-                    {user?.displayName?.charAt(0) || 'U'}
-                  </Text>
-                </View>
-              )}
+              <UserAvatar
+                userId={user?.id || 'default'}
+                photoURL={user?.avatar_url}
+                userName={user?.displayName || 'User'}
+                size={28}
+                style={styles.avatar}
+              />
             </View>
           ),
         }}
@@ -129,33 +123,14 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   avatarContainerActive: {
     borderWidth: 2,
     borderColor: COLORS.primary,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  avatarPlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.neutralLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarPlaceholderActive: {
-    backgroundColor: COLORS.primaryLight,
-  },
-  avatarText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-  },
-  avatarTextActive: {
-    color: COLORS.primary,
+    borderRadius: 14, // Slightly smaller to account for the container border
   },
 });
