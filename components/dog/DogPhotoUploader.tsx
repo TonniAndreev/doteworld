@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Platform,
   View,
   Text,
   StyleSheet,
@@ -8,6 +7,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -111,11 +111,18 @@ export default function DogPhotoUploader({
       
       console.log('Uploading to path:', filePath);
       
-      // Read the file as base64
+      // Read the file as base64 or blob depending on platform
       let fileData;
       if (Platform.OS === 'web') {
-        // For web, we can use the file URI directly
-        fileData = photoUri;
+        // For web, we need to handle data URLs properly
+        if (photoUri.startsWith('data:')) {
+          // Convert data URL to blob for web
+          const response = await fetch(photoUri);
+          const blob = await response.blob();
+          fileData = blob;
+        } else {
+          fileData = photoUri;
+        }
       } else {
         // For mobile, read the file as base64
         const base64Data = await FileSystem.readAsStringAsync(photoUri, {
@@ -126,7 +133,7 @@ export default function DogPhotoUploader({
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog-photos')
+        .from('dog_photos')
         .upload(filePath, fileData, {
           contentType: `image/${fileExt}`,
           upsert: true,
@@ -141,7 +148,7 @@ export default function DogPhotoUploader({
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog-photos')
+        .from('dog_photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);
