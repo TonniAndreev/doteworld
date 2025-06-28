@@ -328,6 +328,15 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                     </View>
                   ))}
                   
+                  {hasMoreOwners && !showAllOwners && (
+                    <TouchableOpacity
+                      style={styles.showMoreButton}
+                      onPress={() => setShowAllOwners(true)}
+                    >
+                      <Text style={styles.showMoreText}>Show All Owners</Text>
+                    </TouchableOpacity>
+                  )}
+                  
                   {hasMoreOwners && showAllOwners && (
                     <TouchableOpacity
                       style={styles.showLessButton}
@@ -585,6 +594,18 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.errorLight,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  showMoreButton: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  showMoreText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.primary,
   },
   showLessButton: {
     alignItems: 'center',

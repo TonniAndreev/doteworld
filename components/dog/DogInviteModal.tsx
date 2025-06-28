@@ -23,7 +23,6 @@ interface DogInviteModalProps {
 }
 
 export default function DogInviteModal({ visible, onClose, dogId, dogName }: DogInviteModalProps) {
-  const [activeTab, setActiveTab] = useState<'email' | 'link'>('email');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'co-owner' | 'caretaker'>('co-owner');
   const [inviteMessage, setInviteMessage] = useState('');
@@ -69,7 +68,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
   const handleCopyLink = async () => {
     const link = generateInviteLink();
     try {
-      await Clipboard.setStringAsync(link);
+      await Clipboard.setString(link);
       Alert.alert('Success', 'Invite link copied to clipboard!');
     } catch (error) {
       Alert.alert('Error', 'Failed to copy link');
@@ -88,17 +87,6 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
       });
     } catch (error) {
       console.error('Error sharing:', error);
-    }
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'co-owner':
-        return <Shield size={20} color={COLORS.primary} />;
-      case 'caretaker':
-        return <Eye size={20} color={COLORS.secondary} />;
-      default:
-        return null;
     }
   };
 
@@ -122,31 +110,8 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
             Invite someone to help care for {dogName}
           </Text>
 
-          {/* Tab Selector */}
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'email' && styles.activeTab]}
-              onPress={() => setActiveTab('email')}
-            >
-              <Mail size={20} color={activeTab === 'email' ? COLORS.primary : COLORS.neutralMedium} />
-              <Text style={[styles.tabText, activeTab === 'email' && styles.activeTabText]}>
-                Email Invite
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'link' && styles.activeTab]}
-              onPress={() => setActiveTab('link')}
-            >
-              <Link size={20} color={activeTab === 'link' ? COLORS.primary : COLORS.neutralMedium} />
-              <Text style={[styles.tabText, activeTab === 'link' && styles.activeTabText]}>
-                Share Link
-              </Text>
-            </TouchableOpacity>
-          </View>
-
+          {/* Role Selection */}
           <View style={styles.content}>
-            {/* Role Selection */}
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Role</Text>
               <View style={styles.roleSelector}>
@@ -172,94 +137,81 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
               </View>
             </View>
 
-            {activeTab === 'email' ? (
-              <>
-                {/* Email Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Email Address</Text>
-                  <View style={styles.inputWithIcon}>
-                    <Mail size={20} color={COLORS.neutralMedium} />
-                    <TextInput
-                      style={styles.textInput}
-                      value={inviteEmail}
-                      onChangeText={setInviteEmail}
-                      placeholder="Enter email address"
-                      placeholderTextColor={COLORS.neutralMedium}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                    />
-                  </View>
-                </View>
+            {/* Email Invite Section */}
+            <View style={styles.inviteSection}>
+              <Text style={styles.sectionTitle}>Email Invite</Text>
+              <View style={styles.inputWithIcon}>
+                <Mail size={20} color={COLORS.neutralMedium} />
+                <TextInput
+                  style={styles.textInput}
+                  value={inviteEmail}
+                  onChangeText={setInviteEmail}
+                  placeholder="Enter email address"
+                  placeholderTextColor={COLORS.neutralMedium}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+              
+              <TextInput
+                style={[styles.textInput, styles.messageInput]}
+                value={inviteMessage}
+                onChangeText={setInviteMessage}
+                placeholder="Add a personal message... (optional)"
+                placeholderTextColor={COLORS.neutralMedium}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              
+              <TouchableOpacity
+                style={styles.actionButton}
+                onPress={handleEmailInvite}
+                disabled={isLoading || !inviteEmail.trim()}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <>
+                    <Send size={20} color={COLORS.white} />
+                    <Text style={styles.actionButtonText}>Send Email Invitation</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
 
-                {/* Message Input */}
-                <View style={styles.inputGroup}>
-                  <Text style={styles.inputLabel}>Personal Message (Optional)</Text>
-                  <TextInput
-                    style={[styles.textInput, styles.messageInput]}
-                    value={inviteMessage}
-                    onChangeText={setInviteMessage}
-                    placeholder="Add a personal message..."
-                    placeholderTextColor={COLORS.neutralMedium}
-                    multiline
-                    numberOfLines={3}
-                    textAlignVertical="top"
-                  />
-                </View>
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
 
-                {/* Send Button */}
+            {/* Share Link Section */}
+            <View style={styles.inviteSection}>
+              <Text style={styles.sectionTitle}>Share Invite Link</Text>
+              <Text style={styles.linkDescription}>
+                Share a link directly with someone to invite them as a {inviteRole}.
+              </Text>
+              
+              <View style={styles.linkActions}>
                 <TouchableOpacity
-                  style={styles.primaryButton}
-                  onPress={handleEmailInvite}
-                  disabled={isLoading || !inviteEmail.trim()}
+                  style={styles.linkButton}
+                  onPress={handleCopyLink}
                 >
-                  {isLoading ? (
-                    <ActivityIndicator color={COLORS.white} />
-                  ) : (
-                    <>
-                      <Send size={20} color={COLORS.white} />
-                      <Text style={styles.primaryButtonText}>Send Invitation</Text>
-                    </>
-                  )}
+                  <Copy size={20} color={COLORS.primary} />
+                  <Text style={styles.linkButtonText}>Copy Link</Text>
                 </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                {/* Link Sharing Options */}
-                <View style={styles.linkSection}>
-                  <Text style={styles.linkDescription}>
-                    Share this link with someone to invite them as a {inviteRole} of {dogName}. 
-                    They'll be able to register and automatically get access.
-                  </Text>
 
-                  <View style={styles.linkActions}>
-                    <TouchableOpacity
-                      style={styles.linkButton}
-                      onPress={handleCopyLink}
-                    >
-                      <Copy size={20} color={COLORS.primary} />
-                      <Text style={styles.linkButtonText}>Copy Link</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.linkButton}
-                      onPress={handleShareLink}
-                    >
-                      <Send size={20} color={COLORS.primary} />
-                      <Text style={styles.linkButtonText}>Share Link</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {inviteLink && (
-                    <View style={styles.linkPreview}>
-                      <Text style={styles.linkPreviewLabel}>Preview:</Text>
-                      <Text style={styles.linkPreviewText} numberOfLines={2}>
-                        {inviteLink}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </>
-            )}
+                <TouchableOpacity
+                  style={styles.linkButton}
+                  onPress={handleShareLink}
+                >
+                  <Send size={20} color={COLORS.primary} />
+                  <Text style={styles.linkButtonText}>Share Link</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             {/* Role Explanation */}
             <View style={styles.roleExplanation}>
@@ -318,75 +270,20 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
     textAlign: 'center',
     paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 20,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    padding: 4,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    gap: 8,
-  },
-  activeTab: {
-    backgroundColor: COLORS.white,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  tabText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-  },
-  activeTabText: {
-    color: COLORS.primary,
   },
   content: {
     padding: 20,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   inputLabel: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
     marginBottom: 8,
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  textInput: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    flex: 1,
-    marginLeft: 12,
-  },
-  messageInput: {
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    height: 80,
-    textAlignVertical: 'top',
   },
   roleSelector: {
     flexDirection: 'row',
@@ -414,35 +311,79 @@ const styles = StyleSheet.create({
   selectedRoleOptionText: {
     color: COLORS.white,
   },
-  primaryButton: {
+  inviteSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    marginBottom: 12,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  textInput: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    flex: 1,
+    marginLeft: 12,
+  },
+  messageInput: {
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    height: 80,
+    textAlignVertical: 'top',
+    marginBottom: 12,
+  },
+  actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
-    marginBottom: 20,
   },
-  primaryButtonText: {
+  actionButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
   },
-  linkSection: {
-    marginBottom: 20,
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.neutralLight,
+  },
+  dividerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginHorizontal: 12,
   },
   linkDescription: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
-    lineHeight: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   linkActions: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 16,
   },
   linkButton: {
     flex: 1,
@@ -450,7 +391,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primaryLight,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
   },
@@ -459,28 +400,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.primary,
   },
-  linkPreview: {
-    backgroundColor: COLORS.neutralExtraLight,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: COLORS.neutralLight,
-  },
-  linkPreviewLabel: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    color: COLORS.neutralMedium,
-    marginBottom: 4,
-  },
-  linkPreviewText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: COLORS.neutralDark,
-  },
   roleExplanation: {
     backgroundColor: COLORS.neutralExtraLight,
     padding: 16,
     borderRadius: 12,
+    marginTop: 8,
   },
   explanationTitle: {
     fontFamily: 'Inter-Bold',
