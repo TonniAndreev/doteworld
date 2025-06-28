@@ -134,52 +134,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       console.error('Error saving notifications:', error);
     }
   };
-        )
-        return () => {
-          // Clean up by removing the single channel
-          supabase.removeChannel(notificationsChannel);
-        };
-      } else {
-        // Channel already exists, just load notifications
-        loadNotifications();
-        return () => {};
-      }
-    }
-  }, [user]);
-
-  const loadNotifications = async () => {
-    if (!user) return;
-
-    try {
-      // For now, we'll use local storage for notifications
-      // In a production app, you'd want to store these in the database
-      const storedNotifications = await import('@react-native-async-storage/async-storage').then(
-        async (AsyncStorage) => {
-          const stored = await AsyncStorage.default.getItem(`notifications_${user.id}`);
-          return stored ? JSON.parse(stored) : [];
-        }
-      );
-
-      setNotifications(storedNotifications);
-      setUnreadCount(storedNotifications.filter((n: Notification) => !n.read).length);
-    } catch (error) {
-      console.error('Error loading notifications:', error);
-    }
-  };
-
-  const saveNotifications = async (newNotifications: Notification[]) => {
-    if (!user) return;
-
-    try {
-      const AsyncStorage = await import('@react-native-async-storage/async-storage');
-      await AsyncStorage.default.setItem(
-        `notifications_${user.id}`,
-        JSON.stringify(newNotifications)
-      );
-    } catch (error) {
-      console.error('Error saving notifications:', error);
-    }
-  };
 
   const handleFriendshipNotification = async (friendship: any) => {
     try {
