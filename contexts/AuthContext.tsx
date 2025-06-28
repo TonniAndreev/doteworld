@@ -515,6 +515,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           console.log('Processing dog photo upload');
           
+          // Check if the storage bucket exists
+          const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+          console.log('Available buckets:', buckets?.map(b => b.name));
+          
+          if (bucketsError) {
+            console.error('Error listing buckets:', bucketsError);
+            throw new Error(`Storage error: ${bucketsError.message}`);
+          }
+          
+          // Check if dog_photos bucket exists
+          const dogPhotosBucket = buckets?.find(b => b.name === 'dog_photos');
+          if (!dogPhotosBucket) {
+            console.error('dog_photos bucket does not exist');
+            throw new Error('Storage not properly configured: dog_photos bucket missing');
+          }
+          
           // For Android, we need to ensure the file exists and is readable
           if (Platform.OS === 'android' && dogPhoto.startsWith('file://')) {
             const fileInfo = await FileSystem.getInfoAsync(dogPhoto);
@@ -529,14 +545,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Generate a unique filename
           const fileExt = dogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `${Date.now()}.${fileExt}`;
-          const filePath = `dogs/${user.id}/${fileName}`;
+          const filePath = `${user.id}/${fileName}`;
           
           console.log('Uploading to path:', filePath);
           
           // Read the file as base64
           let fileData;
           if (Platform.OS === 'web') {
-            // For web, convert data URL to blob
+            // For web, we can use the file URI directly
             if (dogPhoto.startsWith('data:')) {
               const response = await fetch(dogPhoto);
               const blob = await response.blob();
@@ -549,17 +565,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const base64Data = await FileSystem.readAsStringAsync(dogPhoto, {
               encoding: FileSystem.EncodingType.Base64,
             });
-            
-            // Convert base64 to Uint8Array for better compatibility
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            fileData = bytes;
+            fileData = base64Data;
           }
           
-          // Upload to Supabase Storage with proper content type
+          // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('dog_photos')
             .upload(filePath, fileData, {
@@ -569,12 +578,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (uploadError) {
             console.error('Error uploading photo:', uploadError);
-            // Check if bucket exists and user has permissions
-            const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-            console.log('Available buckets:', buckets);
-            if (bucketsError) {
-              console.error('Error listing buckets:', bucketsError);
-            }
             throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
           }
           
@@ -657,6 +660,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Uploading avatar from local file:', data.avatar_url);
         
         try {
+          // Check if the storage bucket exists
+          const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+          console.log('Available buckets:', buckets?.map(b => b.name));
+          
+          if (bucketsError) {
+            console.error('Error listing buckets:', bucketsError);
+            throw new Error(`Storage error: ${bucketsError.message}`);
+          }
+          
+          // Check if avatars bucket exists
+          const avatarsBucket = buckets?.find(b => b.name === 'avatars');
+          if (!avatarsBucket) {
+            console.error('avatars bucket does not exist');
+            throw new Error('Storage not properly configured: avatars bucket missing');
+          }
+          
           // For Android, we need to ensure the file exists and is readable
           if (Platform.OS === 'android' && data.avatar_url.startsWith('file://')) {
             const fileInfo = await FileSystem.getInfoAsync(data.avatar_url);
@@ -671,7 +690,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Generate a unique filename
           const fileExt = data.avatar_url.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `${Date.now()}.${fileExt}`;
-          const filePath = `avatars/${user.id}/${fileName}`;
+          const filePath = `${user.id}/${fileName}`;
           
           console.log('Uploading to path:', filePath);
           
@@ -691,14 +710,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const base64Data = await FileSystem.readAsStringAsync(data.avatar_url, {
               encoding: FileSystem.EncodingType.Base64,
             });
-            
-            // Convert base64 to Uint8Array for better compatibility
-            const binaryString = atob(base64Data);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-              bytes[i] = binaryString.charCodeAt(i);
-            }
-            fileData = bytes;
+            fileData = base64Data;
           }
           
           // Upload to Supabase Storage
@@ -711,7 +723,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (uploadError) {
             console.error('Error uploading avatar:', uploadError);
-            throw new Error('Failed to upload profile photo');
+            throw new Error(`Failed to upload profile photo: ${uploadError.message}`);
           }
           
           console.log('Upload successful:', uploadData);
