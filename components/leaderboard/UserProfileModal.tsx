@@ -10,8 +10,9 @@ import {
   Alert,
   Dimensions,
 } from 'react-native';
-import { X, UserPlus, UserCheck, UserX } from 'lucide-react-native';
+import { X, UserPlus, UserCheck, UserX, ExternalLink } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
+import { router } from 'expo-router';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
 import DogProfileCard from '@/components/profile/DogProfileCard';
@@ -204,6 +205,12 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
     }
   };
 
+  const handleViewFullProfile = () => {
+    if (!user) return;
+    onClose();
+    router.push(`/user/${user.id}`);
+  };
+
   const getFriendButtonContent = () => {
     switch (friendshipStatus) {
       case 'friend':
@@ -323,31 +330,43 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
                     </View>
                   </View>
 
-                  {/* Friend Action Button */}
-                  {!isCurrentUserProfile && (
+                  {/* Action Buttons */}
+                  <View style={styles.actionButtonsContainer}>
+                    {/* Friend Action Button */}
+                    {!isCurrentUserProfile && (
+                      <TouchableOpacity 
+                        style={friendButton.style}
+                        onPress={handleFriendAction}
+                        disabled={friendButton.disabled || isProcessingFriend}
+                      >
+                        {isProcessingFriend ? (
+                          <ActivityIndicator size="small" color={COLORS.white} />
+                        ) : (
+                          friendButton.icon
+                        )}
+                        <Text style={[
+                          styles.actionButtonText,
+                          friendButton.disabled && styles.disabledButtonText
+                        ]}>
+                          {isProcessingFriend ? 'Processing...' : friendButton.text}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+
+                    {/* View Full Profile Button */}
                     <TouchableOpacity 
-                      style={friendButton.style}
-                      onPress={handleFriendAction}
-                      disabled={friendButton.disabled || isProcessingFriend}
+                      style={styles.viewProfileButton}
+                      onPress={handleViewFullProfile}
                     >
-                      {isProcessingFriend ? (
-                        <ActivityIndicator size="small" color={COLORS.white} />
-                      ) : (
-                        friendButton.icon
-                      )}
-                      <Text style={[
-                        styles.actionButtonText,
-                        friendButton.disabled && styles.disabledButtonText
-                      ]}>
-                        {isProcessingFriend ? 'Processing...' : friendButton.text}
-                      </Text>
+                      <ExternalLink size={20} color={COLORS.primary} />
+                      <Text style={styles.viewProfileButtonText}>View Full Profile</Text>
                     </TouchableOpacity>
-                  )}
+                  </View>
                 </>
               )}
             </View>
 
-            {/* Dogs Section */}
+            {/* Dogs Section - Preview */}
             {!isLoadingProfile && userDogs.length > 0 && (
               <View style={styles.dogsSection}>
                 <View style={styles.dogsSectionHeader}>
@@ -359,14 +378,24 @@ export default function UserProfileModal({ visible, onClose, user }: UserProfile
                   </Text>
                 </View>
                 
-                {userDogs.map((dog, index) => (
-                  <View key={dog.id} style={styles.dogCardWrapper}>
-                    <DogProfileCard 
-                      dog={dog} 
-                      showFullDetails={false}
-                    />
-                  </View>
-                ))}
+                {/* Show only first dog as preview */}
+                <View style={styles.dogCardWrapper}>
+                  <DogProfileCard 
+                    dog={userDogs[0]} 
+                    showFullDetails={false}
+                  />
+                </View>
+
+                {userDogs.length > 1 && (
+                  <TouchableOpacity 
+                    style={styles.viewMoreDogsButton}
+                    onPress={handleViewFullProfile}
+                  >
+                    <Text style={styles.viewMoreDogsText}>
+                      View {userDogs.length - 1} more dog{userDogs.length - 1 !== 1 ? 's' : ''}
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </ScrollView>
@@ -384,7 +413,7 @@ const styles = StyleSheet.create({
   },
   modalBackground: {
     width: '100%',
-    maxHeight: screenHeight * 0.9,
+    maxHeight: screenHeight * 0.85,
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
@@ -435,7 +464,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   avatarContainer: {
-    marginBottom: 28, // Increased from 24 to 28 (4px more spacing)
+    marginBottom: 28,
   },
   userInfo: {
     alignItems: 'center',
@@ -486,6 +515,10 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
     textAlign: 'center',
   },
+  actionButtonsContainer: {
+    width: '100%',
+    gap: 12,
+  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -515,6 +548,24 @@ const styles = StyleSheet.create({
   disabledButtonText: {
     color: COLORS.neutralDark,
   },
+  viewProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    width: '100%',
+  },
+  viewProfileButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.primary,
+    marginLeft: 8,
+  },
   dogsSection: {
     backgroundColor: COLORS.neutralExtraLight,
     padding: 20,
@@ -537,5 +588,19 @@ const styles = StyleSheet.create({
   },
   dogCardWrapper: {
     marginBottom: 12,
+  },
+  viewMoreDogsButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
+  },
+  viewMoreDogsText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
   },
 });
