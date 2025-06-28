@@ -205,23 +205,22 @@ class AdMobService {
 
 export const adMobService = new AdMobService();
 
-// Configuration constants
+// Configuration constants with real production IDs
 export const ADMOB_CONFIG: AdMobConfig = {
   appId: Platform.select({
-    ios: 'ca-app-pub-3940256099942544~1458002511', // Test app ID
-    android: 'ca-app-pub-3940256099942544~3347511713', // Test app ID
-    default: 'test-app-id'
+    ios: 'ca-app-pub-2380886531830921~9974124526', // Real iOS app ID
+    android: 'ca-app-pub-2380886531830921~8661042855', // Real Android app ID
+    default: 'ca-app-pub-2380886531830921~8661042855'
   }),
   rewardedAdUnitId: Platform.select({
-    ios: 'ca-app-pub-3940256099942544/1712485313', // Test rewarded ad unit ID
-    android: 'ca-app-pub-3940256099942544/5224354917', // Test rewarded ad unit ID
-    default: 'test-rewarded-ad-unit-id'
+    ios: 'ca-app-pub-2380886531830921/5954988462', // Real iOS rewarded ad unit ID
+    android: 'ca-app-pub-2380886531830921/9866313310', // Real Android rewarded ad unit ID
+    default: 'ca-app-pub-2380886531830921/9866313310'
   }),
   testDeviceIds: [
-    // Add your test device IDs here for development
+    // Add your test device IDs here for development testing
+    // This ensures you see test ads during development
     // You can find your device ID in the console logs when running the app
-    // 'DEVICE_ID_1',
-    // 'DEVICE_ID_2',
   ]
 };
 
