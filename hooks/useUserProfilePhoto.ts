@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import { getUserProfilePhotoUrl } from '@/utils/photoStorage';
+import { useSafeSubscription } from './useSafeSubscription';
 
 interface UseUserProfilePhotoResult {
   photoUrl: string | null;
@@ -17,6 +18,9 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
   const { user } = useAuth();
 
   const targetUserId = userId || user?.id;
+
+  // Create a unique subscription channel name
+  const channelName = `profile_photo_${targetUserId}`;
 
   const fetchPhoto = async () => {
     if (!targetUserId) {
@@ -80,37 +84,20 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
   }, [targetUserId]);
 
   // Set up real-time subscription for photo updates
-  useEffect(() => {
-    if (!targetUserId) return;
-
-    const channelName = `profile_photo_${targetUserId}`;
-    
-    // Use a clean subscription approach
-    const channel = supabase.channel(channelName);
-    
-    const subscription = channel
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${targetUserId}`,
-        },
-        (payload) => {
-          console.log('Profile photo updated:', payload);
-          fetchPhoto();
-        }
-      )
-      .subscribe((status) => {
-        console.log(`Profile photo channel ${channelName} status: ${status}`);
-      });
-    
-    // Return cleanup function to unsubscribe
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [targetUserId]); // Only re-run when targetUserId changes
+  // Use the safe subscription hook instead of direct channel creation
+  useSafeSubscription(
+    channelName,
+    {
+      event: 'UPDATE',
+      table: 'profiles',
+      filter: `id=eq.${targetUserId}`,
+    },
+    (payload) => {
+      console.log('Profile photo updated:', payload);
+      fetchPhoto();
+    },
+    [targetUserId]
+  );
 
   return {
     photoUrl,

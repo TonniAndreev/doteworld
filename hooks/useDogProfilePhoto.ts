@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase';
 import { getDogProfilePhotoUrl } from '@/utils/photoStorage';
+import { useSafeSubscription } from './useSafeSubscription';
 
 interface UseDogProfilePhotoResult {
   photoUrl: string | null;
@@ -74,39 +75,24 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
   useEffect(() => {
     fetchPhoto();
   }, [dogId]);
-
-  // Set up real-time subscription for photo updates
-  useEffect(() => {
-    if (!dogId) return;
-
-    const channelName = `dog_photo_${dogId}`;
-    
-    // Use a clean subscription approach
-    const channel = supabase.channel(channelName);
-    
-    const subscription = channel
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'dogs',
-          filter: `id=eq.${dogId}`,
-        },
-        (payload) => {
-          console.log('Dog photo updated:', payload);
-          fetchPhoto();
-        }
-      )
-      .subscribe((status) => {
-        console.log(`Dog photo channel ${channelName} status: ${status}`);
-      });
-    
-    // Return cleanup function to unsubscribe
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [dogId]); // Only re-run when dogId changes
+  
+  // Create a unique subscription channel name
+  const channelName = `dog_photo_${dogId}`;
+  
+  // Use the safe subscription hook instead of direct channel creation
+  useSafeSubscription(
+    channelName,
+    {
+      event: 'UPDATE',
+      table: 'dogs',
+      filter: `id=eq.${dogId}`,
+    },
+    (payload) => {
+      console.log('Dog photo updated:', payload);
+      fetchPhoto();
+    },
+    [dogId]
+  );
 
   return {
     photoUrl,
