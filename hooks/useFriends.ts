@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import * as turf from '@turf/turf';
@@ -65,32 +65,37 @@ export function useFriends() {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  const channelRef = useRef<any>(null);
 
   useEffect(() => {
     if (user) {
       loadData();
       
       // Set up real-time listeners for friendship changes
-      // IMPORTANT: Create only one channel with a unique name
-      const friendshipsChannel = supabase
-        .channel('friendships-changes-' + user.id)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'friendships',
-            filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
-          },
-          (payload) => {
-            console.log('Friendship change detected:', payload);
-            loadData();
-          }
-        )
-        .subscribe();
+      if (!channelRef.current) {
+        channelRef.current = supabase
+          .channel('friendships-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'friendships',
+              filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
+            },
+            (payload) => {
+              console.log('Friendship change detected:', payload);
+              loadData();
+            }
+          )
+          .subscribe();
+      }
         
       return () => {
-        supabase.removeChannel(friendshipsChannel);
+        if (channelRef.current) {
+          supabase.removeChannel(channelRef.current);
+          channelRef.current = null;
+        }
       };
     }
   }, [user]);

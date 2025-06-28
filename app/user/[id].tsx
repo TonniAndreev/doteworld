@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -74,11 +74,15 @@ export default function PublicUserProfileScreen() {
   const { friends, sendFriendRequest, removeFriend, refetch: refetchFriends } = useFriends();
   const { user: currentUser } = useAuth();
 
-  // Check friendship status first, then load user data
+  // Check friendship status and load user data simultaneously
   useEffect(() => {
     if (id && currentUser) {
-      checkFriendshipStatus().then(() => {
-        loadUserData();
+      setIsLoading(true);
+      Promise.all([
+        checkFriendshipStatus(),
+        loadUserData()
+      ]).finally(() => {
+        setIsLoading(false);
       });
     }
   }, [id, currentUser]);
@@ -129,7 +133,6 @@ export default function PublicUserProfileScreen() {
   const loadUserData = async () => {
     if (!id) return;
     
-    setIsLoading(true);
     try {
       // Load user profile
       const { data: profile, error: profileError } = await supabase
@@ -250,8 +253,6 @@ export default function PublicUserProfileScreen() {
       console.error('Error loading user data:', error);
       Alert.alert('Error', 'Failed to load user profile');
       router.back();
-    } finally {
-      setIsLoading(false);
     }
   };
 
