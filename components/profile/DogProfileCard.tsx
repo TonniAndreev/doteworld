@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
-import { Calendar, Heart, Scale, Info, Users, Crown, Shield, Eye, UserPlus, UserX, MoreHorizontal } from 'lucide-react-native';
+import { Calendar, Heart, Scale, Info, Users, Crown, Shield, Eye, UserPlus, UserX, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
