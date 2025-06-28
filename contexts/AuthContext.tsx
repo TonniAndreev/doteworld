@@ -69,9 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Create redirect URI for OAuth - Use custom scheme for mobile
  const redirectTo = AuthSession.makeRedirectUri({
-    scheme: 'doteapp',
-    path: '/auth/callback',
-    useProxy: false, // Add this line
+    useProxy: true,
   });
 
   useEffect(() => {
