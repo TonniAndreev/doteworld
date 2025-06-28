@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Animated,
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,14 +23,13 @@ import {
   Shield,
   Gift,
   History,
-  RefreshCw,
   Infinity
 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { usePaws } from '@/contexts/PawsContext';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width: screenWidth } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function StoreScreen() {
   const [isLoading, setIsLoading] = useState(false);
@@ -56,9 +54,7 @@ export default function StoreScreen() {
     'Exclusive premium badges',
     'Advanced territory analytics',
     'Custom dog profile themes',
-    'Priority customer support',
-    'Early access to new features',
-    'Family sharing (up to 5 dogs)'
+    'Priority customer support'
   ];
 
   // Countdown timer for ad cooldown
@@ -152,101 +148,10 @@ export default function StoreScreen() {
       <ScrollView 
         style={styles.content}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
       >
-        {/* Current Balance Section */}
-        <View style={styles.balanceSection}>
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
-            style={styles.balanceCard}
-          >
-            <View style={styles.balanceHeader}>
-              <PawPrint size={32} color={COLORS.white} />
-              <Text style={styles.balanceTitle}>Current Balance</Text>
-            </View>
-            
-            <View style={styles.balanceContent}>
-              <Text style={styles.balanceAmount}>
-                {isSubscribed ? '∞' : `${pawsBalance}/${maxPaws}`}
-              </Text>
-              <Text style={styles.balanceSubtitle}>
-                {isSubscribed ? 'Unlimited Paws' : 'Paws Available'}
-              </Text>
-            </View>
-
-            {isSubscribed && (
-              <View style={styles.subscriptionBadge}>
-                <Crown size={16} color={COLORS.accent} />
-                <Text style={styles.subscriptionText}>Premium Active</Text>
-              </View>
-            )}
-          </LinearGradient>
-        </View>
-
-        {/* Free Paws Section */}
-        {!isSubscribed && (
-          <View style={styles.freePawsSection}>
-            <Text style={styles.sectionTitle}>Earn Free Paws</Text>
-            
-            <View style={styles.adCard}>
-              <View style={styles.adHeader}>
-                <Play size={24} color={COLORS.primary} />
-                <View style={styles.adInfo}>
-                  <Text style={styles.adTitle}>Watch Ad for Paws</Text>
-                  <Text style={styles.adSubtitle}>
-                    Earn 1 Paw per ad • {dailyAdsWatched}/{maxDailyAds} watched today
-                  </Text>
-                </View>
-              </View>
-
-              {adCooldownTime > 0 ? (
-                <View style={styles.cooldownContainer}>
-                  <Clock size={16} color={COLORS.neutralMedium} />
-                  <Text style={styles.cooldownText}>
-                    Next ad in {formatTime(adCooldownTime)}
-                  </Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={[
-                    styles.adButton,
-                    !canWatchAd && styles.adButtonDisabled
-                  ]}
-                  onPress={handleWatchAd}
-                  disabled={!canWatchAd || isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color={COLORS.white} />
-                  ) : (
-                    <>
-                      <Play size={20} color={COLORS.white} />
-                      <Text style={styles.adButtonText}>
-                        {canWatchAd ? 'Watch Ad' : 'Daily Limit Reached'}
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <View style={styles.dailyPawCard}>
-              <Gift size={24} color={COLORS.secondary} />
-              <View style={styles.dailyPawInfo}>
-                <Text style={styles.dailyPawTitle}>Daily Free Paw</Text>
-                <Text style={styles.dailyPawSubtitle}>
-                  Next free paw in {formatTimeUntil(timeUntilNextPaw)}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Premium Subscription Section */}
-        <View style={styles.subscriptionSection}>
-          <Text style={styles.sectionTitle}>Go Premium</Text>
-          <Text style={styles.sectionSubtitle}>
-            Unlock unlimited paws and exclusive features
-          </Text>
-
+        {/* Premium Subscription Section - Primary Focus */}
+        <View style={styles.premiumSection}>
           <View style={styles.premiumCard}>
             {/* Popular Badge */}
             <View style={styles.popularBadge}>
@@ -256,28 +161,37 @@ export default function StoreScreen() {
 
             {/* Premium Header */}
             <LinearGradient
-              colors={[COLORS.accent, COLORS.accentDark]}
+              colors={[COLORS.primary, COLORS.primaryDark]}
               style={styles.premiumHeader}
             >
               <View style={styles.premiumIcon}>
-                <Crown size={32} color={COLORS.white} />
+                <Crown size={40} color={COLORS.white} />
               </View>
-              <View style={styles.premiumInfo}>
-                <Text style={styles.premiumName}>Paws Premium</Text>
-                <View style={styles.premiumPricing}>
-                  <Text style={styles.premiumPrice}>$5.00</Text>
-                  <Text style={styles.premiumPeriod}>/month</Text>
-                </View>
-                <Text style={styles.premiumDescription}>
-                  Everything you need for the ultimate dog walking experience
-                </Text>
+              <Text style={styles.premiumName}>Paws Premium</Text>
+              <View style={styles.premiumPricing}>
+                <Text style={styles.premiumPrice}>$5.00</Text>
+                <Text style={styles.premiumPeriod}>/month</Text>
               </View>
+              <Text style={styles.premiumDescription}>
+                Unlimited paws & exclusive features
+              </Text>
             </LinearGradient>
+
+            {/* Unlimited Paws Highlight */}
+            <View style={styles.unlimitedSection}>
+              <View style={styles.unlimitedCard}>
+                <Infinity size={32} color={COLORS.primary} />
+                <View style={styles.unlimitedInfo}>
+                  <Text style={styles.unlimitedTitle}>Unlimited Paws</Text>
+                  <Text style={styles.unlimitedSubtitle}>
+                    Never run out of conquests
+                  </Text>
+                </View>
+              </View>
+            </View>
 
             {/* Features List */}
             <View style={styles.featuresContainer}>
-              <Text style={styles.featuresTitle}>What's Included:</Text>
-              
               <View style={styles.featuresGrid}>
                 {premiumFeatures.map((feature, index) => (
                   <View key={index} style={styles.featureItem}>
@@ -286,22 +200,6 @@ export default function StoreScreen() {
                   </View>
                 ))}
               </View>
-            </View>
-
-            {/* Unlimited Paws Highlight */}
-            <View style={styles.unlimitedSection}>
-              <LinearGradient
-                colors={[COLORS.primary, COLORS.primaryDark]}
-                style={styles.unlimitedCard}
-              >
-                <Infinity size={32} color={COLORS.white} />
-                <View style={styles.unlimitedInfo}>
-                  <Text style={styles.unlimitedTitle}>Unlimited Paws</Text>
-                  <Text style={styles.unlimitedSubtitle}>
-                    Never run out of conquests again
-                  </Text>
-                </View>
-              </LinearGradient>
             </View>
 
             {/* Subscribe Button */}
@@ -335,26 +233,99 @@ export default function StoreScreen() {
           </View>
         </View>
 
+        {/* Current Balance & Free Options */}
+        <View style={styles.freeOptionsSection}>
+          {/* Compact Balance Display */}
+          <View style={styles.compactBalanceCard}>
+            <View style={styles.balanceRow}>
+              <PawPrint size={20} color={COLORS.primary} />
+              <Text style={styles.compactBalanceText}>
+                {isSubscribed ? '∞ Unlimited' : `${pawsBalance}/${maxPaws} Paws`}
+              </Text>
+            </View>
+            {isSubscribed && (
+              <View style={styles.premiumBadge}>
+                <Crown size={12} color={COLORS.accent} />
+                <Text style={styles.premiumBadgeText}>Premium</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Free Paws Options */}
+          {!isSubscribed && (
+            <View style={styles.freeOptionsGrid}>
+              {/* Watch Ad Card */}
+              <View style={styles.freeOptionCard}>
+                <View style={styles.freeOptionHeader}>
+                  <Play size={20} color={COLORS.primary} />
+                  <Text style={styles.freeOptionTitle}>Watch Ad</Text>
+                </View>
+                <Text style={styles.freeOptionSubtitle}>
+                  Earn 1 Paw • {dailyAdsWatched}/{maxDailyAds} today
+                </Text>
+                
+                {adCooldownTime > 0 ? (
+                  <View style={styles.cooldownContainer}>
+                    <Clock size={14} color={COLORS.neutralMedium} />
+                    <Text style={styles.cooldownText}>
+                      {formatTime(adCooldownTime)}
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={[
+                      styles.freeOptionButton,
+                      !canWatchAd && styles.freeOptionButtonDisabled
+                    ]}
+                    onPress={handleWatchAd}
+                    disabled={!canWatchAd || isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={COLORS.white} />
+                    ) : (
+                      <Text style={styles.freeOptionButtonText}>
+                        {canWatchAd ? 'Watch' : 'Limit Reached'}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Daily Free Paw Card */}
+              <View style={styles.freeOptionCard}>
+                <View style={styles.freeOptionHeader}>
+                  <Gift size={20} color={COLORS.secondary} />
+                  <Text style={styles.freeOptionTitle}>Daily Free</Text>
+                </View>
+                <Text style={styles.freeOptionSubtitle}>
+                  Next in {formatTimeUntil(timeUntilNextPaw)}
+                </Text>
+                <View style={styles.freeOptionButton}>
+                  <Text style={styles.freeOptionButtonText}>Tomorrow</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+
         {/* Transaction History */}
         {showTransactionHistory && (
           <View style={styles.historySection}>
-            <Text style={styles.sectionTitle}>Transaction History</Text>
+            <Text style={styles.sectionTitle}>Recent Transactions</Text>
             
             {transactions.length === 0 ? (
               <View style={styles.emptyHistory}>
-                <History size={48} color={COLORS.neutralMedium} />
+                <History size={32} color={COLORS.neutralMedium} />
                 <Text style={styles.emptyHistoryText}>No transactions yet</Text>
               </View>
             ) : (
               <View style={styles.transactionsList}>
-                {transactions.slice(0, 10).map((transaction) => (
+                {transactions.slice(0, 5).map((transaction) => (
                   <View key={transaction.id} style={styles.transactionItem}>
                     <View style={styles.transactionIcon}>
-                      {transaction.type === 'credit' ? (
-                        <PawPrint size={16} color={COLORS.success} />
-                      ) : (
-                        <PawPrint size={16} color={COLORS.error} />
-                      )}
+                      <PawPrint size={12} color={
+                        transaction.type === 'credit' ? COLORS.success : COLORS.error
+                      } />
                     </View>
                     
                     <View style={styles.transactionDetails}>
@@ -381,10 +352,6 @@ export default function StoreScreen() {
 
         {/* Footer Info */}
         <View style={styles.footerInfo}>
-          <Text style={styles.footerText}>
-            Subscription auto-renews unless cancelled. Cancel anytime in your account settings.
-          </Text>
-          
           <TouchableOpacity 
             style={styles.learnMoreButton}
             onPress={() => router.push('/(tabs)/store/package')}
@@ -425,163 +392,14 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  balanceSection: {
+  scrollContent: {
+    flexGrow: 1,
+  },
+  
+  // Premium Section - Primary Focus
+  premiumSection: {
     padding: 16,
-  },
-  balanceCard: {
-    borderRadius: 20,
-    padding: 24,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  balanceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  balanceTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 18,
-    color: COLORS.white,
-    marginLeft: 12,
-  },
-  balanceContent: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  balanceAmount: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 48,
-    color: COLORS.white,
-    marginBottom: 4,
-  },
-  balanceSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
-  subscriptionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    alignSelf: 'center',
-  },
-  subscriptionText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 14,
-    color: COLORS.white,
-    marginLeft: 6,
-  },
-  freePawsSection: {
-    padding: 16,
-  },
-  sectionTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.neutralDark,
-    marginBottom: 8,
-  },
-  sectionSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    marginBottom: 16,
-  },
-  adCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: COLORS.primaryLight,
-  },
-  adHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  adInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  adTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    marginBottom: 4,
-  },
-  adSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-  },
-  cooldownContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-  },
-  cooldownText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    marginLeft: 6,
-  },
-  adButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-  },
-  adButtonDisabled: {
-    backgroundColor: COLORS.neutralMedium,
-  },
-  adButtonText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.white,
-    marginLeft: 8,
-  },
-  dailyPawCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.secondaryLight,
-    padding: 16,
-    borderRadius: 12,
-  },
-  dailyPawInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  dailyPawTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    marginBottom: 4,
-  },
-  dailyPawSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-  },
-  subscriptionSection: {
-    padding: 16,
+    paddingBottom: 8,
   },
   premiumCard: {
     backgroundColor: COLORS.white,
@@ -613,41 +431,37 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   premiumHeader: {
-    padding: 24,
-    paddingTop: 32,
+    padding: 32,
+    alignItems: 'center',
   },
   premiumIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    alignSelf: 'center',
-  },
-  premiumInfo: {
-    alignItems: 'center',
   },
   premiumName: {
     fontFamily: 'Inter-Bold',
-    fontSize: 24,
+    fontSize: 28,
     color: COLORS.white,
     marginBottom: 8,
   },
   premiumPricing: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   premiumPrice: {
     fontFamily: 'Inter-Bold',
-    fontSize: 32,
+    fontSize: 36,
     color: COLORS.white,
   },
   premiumPeriod: {
     fontFamily: 'Inter-Regular',
-    fontSize: 18,
+    fontSize: 20,
     color: 'rgba(255, 255, 255, 0.8)',
   },
   premiumDescription: {
@@ -655,16 +469,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'rgba(255, 255, 255, 0.9)',
     textAlign: 'center',
-    lineHeight: 22,
   },
-  featuresContainer: {
-    padding: 24,
+  unlimitedSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  featuresTitle: {
+  unlimitedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    padding: 16,
+    borderRadius: 16,
+  },
+  unlimitedInfo: {
+    marginLeft: 16,
+    flex: 1,
+  },
+  unlimitedTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: COLORS.neutralDark,
-    marginBottom: 16,
+    color: COLORS.primary,
+    marginBottom: 4,
+  },
+  unlimitedSubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+  },
+  featuresContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   featuresGrid: {
     gap: 12,
@@ -680,40 +514,15 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
-  unlimitedSection: {
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-  },
-  unlimitedCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    borderRadius: 16,
-  },
-  unlimitedInfo: {
-    marginLeft: 16,
-    flex: 1,
-  },
-  unlimitedTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 18,
-    color: COLORS.white,
-    marginBottom: 4,
-  },
-  unlimitedSubtitle: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
-  },
   subscribeButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.accent,
+    backgroundColor: COLORS.primary,
     paddingVertical: 18,
-    margin: 24,
+    margin: 20,
     borderRadius: 16,
-    shadowColor: COLORS.accent,
+    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -732,7 +541,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 24,
+    paddingBottom: 20,
   },
   guaranteeText: {
     fontFamily: 'Inter-Medium',
@@ -740,18 +549,127 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
     marginLeft: 6,
   },
+
+  // Free Options Section - Secondary
+  freeOptionsSection: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  compactBalanceCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: COLORS.neutralExtraLight,
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  compactBalanceText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    marginLeft: 8,
+  },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.accentLight,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  premiumBadgeText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 12,
+    color: COLORS.accent,
+    marginLeft: 4,
+  },
+  freeOptionsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  freeOptionCard: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
+  },
+  freeOptionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  freeOptionTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginLeft: 8,
+  },
+  freeOptionSubtitle: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: COLORS.neutralMedium,
+    marginBottom: 12,
+  },
+  cooldownContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 8,
+  },
+  cooldownText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.neutralMedium,
+    marginLeft: 4,
+  },
+  freeOptionButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  freeOptionButtonDisabled: {
+    backgroundColor: COLORS.neutralMedium,
+  },
+  freeOptionButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 12,
+    color: COLORS.white,
+  },
+
+  // History Section
   historySection: {
     padding: 16,
   },
+  sectionTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.neutralDark,
+    marginBottom: 12,
+  },
   emptyHistory: {
     alignItems: 'center',
-    paddingVertical: 40,
+    paddingVertical: 24,
   },
   emptyHistoryText: {
     fontFamily: 'Inter-Regular',
-    fontSize: 16,
+    fontSize: 14,
     color: COLORS.neutralMedium,
-    marginTop: 12,
+    marginTop: 8,
   },
   transactionsList: {
     backgroundColor: COLORS.white,
@@ -761,14 +679,14 @@ const styles = StyleSheet.create({
   transactionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    padding: 12,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.neutralLight,
   },
   transactionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     backgroundColor: COLORS.neutralLight,
     justifyContent: 'center',
     alignItems: 'center',
@@ -779,18 +697,18 @@ const styles = StyleSheet.create({
   },
   transactionDescription: {
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: 13,
     color: COLORS.neutralDark,
     marginBottom: 2,
   },
   transactionDate: {
     fontFamily: 'Inter-Regular',
-    fontSize: 12,
+    fontSize: 11,
     color: COLORS.neutralMedium,
   },
   transactionAmount: {
     fontFamily: 'Inter-Bold',
-    fontSize: 16,
+    fontSize: 14,
   },
   creditAmount: {
     color: COLORS.success,
@@ -798,17 +716,11 @@ const styles = StyleSheet.create({
   debitAmount: {
     color: COLORS.error,
   },
+
+  // Footer
   footerInfo: {
     padding: 16,
     alignItems: 'center',
-  },
-  footerText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: COLORS.neutralMedium,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 16,
   },
   learnMoreButton: {
     paddingVertical: 8,
