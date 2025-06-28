@@ -191,6 +191,7 @@ export default function DogProfileScreen() {
       await updateDogProfile(dogName, dogBreed, dogPhoto, dogBirthday);
       router.replace('/(tabs)');
     } catch (error: any) {
+      console.error('Dog profile submission error:', error);
       setError(error.message || 'Failed to save dog profile. Please try again.');
     } finally {
       setIsLoading(false);

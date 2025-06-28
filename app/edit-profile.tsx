@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { ChevronLeft, User, Mail, Phone, Camera, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -136,33 +137,68 @@ export default function EditProfileScreen() {
       // First, upload the avatar if it's a local file
       let finalAvatarUrl = avatarUrl;
       
-      if (avatarUrl && avatarUrl.startsWith('file://')) {
-        const file = {
-          uri: avatarUrl,
-          name: `avatar-${user.id}-${Date.now()}.jpg`,
-          type: 'image/jpeg',
-        };
+      if (avatarUrl && (avatarUrl.startsWith('file://') || avatarUrl.startsWith('content://'))) {
+        console.log('Uploading avatar from local file:', avatarUrl);
         
-        // Create form data for file upload
-        const formData = new FormData();
-        formData.append('file', file as any);
-        
-        // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(`public/${user.id}/${file.name}`, formData);
-        
-        if (uploadError) {
-          console.error('Error uploading avatar:', uploadError);
-          throw new Error('Failed to upload profile photo');
+        try {
+          // For Android, we need to ensure the file exists and is readable
+          if (Platform.OS === 'android') {
+            const fileInfo = await FileSystem.getInfoAsync(avatarUrl);
+            console.log('File info:', fileInfo);
+            
+            if (!fileInfo.exists) {
+              console.error('File does not exist:', avatarUrl);
+              throw new Error('Photo file not found');
+            }
+          }
+          
+          // Generate a unique filename
+          const fileExt = avatarUrl.split('.').pop()?.toLowerCase() || 'jpg';
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `avatars/${user.id}/${fileName}`;
+          
+          console.log('Uploading to path:', filePath);
+          
+          // Read the file as base64
+          let fileData;
+          if (Platform.OS === 'web') {
+            // For web, we can use the file URI directly
+            fileData = avatarUrl;
+          } else {
+            // For mobile, read the file as base64
+            const base64Data = await FileSystem.readAsStringAsync(avatarUrl, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            fileData = base64Data;
+          }
+          
+          // Upload to Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, fileData, {
+              contentType: `image/${fileExt}`,
+              upsert: true,
+            });
+          
+          if (uploadError) {
+            console.error('Error uploading avatar:', uploadError);
+            throw new Error('Failed to upload profile photo');
+          }
+          
+          console.log('Upload successful:', uploadData);
+          
+          // Get public URL
+          const { data: publicUrlData } = await supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          
+          console.log('Public URL:', publicUrlData);
+          
+          finalAvatarUrl = publicUrlData.publicUrl;
+        } catch (uploadError) {
+          console.error('Avatar upload error:', uploadError);
+          // Continue without updating avatar if upload fails
         }
-        
-        // Get public URL for the uploaded file
-        const { data: urlData } = await supabase.storage
-          .from('avatars')
-          .getPublicUrl(`public/${user.id}/${file.name}`);
-        
-        finalAvatarUrl = urlData.publicUrl;
       }
       
       // Update profile in database
@@ -176,28 +212,28 @@ export default function EditProfileScreen() {
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
-      
+
       if (updateError) {
         console.error('Error updating profile:', updateError);
         throw new Error('Failed to update profile');
       }
-      
+
       // If email changed, update auth email
       if (email.trim() !== user.email) {
         const { error: emailError } = await supabase.auth.updateUser({
           email: email.trim(),
         });
-        
+
         if (emailError) {
           console.error('Error updating email:', emailError);
           throw new Error('Failed to update email address');
         }
       }
-      
+
       // Refresh user data
       await refreshUserData();
       
-      Alert.alert('Success', 'Profile updated successfully', [
+      Alert.alert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {

@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import * as FileSystem from 'expo-file-system';
 
 // Complete the auth session on web
 WebBrowser.maybeCompleteAuthSession();
@@ -497,17 +498,87 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Create or update dog
+      console.log('Starting dog profile update with photo:', !!dogPhoto);
+      
+      // Create dog data object
       const dogData: any = {
         name: dogName,
         breed: dogBreed,
-        photo_url: dogPhoto,
       };
       
       if (birthday) {
         dogData.birthday = birthday;
       }
       
+      // Handle photo upload if provided
+      if (dogPhoto) {
+        try {
+          console.log('Processing dog photo upload');
+          
+          // For Android, we need to ensure the file exists and is readable
+          if (Platform.OS === 'android' && dogPhoto.startsWith('file://')) {
+            const fileInfo = await FileSystem.getInfoAsync(dogPhoto);
+            console.log('File info:', fileInfo);
+            
+            if (!fileInfo.exists) {
+              console.error('File does not exist:', dogPhoto);
+              throw new Error('Photo file not found');
+            }
+          }
+          
+          // Generate a unique filename
+          const fileExt = dogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `dogs/${user.id}/${fileName}`;
+          
+          console.log('Uploading to path:', filePath);
+          
+          // Read the file as base64
+          let fileData;
+          if (Platform.OS === 'web') {
+            // For web, we can use the file URI directly
+            fileData = dogPhoto;
+          } else {
+            // For mobile, read the file as base64
+            const base64Data = await FileSystem.readAsStringAsync(dogPhoto, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+            fileData = base64Data;
+          }
+          
+          // Upload to Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('dog_photos')
+            .upload(filePath, fileData, {
+              contentType: `image/${fileExt}`,
+              upsert: true,
+            });
+          
+          if (uploadError) {
+            console.error('Error uploading photo:', uploadError);
+            throw new Error('Failed to upload dog photo');
+          }
+          
+          console.log('Upload successful:', uploadData);
+          
+          // Get public URL
+          const { data: publicUrlData } = await supabase.storage
+            .from('dog_photos')
+            .getPublicUrl(filePath);
+          
+          console.log('Public URL:', publicUrlData);
+          
+          // Set photo URL in dog data
+          dogData.photo_url = publicUrlData.publicUrl;
+        } catch (uploadError) {
+          console.error('Photo upload error:', uploadError);
+          // Continue without photo if upload fails
+        }
+      }
+      
+      console.log('Creating dog with data:', dogData);
+      
+      // Create dog in database
       const { data: dog, error: dogError } = await supabase
         .from('dogs')
         .insert(dogData)
@@ -518,6 +589,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error creating dog:', dogError);
         throw dogError;
       }
+
+      console.log('Dog created successfully:', dog);
 
       // Link dog to user profile
       const { error: linkError } = await supabase
@@ -531,6 +604,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error linking dog to profile:', linkError);
         throw linkError;
       }
+
+      console.log('Dog linked to profile successfully');
 
       // Update local user state
       const updatedUser = {
