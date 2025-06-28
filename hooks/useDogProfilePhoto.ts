@@ -15,8 +15,8 @@ export function useDogProfilePhoto(dogId: string): UseDogProfilePhotoResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Create a unique subscription channel name with a timestamp to avoid collisions
-  const channelName = `dog_photo_${dogId}_${Date.now()}`;
+  // Create a stable channel name without the timestamp
+  const channelName = `dog_photo_${dogId}`;
 
   const fetchPhoto = async () => {
     if (!dogId) {

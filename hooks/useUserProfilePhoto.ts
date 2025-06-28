@@ -19,8 +19,8 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
 
   const targetUserId = userId || user?.id;
 
-  // Create a unique subscription channel name with a timestamp to avoid collisions
-  const channelName = `profile_photo_${targetUserId}_${Date.now()}`;
+  // Create a stable channel name without the timestamp
+  const channelName = `profile_photo_${targetUserId}`;
 
   const fetchPhoto = async () => {
     if (!targetUserId) {
@@ -87,7 +87,7 @@ export function useUserProfilePhoto(userId?: string): UseUserProfilePhotoResult 
     }
   }, [targetUserId]);
   
-  // Set up real-time subscription for photo updates
+  // Use the safe subscription hook instead of direct channel creation
   useSafeSubscription(
     channelName,
     {
