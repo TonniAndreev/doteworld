@@ -48,8 +48,14 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const channelRef = useRef<any>(null);
 
   useEffect(() => {
+    // Clean up any existing channel first to prevent multiple subscriptions
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    
     const loadTerritoryData = async () => {
-      if (user && user.dogs.length > 0) {
+      if (user?.id && user.dogs.length > 0) {
         try {
           const dogId = user.dogs[0].id; // Use first dog for now
           
@@ -108,7 +114,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
           }
           
           // Set up real-time listener for territory changes
-          if (!channelRef.current) {
+          if (dogId) {
             channelRef.current = supabase
               .channel('territory-changes')
               .on(
@@ -129,6 +135,15 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         } catch (error) {
           console.error('Error loading territory data:', error);
         }
+      } else {
+        // Reset state when user logs out or has no dogs
+        setTerritoryGeoJSON(null);
+        setTerritorySize(0);
+        setTotalDistance(0);
+        setCurrentWalkPoints([]);
+        setCurrentPolygon(null);
+        setCurrentWalkSessionId(null);
+        setCurrentWalkDistance(0);
       }
     };
 
@@ -140,7 +155,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         channelRef.current = null;
       }
     };
-  }, [user]);
+  }, [user?.id, user?.dogs[0]?.id]); // Only re-run when user ID or first dog ID changes
 
   const startWalk = () => {
     setCurrentWalkPoints([]);
@@ -151,7 +166,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   };
 
   const addWalkPoint = async (coordinates: Coordinate) => {
-    if (!user || !user.dogs.length || !currentWalkSessionId) return;
+    if (!user?.id || !user.dogs.length || !currentWalkSessionId) return;
 
     // Calculate distance from previous point
     if (currentWalkPoints.length > 0) {
@@ -200,7 +215,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   };
 
   const endWalk = async () => {
-    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user || !user.dogs.length || !currentWalkSessionId) {
+    if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user?.id || !user.dogs.length || !currentWalkSessionId) {
       console.log('Cannot end walk: insufficient points, no user, or no session');
       return;
     }

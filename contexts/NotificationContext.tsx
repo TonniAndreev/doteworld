@@ -39,7 +39,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const channelsRef = useRef<{[key: string]: any}>({});
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
+      // Clean up any existing channels first
+      Object.values(channelsRef.current).forEach(channel => {
+        if (channel) {
+          supabase.removeChannel(channel);
+        }
+      });
+      channelsRef.current = {};
+      
       // Set up real-time listeners for various notifications
       setupNotificationListeners();
       
@@ -55,11 +63,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         });
         channelsRef.current = {};
       };
+    } else {
+      // Reset state when user logs out
+      setNotifications([]);
+      setUnreadCount(0);
+      
+      // Clean up channels if user logs out
+      Object.values(channelsRef.current).forEach(channel => {
+        if (channel) {
+          supabase.removeChannel(channel);
+        }
+      });
+      channelsRef.current = {};
     }
-  }, [user]);
+  }, [user?.id]); // Only re-run when user ID changes, not the entire user object
 
   const setupNotificationListeners = () => {
-    if (!user) return;
+    if (!user?.id) return;
     
     // Clean up any existing channels first
     Object.values(channelsRef.current).forEach(channel => {
@@ -67,6 +87,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         supabase.removeChannel(channel);
       }
     });
+    channelsRef.current = {};
     
     // Set up friend requests channel
     channelsRef.current.friendships = supabase
@@ -139,7 +160,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const loadNotifications = async () => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       // For now, we'll use local storage for notifications
@@ -159,7 +180,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const saveNotifications = async (newNotifications: Notification[]) => {
-    if (!user) return;
+    if (!user?.id) return;
 
     try {
       const AsyncStorage = await import('@react-native-async-storage/async-storage');
@@ -343,7 +364,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const markAsRead = (notificationId: string) => {
-    if (!user) return;
+    if (!user?.id) return;
     
     setNotifications(prev => {
       const updated = prev.map(notification => 
@@ -359,7 +380,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const markAllAsRead = () => {
-    if (!user) return;
+    if (!user?.id) return;
     
     setNotifications(prev => {
       const updated = prev.map(notification => ({ ...notification, read: true }));
@@ -371,7 +392,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   };
 
   const removeNotification = (notificationId: string) => {
-    if (!user) return;
+    if (!user?.id) return;
 
     setNotifications(prev => {
       const updated = prev.filter(notification => notification.id !== notificationId);
