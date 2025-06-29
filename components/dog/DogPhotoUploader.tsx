@@ -100,9 +100,19 @@ export default function DogPhotoUploader({
       
       console.log('Uploading to path:', filePath);
       
-      // Use fetch API to get the file data
-      const response = await fetch(photoUri);
-      const fileData = await response.blob();
+      // Use FileSystem to read the file as base64
+      const base64 = await FileSystem.readAsStringAsync(photoUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      
+      // Convert base64 to blob
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage

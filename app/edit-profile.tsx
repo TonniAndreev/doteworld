@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { ChevronLeft, User, Mail, Phone, Camera, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -160,15 +161,25 @@ export default function EditProfileScreen() {
           
           console.log('Uploading to path:', filePath);
           
-          // Use fetch to get blob from image URI
-          const response = await fetch(avatarUrl);
-          const fileData = await response.blob();
+          // Use FileSystem to read the file as base64
+          const base64 = await FileSystem.readAsStringAsync(avatarUrl, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          // Convert base64 to blob
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('avatars')
             .upload(filePath, fileData, {
-              contentType: fileData.type,
+              contentType: `image/${fileExt}`,
               upsert: true,
             });
           

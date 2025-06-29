@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import * as FileSystem from 'expo-file-system';
 
 // Complete the auth session on web
 WebBrowser.maybeCompleteAuthSession();
@@ -521,15 +522,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Use fetch to get blob from image URI
-          const response = await fetch(dogPhoto);
-          const fileData = await response.blob();
+          // Use FileSystem to read the file as base64
+          const base64 = await FileSystem.readAsStringAsync(dogPhoto, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          // Convert base64 to blob
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('dog_photos')
             .upload(filePath, fileData, {
-              contentType: fileData.type,
+              contentType: `image/${fileExt}`,
               upsert: true,
             });
           
@@ -624,15 +635,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Use fetch to get blob from image URI
-          const response = await fetch(data.avatar_url);
-          const fileData = await response.blob();
+          // Use FileSystem to read the file as base64
+          const base64 = await FileSystem.readAsStringAsync(data.avatar_url, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          // Convert base64 to blob
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('avatars')
             .upload(filePath, fileData, {
-              contentType: fileData.type,
+              contentType: `image/${fileExt}`,
               upsert: true,
             });
           
