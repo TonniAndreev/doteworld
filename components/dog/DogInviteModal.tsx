@@ -240,13 +240,21 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContainer: {
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
+    width: '100%',
+    maxWidth: 500,
     maxHeight: '90%',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -275,6 +283,8 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    maxHeight: '70%',
+    overflow: 'scroll',
   },
   inputGroup: {
     marginBottom: 24,

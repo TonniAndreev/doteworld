@@ -262,7 +262,7 @@ export function useDogOwnership() {
 
       if (error || !data) {
         console.error('Error removing co-owner:', error);
-        return { success: false, error: 'Failed to remove co-owner' };
+        return { success: false, error: 'Failed to remove owner' };
       }
 
       return { success: true };

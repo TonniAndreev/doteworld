@@ -187,7 +187,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
             </View>
 
             <View style={styles.content}>
-              {canInviteOwners() && (
+              {canInviteOwners() && owners.length < 4 && (
                 <TouchableOpacity 
                   style={styles.inviteButton}
                   onPress={() => {
