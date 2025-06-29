@@ -57,8 +57,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
             .from('territory')
             .select(`
               walk_points (
-                latitude,
-                longitude
+                latitude:lat,
+                longitude:lon
               )
             `)
             .eq('dog_id', dogId);
@@ -147,8 +147,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         .insert({
           dog_id: user.dogs[0].id, // Use first dog for now
           walk_session_id: currentWalkSessionId,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
+          lat: coordinates.latitude,
+          lon: coordinates.longitude,
         });
 
       if (error) {

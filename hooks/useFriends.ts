@@ -196,7 +196,7 @@ export function useFriends() {
           
           const { data: walkPoints, error: walkError } = await supabase
             .from('walk_points')
-            .select('latitude, longitude, walk_session_id, timestamp')
+            .select('latitude:lat, longitude:lon, walk_session_id, timestamp')
             .eq('dog_id', dog.id)
             .order('timestamp', { ascending: true });
 
@@ -426,7 +426,7 @@ export function useFriends() {
         if (firstDog) {
           const { data: walkPoints, error: walkError } = await supabase
             .from('walk_points')
-            .select('latitude, longitude, walk_session_id, timestamp')
+            .select('latitude:lat, longitude:lon, walk_session_id, timestamp')
             .eq('dog_id', firstDog.id)
             .order('timestamp', { ascending: true });
 
