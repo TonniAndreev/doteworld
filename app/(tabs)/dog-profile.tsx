@@ -3,10 +3,9 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
+  ScrollView,
   Modal,
-  TextInput,
   Alert,
   ActivityIndicator,
   Image,
@@ -111,7 +110,7 @@ interface Dog {
   id: string;
   name: string;
   breed: string;
-  photo_url?: string;
+  photo_url?: string | null;
   birthday?: string;
   bio?: string;
   weight?: number;
