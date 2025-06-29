@@ -552,7 +552,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Read the file based on platform
           let fileData;
           if (Platform.OS === 'web') {
-            // For web, we can use the file URI directly
+            // For web, convert data URL to blob
             if (dogPhoto.startsWith('data:')) {
               const response = await fetch(dogPhoto);
               const blob = await response.blob();

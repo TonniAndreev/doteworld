@@ -15,7 +15,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { MediaTypeOptions } from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
@@ -216,7 +215,7 @@ export default function DogProfileScreen() {
       }
       
       let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: [MediaTypeOptions.Images],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -242,7 +241,7 @@ export default function DogProfileScreen() {
       }
       
       let result = await ImagePicker.launchCameraAsync({
-        mediaTypes: [MediaTypeOptions.Images],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,

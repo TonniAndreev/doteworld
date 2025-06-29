@@ -15,7 +15,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { MediaTypeOptions } from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { ChevronLeft, User, Mail, Phone, Camera, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
@@ -55,7 +54,7 @@ export default function EditProfileScreen() {
       }
       
       let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: [MediaTypeOptions.Images],
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -81,6 +80,7 @@ export default function EditProfileScreen() {
       }
       
       let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -172,10 +172,10 @@ export default function EditProfileScreen() {
           
           console.log('Uploading to path:', filePath);
           
-          // Read the file as base64
+          // Read the file based on platform
           let fileData;
           if (Platform.OS === 'web') {
-            // For web, we can use the file URI directly
+            // For web, we need to handle data URLs properly
             if (avatarUrl.startsWith('data:')) {
               const response = await fetch(avatarUrl);
               const blob = await response.blob();
@@ -184,11 +184,10 @@ export default function EditProfileScreen() {
               fileData = avatarUrl;
             }
           } else {
-            // For mobile, read the file as base64
-            const base64Data = await FileSystem.readAsStringAsync(avatarUrl, {
-              encoding: FileSystem.EncodingType.Base64,
+            // For mobile, read the file as Base64 string instead of ArrayBuffer
+            fileData = await FileSystem.readAsStringAsync(avatarUrl, { 
+              encoding: FileSystem.EncodingType.Base64 
             });
-            fileData = base64Data;
           }
           
           // Upload to Supabase Storage
