@@ -19,6 +19,7 @@ import { USER_TERRITORY_COLOR, getColorWithOpacity } from '@/utils/mapColors';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ConquestSummaryDialog from '@/components/home/ConquestSummaryDialog';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -34,6 +35,12 @@ export default function MapScreen() {
   const [isProcessingCityChange, setIsProcessingCityChange] = useState(false);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
   const [lastGeocodeAttemptDate, setLastGeocodeAttemptDate] = useState<string | null>(null);
+  const [showConquestSummary, setShowConquestSummary] = useState(false);
+  const [conquestSummaryData, setConquestSummaryData] = useState<{
+    territoryGained: number;
+    distanceWalked: number;
+    localRanking: number | null;
+  } | null>(null);
   
   const mapRef = useRef<MapView>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
@@ -291,7 +298,11 @@ export default function MapScreen() {
         locationSubscriptionRef.current = null;
       }
       
-      endWalk();
+      const summary = await endWalk();
+      if (summary) {
+        setConquestSummaryData(summary);
+        setShowConquestSummary(true);
+      }
     }
   };
 
@@ -520,6 +531,16 @@ export default function MapScreen() {
             onConfirm={handleConfirmCityChange}
             onCancel={() => setShowCityChangeDialog(false)}
           />
+
+          {conquestSummaryData && (
+            <ConquestSummaryDialog
+              visible={showConquestSummary}
+              onClose={() => setShowConquestSummary(false)}
+              territoryGained={conquestSummaryData.territoryGained}
+              distanceWalked={conquestSummaryData.distanceWalked}
+              localRanking={conquestSummaryData.localRanking}
+            />
+          )}
         </View>
       ) : (
         <View style={styles.loadingContainer}>
