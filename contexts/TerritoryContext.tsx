@@ -13,10 +13,17 @@ import {
 } from '@/utils/locationUtils';
 import { addTerritoryToCity } from '@/utils/geocoding';
 import * as turf from '@turf/turf';
+import { fetchLeaderboard } from '@/services/leaderboardService';
 
 interface Coordinate {
   latitude: number;
   longitude: number;
+}
+
+interface ConquestSummary {
+  territoryGained: number; // in km²
+  distanceWalked: number; // in km
+  localRanking: number | null;
 }
 
 interface TerritoryContextType {
@@ -32,7 +39,7 @@ interface TerritoryContextType {
   closeMonthlyResetDialog: () => void;
   startWalk: (cityId?: string) => void;
   addWalkPoint: (coordinates: Coordinate) => void;
-  endWalk: () => Promise<void>;
+  endWalk: () => Promise<ConquestSummary | undefined>;
 }
 
 const TerritoryContext = createContext<TerritoryContextType | undefined>(undefined);
@@ -228,7 +235,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const endWalk = async () => {
+  const endWalk = async (): Promise<ConquestSummary | undefined> => {
     console.log('=== STARTING ENDWALK FUNCTION ===');
     console.log('Current walk points:', currentWalkPoints.length);
     console.log('Current walk distance:', currentWalkDistance);
@@ -385,8 +392,29 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         AsyncStorage.setItem(`dote_total_distance_${user.uid}`, (totalDistance + currentWalkDistance).toString()),
       ]);
 
-      // Removed paw awards logic as requested
+      // Fetch local ranking for the summary dialog
+      let localRanking: number | null = null;
+      if (currentWalkCityId && user.id) {
+        try {
+          const leaderboard = await fetchLeaderboard('territory', currentWalkCityId);
+          const userRank = leaderboard.findIndex(item => item.id === user.id) + 1;
+          if (userRank > 0) {
+            localRanking = userRank;
+          }
+          console.log('Local ranking fetched:', localRanking);
+        } catch (leaderboardError) {
+          console.error('Error fetching leaderboard for summary:', leaderboardError);
+        }
+      }
+
       console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered`);
+      
+      return {
+        territoryGained: newPolygonArea,
+        distanceWalked: currentWalkDistance,
+        localRanking: localRanking,
+      };
+
     } catch (error) {
       console.error('Error ending walk:', error);
       console.log('Full error object:', JSON.stringify(error, null, 2));
@@ -402,6 +430,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentWalkSessionId(null);
       setCurrentWalkCityId(null);
       setCurrentWalkDistance(0);
+      return undefined; // Return undefined on error
     }
     
     console.log('=== ENDWALK FUNCTION COMPLETED ===');
