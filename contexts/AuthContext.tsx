@@ -525,41 +525,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Prepare file data based on platform
           let fileData;
           
-          if (Platform.OS === 'web') {
-            // For web, fetch the image as a blob
-            const response = await fetch(dogPhoto);
-            fileData = await response.blob();
-          } else {
-            // For native platforms, read the file as a blob
-            const fileInfo = await FileSystem.getInfoAsync(dogPhoto);
-            
-            if (!fileInfo.exists) {
-              throw new Error('File does not exist');
-            }
-            
-            // Read the file as base64
-            const base64 = await FileSystem.readAsStringAsync(dogPhoto, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            
-            // Convert base64 to blob
-            const byteCharacters = atob(base64);
-            const byteArrays = [];
-            
-            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-              const slice = byteCharacters.slice(offset, offset + 512);
-              
-              const byteNumbers = new Array(slice.length);
-              for (let i = 0; i < slice.length; i++) {
-                byteNumbers[i] = slice.charCodeAt(i);
-              }
-              
-              const byteArray = new Uint8Array(byteNumbers);
-              byteArrays.push(byteArray);
-            }
-            
-            fileData = new Blob(byteArrays, { type: `image/${fileExt}` });
-          }
+          // Use fetch API to get the file data
+          const response = await fetch(dogPhoto);
+          fileData = await response.blob();
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
@@ -663,41 +631,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Prepare file data based on platform
           let fileData;
           
-          if (Platform.OS === 'web') {
-            // For web, fetch the image as a blob
-            const response = await fetch(data.avatar_url);
-            fileData = await response.blob();
-          } else {
-            // For native platforms, read the file as a blob
-            const fileInfo = await FileSystem.getInfoAsync(data.avatar_url);
-            
-            if (!fileInfo.exists) {
-              throw new Error('File does not exist');
-            }
-            
-            // Read the file as base64
-            const base64 = await FileSystem.readAsStringAsync(data.avatar_url, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-            
-            // Convert base64 to blob
-            const byteCharacters = atob(base64);
-            const byteArrays = [];
-            
-            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-              const slice = byteCharacters.slice(offset, offset + 512);
-              
-              const byteNumbers = new Array(slice.length);
-              for (let i = 0; i < slice.length; i++) {
-                byteNumbers[i] = slice.charCodeAt(i);
-              }
-              
-              const byteArray = new Uint8Array(byteNumbers);
-              byteArrays.push(byteArray);
-            }
-            
-            fileData = new Blob(byteArrays, { type: `image/${fileExt}` });
-          }
+          // Use fetch API to get the file data
+          const response = await fetch(data.avatar_url);
+          fileData = await response.blob();
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage

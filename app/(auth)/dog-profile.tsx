@@ -158,6 +158,7 @@ export default function DogProfileScreen() {
       }
       
       let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -204,24 +205,7 @@ export default function DogProfileScreen() {
     
     try {
       console.log('Submitting dog profile with photo:', !!dogPhoto);
-      
-      // If we have a photo, prepare it for upload
-      let photoData = null;
-      if (dogPhoto) {
-        if (Platform.OS === 'web') {
-          // For web, we'll pass the URI directly
-          photoData = dogPhoto;
-        } else {
-          // For native platforms, we need to prepare the file
-          const fileInfo = await FileSystem.getInfoAsync(dogPhoto);
-          if (!fileInfo.exists) {
-            throw new Error('Photo file not found');
-          }
-          photoData = dogPhoto;
-        }
-      }
-      
-      await updateDogProfile(dogName, dogBreed, photoData, dogBirthday);
+      await updateDogProfile(dogName, dogBreed, dogPhoto, dogBirthday);
       router.replace('/(tabs)');
     } catch (error: any) {
       console.error('Dog profile submission error:', error);

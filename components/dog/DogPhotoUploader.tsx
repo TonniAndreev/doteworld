@@ -100,43 +100,9 @@ export default function DogPhotoUploader({
       
       console.log('Uploading to path:', filePath);
       
-      let fileData;
-      
-      if (Platform.OS === 'web') {
-        // For web, fetch the image as a blob
-        const response = await fetch(photoUri);
-        fileData = await response.blob();
-      } else {
-        // For native platforms, read the file as a blob
-        const fileInfo = await FileSystem.getInfoAsync(photoUri);
-        
-        if (!fileInfo.exists) {
-          throw new Error('File does not exist');
-        }
-        
-        // Read the file as base64
-        const base64 = await FileSystem.readAsStringAsync(photoUri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        
-        // Convert base64 to blob
-        const byteCharacters = atob(base64);
-        const byteArrays = [];
-        
-        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-          const slice = byteCharacters.slice(offset, offset + 512);
-          
-          const byteNumbers = new Array(slice.length);
-          for (let i = 0; i < slice.length; i++) {
-            byteNumbers[i] = slice.charCodeAt(i);
-          }
-          
-          const byteArray = new Uint8Array(byteNumbers);
-          byteArrays.push(byteArray);
-        }
-        
-        fileData = new Blob(byteArrays, { type: `image/${fileExt}` });
-      }
+      // Use fetch API to get the file data
+      const response = await fetch(photoUri);
+      const fileData = await response.blob();
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -184,7 +150,6 @@ export default function DogPhotoUploader({
       Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update dog photo');
     } finally {
       setIsUploading(false);
-      setUploadProgress(0);
     }
   };
 

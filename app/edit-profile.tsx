@@ -154,17 +154,6 @@ export default function EditProfileScreen() {
         console.log('Uploading avatar from local file:', avatarUrl);
         
         try {
-          // For Android, we need to ensure the file exists and is readable
-          if (Platform.OS === 'android') {
-            const fileInfo = await FileSystem.getInfoAsync(avatarUrl);
-            console.log('File info:', fileInfo);
-            
-            if (!fileInfo.exists) {
-              console.error('File does not exist:', avatarUrl);
-              throw new Error('Photo file not found');
-            }
-          }
-          
           // Generate a unique filename
           const fileExt = avatarUrl.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `${Date.now()}.${fileExt}`;
@@ -172,23 +161,9 @@ export default function EditProfileScreen() {
           
           console.log('Uploading to path:', filePath);
           
-          // Read the file based on platform
-          let fileData;
-          if (Platform.OS === 'web') {
-            // For web, we need to handle data URLs properly
-            if (avatarUrl.startsWith('data:')) {
-              const response = await fetch(avatarUrl);
-              const blob = await response.blob();
-              fileData = blob;
-            } else {
-              fileData = avatarUrl;
-            }
-          } else {
-            // For mobile, read the file as Base64 string instead of ArrayBuffer
-            fileData = await FileSystem.readAsStringAsync(avatarUrl, { 
-              encoding: FileSystem.EncodingType.Base64 
-            });
-          }
+          // Use fetch API to get the file data
+          const response = await fetch(avatarUrl);
+          const fileData = await response.blob();
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
