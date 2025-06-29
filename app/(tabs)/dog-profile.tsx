@@ -268,7 +268,7 @@ export default function DogProfileScreen() {
       // Generate a unique filename
       const fileExt = newDogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const filePath = `${selectedDog.id}/${fileName}`;
       
       console.log('Uploading to path:', filePath);
       

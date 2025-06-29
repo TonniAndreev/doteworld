@@ -516,10 +516,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           console.log('Processing dog photo upload');
           
+          // Create dog in database first to get the ID
+          const { data: dog, error: dogError } = await supabase
+            .from('dogs')
+            .insert(dogData)
+            .select()
+            .single();
+
+          if (dogError) {
+            console.error('Error creating dog:', dogError);
+            throw dogError;
+          }
+
+          console.log('Dog created successfully:', dog);
+          
           // Generate a unique filename
           const fileExt = dogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `${Date.now()}.${fileExt}`;
-          const filePath = `${user.id}/${fileName}`;
+          const filePath = `${dog.id}/${fileName}`;
           
           console.log('Uploading to path:', filePath);
           
@@ -547,9 +561,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Public URL:', publicUrlData);
           
-          // Set photo URL in dog data
-          dogData.photo_url = publicUrlData.publicUrl;
-          dogData.photo_uploaded_at = new Date().toISOString();
+          // Update dog with photo URL
+          const { error: updateError } = await supabase
+            .from('dogs')
+            .update({
+              photo_url: publicUrlData.publicUrl,
+              photo_uploaded_at: new Date().toISOString()
+            })
+            .eq('id', dog.id);
+
+          if (updateError) {
+            console.error('Error updating dog with photo URL:', updateError);
+            throw updateError;
+          }
+
+          // Link dog to user profile
+          const { error: linkError } = await supabase
+            .from('profile_dogs')
+            .insert({
+              profile_id: user.id,
+              dog_id: dog.id,
+            });
+
+          if (linkError) {
+            console.error('Error linking dog to profile:', linkError);
+            throw linkError;
+          }
+
+          console.log('Dog linked to profile successfully');
+
+          // Update local user state
+          const updatedUser = {
+            ...user,
+            dogs: [...user.dogs, {...dog, photo_url: publicUrlData.publicUrl}],
+          };
+
+          setUser(updatedUser);
+          await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+          
+          return;
         } catch (uploadError) {
           console.error('Photo upload error:', uploadError);
           // Continue without photo if upload fails
