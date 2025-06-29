@@ -218,7 +218,7 @@ export default function DogPhotoUploader({
 
               if (updateError) {
                 console.error('Error updating dog record:', updateError);
-                throw new Error(`Failed to update dog record: ${updateError.message}`);
+                throw new Error('Failed to update dog record');
               }
               
               // Call the callback with null to indicate photo removal

@@ -354,7 +354,7 @@ export default function DogProfileScreen() {
       Alert.alert('Success', 'Dog photo updated successfully!');
     } catch (error) {
       console.error('Error saving dog photo:', error);
-      Alert.alert('Error', 'Failed to update dog photo');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update dog photo');
     } finally {
       setIsUploadingPhoto(false);
     }
