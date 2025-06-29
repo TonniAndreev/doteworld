@@ -62,6 +62,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
               walk_points (
                 id,
                 path_coordinates
+
               )
             `)
             .eq('dog_id', dogId)
@@ -172,7 +173,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
 
     const newPoints = [...currentWalkPoints, coordinates];
     setCurrentWalkPoints(newPoints);
-
     // Only try to form a polygon if we have at least 3 points
     if (newPoints.length >= 3) {
       const hull = createConvexHull(newPoints);

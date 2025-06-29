@@ -39,13 +39,13 @@ CREATE INDEX IF NOT EXISTS idx_dogs_photo_url ON dogs(photo_url);
 -- Note: This is a comment only as storage buckets must be created via the Supabase dashboard
 -- or using the Supabase CLI. The following buckets should be created:
 -- 1. avatars - For user profile photos
--- 2. dog_photos - For dog profile photos
+-- 2. dog-photos - For dog profile photos
 
 -- Create or replace storage access policies
 -- Note: These would normally be created via the Supabase dashboard
 -- For avatars bucket:
 -- - Allow authenticated users to upload their own avatars
 -- - Allow public read access to all avatars
--- For dog_photos bucket:
+-- For dog-photos bucket:
 -- - Allow authenticated users to upload photos for their dogs
 -- - Allow public read access to all dog photos

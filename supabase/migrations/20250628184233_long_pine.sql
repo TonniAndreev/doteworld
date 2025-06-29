@@ -8,7 +8,7 @@
 
   2. Buckets
     - avatars: For user profile photos
-    - dog_photos: For dog profile photos
+    - dog-photos: For dog profile photos
 
   Note: This migration is for documentation purposes only.
   Storage buckets must be created manually in the Supabase dashboard.
@@ -21,7 +21,7 @@
 -- 2. Create a bucket named 'avatars'
 --    - Set it to public (allows anyone to read files)
 --    - Enable RLS (Row Level Security)
--- 3. Create a bucket named 'dog_photos'
+-- 3. Create a bucket named 'dog-photos'
 --    - Set it to public (allows anyone to read files)
 --    - Enable RLS (Row Level Security)
 
@@ -32,7 +32,7 @@
 --       - Using expression: (auth.uid() = storage.foldername(name))
 --       - This allows users to upload files only to folders matching their user ID
 
---    b. For 'dog_photos' bucket:
+--    b. For 'dog-photos' bucket:
 --       - Policy name: "Allow users to upload dog photos"
 --       - Operation: INSERT
 --       - Using expression: (auth.uid() = storage.foldername(name))

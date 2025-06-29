@@ -96,7 +96,7 @@ export default function DogPhotoUploader({
       // Generate a unique filename
       const fileExt = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${dogId}/${fileName}`;
+      const filePath = `${dogId}/${fileName}`;
       
       console.log('Uploading to path:', filePath);
       
