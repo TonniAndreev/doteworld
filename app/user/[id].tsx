@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, UserPlus, UserCheck, UserX, Award, Map, Route, Share2, UserMinus, X } from 'lucide-react-native';
+import { ChevronLeft, UserPlus, UserCheck, UserMinus, Award, Map, Route, Share2, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -559,13 +559,6 @@ export default function PublicUserProfileScreen() {
           </View>
           
           <Text style={styles.userName}>{displayName}</Text>
-          
-          {userDogs.length > 0 && (
-            <View style={styles.dogInfoContainer}>
-              <Text style={styles.dogName}>{userDogs[0].name}</Text>
-              <Text style={styles.dogBreed}>{userDogs[0].breed}</Text>
-            </View>
-          )}
 
           {/* Friend Action Button */}
           {!isCurrentUserProfile && (
@@ -632,19 +625,58 @@ export default function PublicUserProfileScreen() {
               <Text style={styles.sectionTitle}>
                 {isCurrentUserProfile ? 'My Dogs' : `${displayName.split(' ')[0]}'s Dogs`}
               </Text>
-              <Text style={styles.dogsCount}>
-                {userDogs.length} dog{userDogs.length !== 1 ? 's' : ''}
-              </Text>
+              <View style={styles.dogCountBadge}>
+                <Text style={styles.dogCountText}>
+                  {userDogs.length} {userDogs.length === 1 ? 'dog' : 'dogs'}
+                </Text>
+              </View>
             </View>
 
-            {userDogs.map((dog) => (
-              <View key={dog.id} style={styles.dogCardWrapper}>
-                <DogProfileCard 
-                  dog={dog} 
-                  showFullDetails={false}
-                />
-              </View>
-            ))}
+            {/* Dog Avatars Row */}
+            <View style={styles.dogAvatarsRow}>
+              {userDogs.slice(0, 5).map((dog, index) => (
+                <View 
+                  key={dog.id} 
+                  style={[
+                    styles.userDogAvatarWrapper, 
+                    { zIndex: 5 - index, left: index * 20 }
+                  ]}
+                >
+                  <UserAvatar
+                    userId={dog.id}
+                    photoURL={dog.photo_url}
+                    userName={dog.name}
+                    size={70}
+                    isDogAvatar={true}
+                    dogBreed={dog.breed}
+                  />
+                </View>
+              ))}
+              
+              {userDogs.length > 5 && (
+                <View 
+                  style={[
+                    styles.userDogAvatarWrapper, 
+                    styles.userMoreDogsBadge,
+                    { zIndex: 0, left: 5 * 20 }
+                  ]}
+                >
+                  <Text style={styles.userMoreDogsBadgeText}>+{userDogs.length - 5}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Dog Cards */}
+            <View style={styles.dogCardsList}>
+              {userDogs.map((dog) => (
+                <View key={dog.id} style={styles.dogCardWrapper}>
+                  <DogProfileCard 
+                    dog={dog} 
+                    showFullDetails={false}
+                  />
+                </View>
+              ))}
+            </View>
           </View>
         )}
 
@@ -780,21 +812,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
-  dogInfoContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  dogName: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 18,
-    color: COLORS.primary,
-    marginBottom: 4,
-  },
-  dogBreed: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-  },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -895,10 +912,49 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: COLORS.neutralDark,
   },
-  dogsCount: {
+  dogCountBadge: {
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  dogCountText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
-    color: COLORS.neutralMedium,
+    color: COLORS.primary,
+  },
+  dogAvatarsRow: {
+    flexDirection: 'row',
+    marginBottom: 24,
+    height: 70,
+    marginLeft: 16,
+  },
+  userDogAvatarWrapper: {
+    position: 'absolute',
+    borderWidth: 3,
+    borderColor: COLORS.white,
+    borderRadius: 35,
+    width: 70,
+    height: 70,
+    overflow: 'hidden',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  userMoreDogsBadge: {
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  userMoreDogsBadgeText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.white,
+  },
+  dogCardsList: {
+    marginTop: 16,
   },
   dogCardWrapper: {
     marginBottom: 12,

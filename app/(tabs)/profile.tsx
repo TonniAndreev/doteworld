@@ -76,8 +76,6 @@ export default function ProfileScreen() {
     router.push('/edit-profile');
   };
 
-  const firstDog = user.dogs?.[0];
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -109,11 +107,6 @@ export default function ProfileScreen() {
           </View>
           
           <Text style={styles.userName}>{user.displayName || 'User'}</Text>
-          
-          <View style={styles.dogInfoContainer}>
-            <Text style={styles.dogName}>{firstDog?.name || 'No dog'}</Text>
-            <Text style={styles.dogBreed}>{firstDog?.breed || ''}</Text>
-          </View>
         </View>
 
         <View style={styles.statsSection}>
@@ -157,22 +150,52 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.dogPreviewContainer}>
-            {firstDog ? (
+            {user.dogs && user.dogs.length > 0 ? (
               <TouchableOpacity 
                 style={styles.dogPreviewCard}
                 onPress={() => router.push('/(tabs)/dog-profile')}
               >
-                <UserAvatar
-                  userId={firstDog.id}
-                  photoURL={firstDog.photo_url}
-                  userName={firstDog.name}
-                  size={60}
-                  isDogAvatar={true}
-                  dogBreed={firstDog.breed}
-                />
+                <View style={styles.dogAvatarsContainer}>
+                  {user.dogs.slice(0, 5).map((dog, index) => (
+                    <View 
+                      key={dog.id} 
+                      style={[
+                        styles.dogAvatarWrapper, 
+                        { zIndex: 5 - index, right: index * 15 }
+                      ]}
+                    >
+                      <UserAvatar
+                        userId={dog.id}
+                        photoURL={dog.photo_url}
+                        userName={dog.name}
+                        size={60}
+                        isDogAvatar={true}
+                        dogBreed={dog.breed}
+                        style={styles.dogAvatar}
+                      />
+                    </View>
+                  ))}
+                  
+                  {user.dogs.length > 5 && (
+                    <View 
+                      style={[
+                        styles.dogAvatarWrapper, 
+                        styles.moreDogsBadge,
+                        { zIndex: 0, right: 5 * 15 }
+                      ]}
+                    >
+                      <Text style={styles.moreDogsBadgeText}>+{user.dogs.length - 5}</Text>
+                    </View>
+                  )}
+                </View>
+                
                 <View style={styles.dogPreviewInfo}>
-                  <Text style={styles.dogPreviewName}>{firstDog.name}</Text>
-                  <Text style={styles.dogPreviewBreed}>{firstDog.breed}</Text>
+                  <Text style={styles.dogPreviewCount}>
+                    {user.dogs.length} {user.dogs.length === 1 ? 'dog' : 'dogs'}
+                  </Text>
+                  <Text style={styles.dogPreviewNames} numberOfLines={1}>
+                    {user.dogs.map(dog => dog.name).join(', ')}
+                  </Text>
                 </View>
               </TouchableOpacity>
             ) : (
@@ -310,19 +333,6 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
-  dogInfoContainer: {
-    alignItems: 'center',
-  },
-  dogName: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 18,
-    color: COLORS.primary,
-  },
-  dogBreed: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-  },
   statsSection: {
     padding: 16,
   },
@@ -366,17 +376,45 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
   },
-  dogPreviewInfo: {
-    marginLeft: 16,
-    flex: 1,
+  dogAvatarsContainer: {
+    flexDirection: 'row',
+    position: 'relative',
+    height: 60,
+    marginRight: 16,
   },
-  dogPreviewName: {
+  dogAvatarWrapper: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: COLORS.white,
+    borderRadius: 30,
+    width: 60,
+    height: 60,
+    overflow: 'hidden',
+  },
+  dogAvatar: {
+    borderRadius: 30,
+  },
+  moreDogsBadge: {
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreDogsBadgeText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
+  },
+  dogPreviewInfo: {
+    flex: 1,
+    marginLeft: 60, // Add extra margin to account for overlapping avatars
+  },
+  dogPreviewCount: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
-  dogPreviewBreed: {
+  dogPreviewNames: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
