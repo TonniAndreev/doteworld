@@ -53,36 +53,69 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
           const dogId = user.dogs[0].id; // Use first dog for now
           
           // Load territory data from database
-          const { data: territoryPoints, error } = await supabase
-            .from('territory')
+          const { data: walkSessions, error } = await supabase
+            .from('walk_sessions')
             .select(`
+              id,
+              territory_gained,
+              distance,
               walk_points (
-                latitude,
-                longitude
+                id,
+                path_coordinates
               )
             `)
-            .eq('dog_id', dogId);
+            .eq('dog_id', dogId)
+            .eq('status', 'completed');
 
           if (error) {
             console.error('Error loading territory data:', error);
             return;
           }
 
-          // Convert territory points to polygons and calculate total area
-          if (territoryPoints && territoryPoints.length > 0) {
-            // This is a simplified approach - in reality you'd need to reconstruct
-            // the actual territory polygons from the stored walk points
-            const allPoints = territoryPoints.map(tp => tp.walk_points).filter(Boolean);
+          // Process walk sessions to reconstruct territory
+          if (walkSessions && walkSessions.length > 0) {
+            console.log(`Found ${walkSessions.length} walk sessions`);
             
-            if (allPoints.length >= 3) {
-              const hull = createConvexHull(allPoints);
-              if (hull && isValidPolygon(hull)) {
-                const polygon = coordinatesToTurfPolygon(hull);
-                if (polygon) {
-                  setTerritoryGeoJSON(polygon);
-                  setTerritorySize(calculatePolygonArea(hull));
+            let totalTerritory = 0;
+            let totalWalkDistance = 0;
+            let allPolygons: turf.Feature<turf.Polygon>[] = [];
+            
+            for (const session of walkSessions) {
+              // Add to total territory and distance
+              totalTerritory += session.territory_gained || 0;
+              totalWalkDistance += session.distance || 0;
+              
+              // Process walk points to create polygons
+              if (session.walk_points && session.walk_points.length > 0) {
+                for (const point of session.walk_points) {
+                  if (point.path_coordinates && point.path_coordinates.length >= 3) {
+                    // Convert JSON coordinates to Coordinate[] format
+                    const coordinates = point.path_coordinates as Coordinate[];
+                    
+                    // Create polygon from coordinates
+                    const polygon = coordinatesToTurfPolygon(coordinates);
+                    if (polygon) {
+                      allPolygons.push(polygon);
+                    }
+                  }
                 }
               }
+            }
+            
+            // Merge all polygons into one territory
+            if (allPolygons.length > 0) {
+              let mergedTerritory = allPolygons[0];
+              
+              for (let i = 1; i < allPolygons.length; i++) {
+                const merged = mergePolygons(mergedTerritory, allPolygons[i]);
+                if (merged) {
+                  mergedTerritory = merged;
+                }
+              }
+              
+              setTerritoryGeoJSON(mergedTerritory);
+              setTerritorySize(totalTerritory);
+              setTotalDistance(totalWalkDistance);
             }
           }
 
@@ -102,7 +135,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
             setTerritorySize(parseFloat(savedTerritorySize));
           }
 
-          if (savedTotalDistance) {
+          if (savedTotalDistance && totalDistance === 0) {
             setTotalDistance(parseFloat(savedTotalDistance));
           }
         } catch (error) {
@@ -139,24 +172,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
 
     const newPoints = [...currentWalkPoints, coordinates];
     setCurrentWalkPoints(newPoints);
-
-    try {
-      // Save walk point to database
-      const { error } = await supabase
-        .from('walk_points')
-        .insert({
-          dog_id: user.dogs[0].id, // Use first dog for now
-          walk_session_id: currentWalkSessionId,
-          latitude: coordinates.latitude,
-          longitude: coordinates.longitude,
-        });
-
-      if (error) {
-        console.error('Error saving walk point:', error);
-      }
-    } catch (error) {
-      console.error('Error saving walk point:', error);
-    }
 
     // Only try to form a polygon if we have at least 3 points
     if (newPoints.length >= 3) {
@@ -220,41 +235,51 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         newTerritorySize = newPolygonArea;
       }
 
-      // Save territory points to database
-      try {
-        const dogId = user.dogs[0].id;
-        
-        // Get all walk points from this session
-        const { data: walkPoints, error: walkPointsError } = await supabase
-          .from('walk_points')
-          .select('id')
-          .eq('dog_id', dogId)
-          .eq('walk_session_id', currentWalkSessionId);
+      // Create a walk session record
+      const { data: walkSession, error: sessionError } = await supabase
+        .from('walk_sessions')
+        .insert({
+          dog_id: user.dogs[0].id,
+          started_at: new Date(Date.now() - (currentWalkDistance * 60000)).toISOString(), // Approximate start time
+          ended_at: new Date().toISOString(),
+          distance: currentWalkDistance,
+          points_count: currentWalkPoints.length,
+          territory_gained: newPolygonArea,
+          status: 'completed',
+          weather_conditions: null // Could add weather data in the future
+        })
+        .select('id')
+        .single();
 
-        if (walkPointsError) {
-          console.error('Error fetching walk points:', walkPointsError);
-        } else if (walkPoints) {
-          // Add territory entries for each walk point
-          const territoryEntries = walkPoints.map(wp => ({
-            walk_point_id: wp.id,
-            dog_id: dogId,
-          }));
+      if (sessionError) {
+        console.error('Error creating walk session:', sessionError);
+        throw sessionError;
+      }
 
-          const { error: territoryError } = await supabase
-            .from('territory')
-            .insert(territoryEntries);
+      console.log('Created walk session:', walkSession.id);
 
-          if (territoryError) {
-            console.error('Error saving territory:', territoryError);
-          }
-        }
-      } catch (error) {
-        console.error('Error saving territory to database:', error);
+      // Save walk points with path_coordinates
+      const { error: pointsError } = await supabase
+        .from('walk_points')
+        .insert({
+          dog_id: user.dogs[0].id,
+          walk_session_id: walkSession.id,
+          path_coordinates: currentWalkPoints,
+          // Include a single point for backward compatibility
+          latitude: currentWalkPoints[0].latitude,
+          longitude: currentWalkPoints[0].longitude,
+          timestamp: new Date().toISOString()
+        });
+
+      if (pointsError) {
+        console.error('Error saving walk points:', pointsError);
+        throw pointsError;
       }
 
       // Update state
       setTerritoryGeoJSON(updatedTerritoryGeoJSON);
       setTerritorySize(newTerritorySize);
+      setTotalDistance(prev => prev + currentWalkDistance);
       setCurrentWalkPoints([]);
       setCurrentPolygon(null);
       setCurrentWalkSessionId(null);
@@ -264,6 +289,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       await Promise.all([
         AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
         AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
+        AsyncStorage.setItem(`dote_total_distance_${user.uid}`, (totalDistance + currentWalkDistance).toString()),
       ]);
 
       // Award paws based on the NEW polygon area only (not total territory)

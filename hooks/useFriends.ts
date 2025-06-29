@@ -183,7 +183,7 @@ export function useFriends() {
           .select('*', { count: 'exact', head: true })
           .eq('profile_id', friendId);
 
-        // Calculate REAL territory and distance from walk points
+        // Calculate REAL territory and distance from walk sessions
         let territorySize = 0;
         let totalDistance = 0;
         
@@ -194,80 +194,77 @@ export function useFriends() {
         for (const dog of dogs) {
           if (!dog || !dog.id) continue;
           
-          const { data: walkPoints, error: walkError } = await supabase
-            .from('walk_points')
-            .select('latitude, longitude, walk_session_id, timestamp')
+          // Get walk sessions for this dog
+          const { data: walkSessions, error: sessionsError } = await supabase
+            .from('walk_sessions')
+            .select(`
+              id,
+              territory_gained,
+              distance,
+              walk_points (
+                id,
+                path_coordinates
+              )
+            `)
             .eq('dog_id', dog.id)
-            .order('timestamp', { ascending: true });
+            .eq('status', 'completed');
 
-          if (walkError) {
-            console.error(`Error fetching walk points for dog ${dog.id}:`, walkError);
+          if (sessionsError) {
+            console.error(`Error fetching walk sessions for dog ${dog.id}:`, sessionsError);
             continue;
           }
 
-          if (!walkPoints || walkPoints.length < 3) {
-            console.log(`No valid walk points found for dog ${dog.id}`);
+          if (!walkSessions || walkSessions.length === 0) {
+            console.log(`No walk sessions found for dog ${dog.id}`);
             continue;
           }
 
-          // Group points by walk session
-          const sessionGroups = walkPoints.reduce((groups, point) => {
-            if (!groups[point.walk_session_id]) {
-              groups[point.walk_session_id] = [];
+          // Process each walk session
+          for (const session of walkSessions) {
+            // Add to totals
+            territorySize += session.territory_gained || 0;
+            totalDistance += session.distance || 0;
+            
+            // Process walk points to create territory polygons
+            if (session.walk_points && session.walk_points.length > 0) {
+              for (const point of session.walk_points) {
+                if (point.path_coordinates && point.path_coordinates.length >= 3) {
+                  // Get coordinates from path_coordinates JSON
+                  const coordinates = point.path_coordinates as Coordinate[];
+                  
+                  // Create convex hull
+                  const hull = createConvexHull(coordinates);
+                  if (!hull) continue;
+                  
+                  // Calculate centroid
+                  const turfPolygon = coordinatesToTurfPolygon(hull);
+                  let centroid: Coordinate | undefined;
+                  
+                  if (turfPolygon) {
+                    const turfCentroid = turf.centroid(turfPolygon);
+                    centroid = {
+                      latitude: turfCentroid.geometry.coordinates[1],
+                      longitude: turfCentroid.geometry.coordinates[0]
+                    };
+                  }
+                  
+                  // Get color for this friend
+                  const color = await getFriendTerritoryColor(friendId);
+                  
+                  // Add to territory polygons
+                  territoryPolygons.push({
+                    id: point.id,
+                    coordinates: hull,
+                    color,
+                    dogId: dog.id,
+                    dogName: dog.name,
+                    dogPhotoURL: dog.photo_url,
+                    dogBreed: dog.breed,
+                    centroid
+                  });
+                }
+              }
             }
-            groups[point.walk_session_id].push(point);
-            return groups;
-          }, {} as Record<string, any[]>);
-
-          // Process each walk session to create territory polygons
-          for (const [sessionId, sessionPoints] of Object.entries(sessionGroups)) {
-            if (sessionPoints.length < 3) continue;
-            
-            // Create coordinates array
-            const coordinates = sessionPoints.map(point => ({
-              latitude: point.latitude,
-              longitude: point.longitude
-            }));
-            
-            // Create convex hull
-            const hull = createConvexHull(coordinates);
-            if (!hull) continue;
-            
-            // Calculate area
-            const area = calculatePolygonArea(hull);
-            territorySize += area;
-            
-            // Calculate centroid
-            const turfPolygon = coordinatesToTurfPolygon(hull);
-            let centroid: Coordinate | undefined;
-            
-            if (turfPolygon) {
-              const turfCentroid = turf.centroid(turfPolygon);
-              centroid = {
-                latitude: turfCentroid.geometry.coordinates[1],
-                longitude: turfCentroid.geometry.coordinates[0]
-              };
-            }
-            
-            // Get color for this friend
-            const color = await getFriendTerritoryColor(friendId);
-            
-            // Add to territory polygons
-            territoryPolygons.push({
-              id: sessionId,
-              coordinates: hull,
-              color,
-              dogId: dog.id,
-              dogName: dog.name,
-              dogPhotoURL: dog.photo_url,
-              dogBreed: dog.breed,
-              centroid
-            });
-          }
-
-          // Calculate total distance (reusing existing code)
-          if (walkPoints.length > 1) {
-            totalDistance += calculateRealDistanceFromWalkPoints(walkPoints);
           }
         }
 
@@ -419,20 +416,21 @@ export function useFriends() {
           .select('*', { count: 'exact', head: true })
           .eq('profile_id', profile.id);
 
-        // Calculate REAL territory and distance from walk points
+        // Calculate territory and distance from walk sessions
         let territorySize = 0;
         let totalDistance = 0;
         
         if (firstDog) {
-          const { data: walkPoints, error: walkError } = await supabase
-            .from('walk_points')
-            .select('latitude, longitude, walk_session_id, timestamp')
+          const { data: walkSessions, error: sessionsError } = await supabase
+            .from('walk_sessions')
+            .select('territory_gained, distance')
             .eq('dog_id', firstDog.id)
-            .order('timestamp', { ascending: true });
+            .eq('status', 'completed');
 
-          if (!walkError && walkPoints && walkPoints.length > 0) {
-            territorySize = calculateRealTerritoryFromWalkPoints(walkPoints);
-            totalDistance = calculateRealDistanceFromWalkPoints(walkPoints);
+          if (!sessionsError && walkSessions && walkSessions.length > 0) {
+            // Sum up territory and distance from all sessions
+            territorySize = walkSessions.reduce((sum, session) => sum + (session.territory_gained || 0), 0);
+            totalDistance = walkSessions.reduce((sum, session) => sum + (session.distance || 0), 0);
           }
         }
 
@@ -624,107 +622,7 @@ export function useFriends() {
     }
   };
 
-  // Helper functions for territory calculations (same as leaderboard service)
-  const calculateRealTerritoryFromWalkPoints = (walkPoints: any[]): number => {
-    if (walkPoints.length < 3) return 0;
-
-    const sessionGroups = walkPoints.reduce((groups, point) => {
-      if (!groups[point.walk_session_id]) {
-        groups[point.walk_session_id] = [];
-      }
-      groups[point.walk_session_id].push(point);
-      return groups;
-    }, {} as Record<string, any[]>);
-
-    let totalTerritory = 0;
-
-    Object.values(sessionGroups).forEach(sessionPoints => {
-      if (sessionPoints.length >= 3) {
-        sessionPoints.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        
-        let area = 0;
-        const n = sessionPoints.length;
-        
-        for (let i = 0; i < n; i++) {
-          const j = (i + 1) % n;
-          const xi = sessionPoints[i].longitude;
-          const yi = sessionPoints[i].latitude;
-          const xj = sessionPoints[j].longitude;
-          const yj = sessionPoints[j].latitude;
-          
-          area += (xi * yj - xj * yi);
-        }
-        
-        area = Math.abs(area) / 2;
-        
-        const avgLat = sessionPoints.reduce((sum, p) => sum + p.latitude, 0) / sessionPoints.length;
-        const latConversion = 111.32;
-        const lonConversion = 111.32 * Math.cos(toRad(avgLat));
-        
-        const areaInKm2 = area * latConversion * lonConversion;
-        
-        if (areaInKm2 > 0.0001 && areaInKm2 < 10) {
-          totalTerritory += areaInKm2;
-        }
-      }
-    });
-
-    return totalTerritory;
-  };
-
-  const calculateRealDistanceFromWalkPoints = (walkPoints: any[]): number => {
-    if (walkPoints.length < 2) return 0;
-
-    const sessionGroups = walkPoints.reduce((groups, point) => {
-      if (!groups[point.walk_session_id]) {
-        groups[point.walk_session_id] = [];
-      }
-      groups[point.walk_session_id].push(point);
-      return groups;
-    }, {} as Record<string, any[]>);
-
-    let totalDistance = 0;
-
-    Object.values(sessionGroups).forEach(sessionPoints => {
-      if (sessionPoints.length > 1) {
-        sessionPoints.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        
-        for (let i = 1; i < sessionPoints.length; i++) {
-          const prev = sessionPoints[i - 1];
-          const curr = sessionPoints[i];
-          const distance = calculateDistance(
-            prev.latitude,
-            prev.longitude,
-            curr.latitude,
-            curr.longitude
-          );
-          
-          if (distance > 0 && distance < 1) {
-            totalDistance += distance;
-          }
-        }
-      }
-    });
-
-    return totalDistance;
-  };
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-    
-    return distance;
-  };
-
+  // Helper function to convert degrees to radians
   const toRad = (degrees: number): number => {
     return degrees * (Math.PI / 180);
   };
