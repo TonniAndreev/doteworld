@@ -20,6 +20,7 @@ import { fetchLeaderboard } from '@/services/leaderboardService';
 import { getUserCities, findNearestCity, reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
 import { useAuth } from '@/contexts/AuthContext';
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type LeaderboardTab = 'territory' | 'distance' | 'achievements';
 
@@ -40,8 +41,26 @@ export default function LeaderboardScreen() {
   const [userCities, setUserCities] = useState<City[]>([]);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [isLoadingCities, setIsLoadingCities] = useState(true);
+  const [lastGeocodeAttemptDate, setLastGeocodeAttemptDate] = useState<string | null>(null);
   
   const { user } = useAuth();
+
+  // Load last geocode attempt date from AsyncStorage
+  useEffect(() => {
+    const loadLastGeocodeDate = async () => {
+      try {
+        const storedDate = await AsyncStorage.getItem('lastGeocodeAttemptDate');
+        if (storedDate) {
+          setLastGeocodeAttemptDate(storedDate);
+          console.log('Last geocode attempt date:', storedDate);
+        }
+      } catch (error) {
+        console.error('Error loading last geocode date:', error);
+      }
+    };
+    
+    loadLastGeocodeDate();
+  }, []);
 
   // Load user cities
   useEffect(() => {
@@ -84,6 +103,19 @@ export default function LeaderboardScreen() {
   // Find user's city based on current location
   const findUserCity = async () => {
     try {
+      // Get current date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Check if we already attempted geocoding today
+      if (lastGeocodeAttemptDate === today) {
+        console.log('Already attempted geocoding today, skipping');
+        return;
+      }
+      
+      // Update the last attempt date regardless of success
+      setLastGeocodeAttemptDate(today);
+      await AsyncStorage.setItem('lastGeocodeAttemptDate', today);
+      
       // Request location permission
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
