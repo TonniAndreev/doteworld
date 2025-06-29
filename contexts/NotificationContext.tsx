@@ -44,101 +44,103 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (user) {
+      // Clean up any existing subscriptions before creating new ones
+      cleanupSubscriptions();
+      
       // Set up real-time listener for friend requests
-      if (!friendshipSubscriptionRef.current) {
-        friendshipSubscriptionRef.current = supabase
-          .channel('friendships')
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'friendships',
-              filter: `receiver_id=eq.${user.id}`,
-            },
-            async (payload) => {
-              console.log('New friendship notification:', payload);
-              await handleFriendshipNotification(payload.new);
+      friendshipSubscriptionRef.current = supabase
+        .channel('friendships')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'friendships',
+            filter: `receiver_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            console.log('New friendship notification:', payload);
+            await handleFriendshipNotification(payload.new);
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'friendships',
+            filter: `requester_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            console.log('Friendship status update:', payload);
+            if (payload.new.status === 'accepted') {
+              await handleFriendAcceptedNotification(payload.new);
             }
-          )
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'friendships',
-              filter: `requester_id=eq.${user.id}`,
-            },
-            async (payload) => {
-              console.log('Friendship status update:', payload);
-              if (payload.new.status === 'accepted') {
-                await handleFriendAcceptedNotification(payload.new);
-              }
-            }
-          )
-          .subscribe();
-      }
+          }
+        )
+        .subscribe();
 
       // Set up listener for dog ownership invites
-      if (!dogInviteSubscriptionRef.current) {
-        dogInviteSubscriptionRef.current = supabase
-          .channel('dog_invites')
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'dog_ownership_invites',
-              filter: `invitee_id=eq.${user.id}`,
-            },
-            async (payload) => {
-              console.log('New dog invite notification:', payload);
-              await handleDogInviteNotification(payload.new);
-            }
-          )
-          .subscribe();
-      }
+      dogInviteSubscriptionRef.current = supabase
+        .channel('dog_invites')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'dog_ownership_invites',
+            filter: `invitee_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            console.log('New dog invite notification:', payload);
+            await handleDogInviteNotification(payload.new);
+          }
+        )
+        .subscribe();
 
       // Set up listener for achievements
-      if (!achievementSubscriptionRef.current) {
-        achievementSubscriptionRef.current = supabase
-          .channel('achievements')
-          .on(
-            'postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'profile_achievements',
-              filter: `profile_id=eq.${user.id}`,
-            },
-            async (payload) => {
-              console.log('New achievement notification:', payload);
-              await handleAchievementNotification(payload.new);
-            }
-          )
-          .subscribe();
-      }
+      achievementSubscriptionRef.current = supabase
+        .channel('achievements')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'profile_achievements',
+            filter: `profile_id=eq.${user.id}`,
+          },
+          async (payload) => {
+            console.log('New achievement notification:', payload);
+            await handleAchievementNotification(payload.new);
+          }
+        )
+        .subscribe();
 
       // Load existing notifications
       loadNotifications();
 
       return () => {
         // Clean up subscriptions when component unmounts
-        if (friendshipSubscriptionRef.current) {
-          supabase.removeChannel(friendshipSubscriptionRef.current);
-          friendshipSubscriptionRef.current = null;
-        }
-        if (dogInviteSubscriptionRef.current) {
-          supabase.removeChannel(dogInviteSubscriptionRef.current);
-          dogInviteSubscriptionRef.current = null;
-        }
-        if (achievementSubscriptionRef.current) {
-          supabase.removeChannel(achievementSubscriptionRef.current);
-          achievementSubscriptionRef.current = null;
-        }
+        cleanupSubscriptions();
       };
     }
   }, [user]);
+  
+  const cleanupSubscriptions = () => {
+    // Clean up any existing subscriptions
+    if (friendshipSubscriptionRef.current) {
+      supabase.removeChannel(friendshipSubscriptionRef.current);
+      friendshipSubscriptionRef.current = null;
+    }
+    if (dogInviteSubscriptionRef.current) {
+      supabase.removeChannel(dogInviteSubscriptionRef.current);
+      dogInviteSubscriptionRef.current = null;
+    }
+    if (achievementSubscriptionRef.current) {
+      supabase.removeChannel(achievementSubscriptionRef.current);
+      achievementSubscriptionRef.current = null;
+    }
+  };
 
   const loadNotifications = async () => {
     if (!user) return;

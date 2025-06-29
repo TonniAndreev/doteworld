@@ -73,25 +73,29 @@ export function useFriends() {
     if (user) {
       loadData();
       
-      // Set up real-time listeners for friendship changes
-      if (!friendshipsChannelRef.current) {
-        friendshipsChannelRef.current = supabase
-          .channel('friendships-changes')
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'friendships',
-              filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
-            },
-            (payload) => {
-              console.log('Friendship change detected:', payload);
-              loadData();
-            }
-          )
-          .subscribe();
+      // Clean up any existing subscription before creating a new one
+      if (friendshipsChannelRef.current) {
+        supabase.removeChannel(friendshipsChannelRef.current);
+        friendshipsChannelRef.current = null;
       }
+      
+      // Set up real-time listeners for friendship changes
+      friendshipsChannelRef.current = supabase
+        .channel('friendships-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friendships',
+            filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
+          },
+          (payload) => {
+            console.log('Friendship change detected:', payload);
+            loadData();
+          }
+        )
+        .subscribe();
         
       return () => {
         // Clean up subscription when component unmounts
