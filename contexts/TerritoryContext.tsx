@@ -295,9 +295,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         .from('walk_points')
         .insert({
           dog_id: user.dogs[0].id,
-          walk_session_id: walkSession.id,
+          session_id: walkSession.id,
           path_coordinates: currentWalkPoints
-          // Removed timestamp field to let the database use the DEFAULT value
         })
         .select('id');
 
@@ -329,14 +328,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         AsyncStorage.setItem(`dote_total_distance_${user.uid}`, (totalDistance + currentWalkDistance).toString()),
       ]);
 
-      // Award paws based on the NEW polygon area only (not total territory)
-      const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
-      if (pawsEarned > 0) {
-        console.log('Awarding paws:', pawsEarned);
-        addPaws(pawsEarned, `Territory conquered: ${(newPolygonArea * 1000000).toFixed(0)} m²`);
-      }
-
-      console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered, ${pawsEarned} paws earned`);
+      // Removed paw awards logic as requested
+      console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered`);
     } catch (error) {
       console.error('Error ending walk:', error);
       console.log('Full error object:', JSON.stringify(error, null, 2));
