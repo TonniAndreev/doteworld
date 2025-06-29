@@ -16,6 +16,7 @@ import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
+import { prepareFileForUpload } from '@/utils/fileUtils';
 
 interface DogPhotoUploaderProps {
   dogId: string;
@@ -99,15 +100,14 @@ export default function DogPhotoUploader({
       
       console.log('Uploading to path:', filePath);
       
-      // Use fetch to get blob from image URI
-      const response = await fetch(photoUri);
-      const fileData = await response.blob();
+      // Prepare file for upload
+      const { data: fileData, contentType } = await prepareFileForUpload(photoUri);
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('dog_photos')
         .upload(filePath, fileData, {
-          contentType: fileData.type,
+          contentType: contentType,
           upsert: true,
         });
       

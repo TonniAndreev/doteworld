@@ -6,6 +6,7 @@ import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system';
+import { prepareFileForUpload } from '@/utils/fileUtils';
 
 // Complete the auth session on web
 WebBrowser.maybeCompleteAuthSession();
@@ -522,15 +523,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Use fetch to get blob from image URI
-          const response = await fetch(dogPhoto);
-          const fileData = await response.blob();
+          // Prepare file for upload
+          const { data: fileData, contentType } = await prepareFileForUpload(dogPhoto);
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('dog_photos')
             .upload(filePath, fileData, {
-              contentType: fileData.type,
+              contentType: contentType,
               upsert: true,
             });
           
@@ -625,15 +625,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Use fetch to get blob from image URI
-          const response = await fetch(data.avatar_url);
-          const fileData = await response.blob();
+          // Prepare file for upload
+          const { data: fileData, contentType } = await prepareFileForUpload(data.avatar_url);
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('avatars')
             .upload(filePath, fileData, {
-              contentType: fileData.type,
+              contentType: contentType,
               upsert: true,
             });
           

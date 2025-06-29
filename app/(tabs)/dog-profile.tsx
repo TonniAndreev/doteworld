@@ -23,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import DogProfileCard from '@/components/profile/DogProfileCard';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
+import { prepareFileForUpload } from '@/utils/fileUtils';
 
 // Same breed list as in dog-profile creation
 const DOG_BREEDS = [
@@ -271,15 +272,14 @@ export default function DogProfileScreen() {
       
       console.log('Uploading to path:', filePath);
       
-      // Use fetch to get blob from image URI
-      const response = await fetch(newDogPhoto);
-      const fileData = await response.blob();
+      // Prepare file for upload
+      const { data: fileData, contentType } = await prepareFileForUpload(newDogPhoto);
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('dog_photos')
         .upload(filePath, fileData, {
-          contentType: fileData.type,
+          contentType: contentType,
           upsert: true,
         });
       
