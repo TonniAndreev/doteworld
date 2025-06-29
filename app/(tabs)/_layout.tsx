@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { StyleSheet } from 'react-native';
-import { MapPin, Trophy, Paw, User } from 'lucide-react-native';
+import { MapPin, Trophy, PawPrint as Paw, User } from 'lucide-react-native';
 import { COLORS } from '@/constants/Colors';
 
 export default function TabLayout() {
