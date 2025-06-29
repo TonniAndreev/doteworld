@@ -1,13 +1,13 @@
 -- Create storage buckets using storage.create_bucket function
-SELECT storage.create_bucket('dog_photos', 'Dog Photos Storage');
+SELECT storage.create_bucket('dog-photos', 'Dog Photos Storage');
 SELECT storage.create_bucket('avatars', 'User Avatars Storage');
 
 -- Set buckets to public
-UPDATE storage.buckets SET public = true WHERE id IN ('dog_photos', 'avatars');
+UPDATE storage.buckets SET public = true WHERE id IN ('dog-photos', 'avatars');
 
--- Create policies for dog_photos bucket
+-- Create policies for dog-photos bucket
 SELECT storage.create_policy(
-  'dog_photos', 
+  'dog-photos', 
   'Users can upload dog photos',
   'INSERT',
   'authenticated',
@@ -15,7 +15,7 @@ SELECT storage.create_policy(
 );
 
 SELECT storage.create_policy(
-  'dog_photos', 
+  'dog-photos', 
   'Public can view dog photos',
   'SELECT',
   'public',
@@ -23,7 +23,7 @@ SELECT storage.create_policy(
 );
 
 SELECT storage.create_policy(
-  'dog_photos', 
+  'dog-photos', 
   'Users can update their dog photos',
   'UPDATE',
   'authenticated',
@@ -31,7 +31,7 @@ SELECT storage.create_policy(
 );
 
 SELECT storage.create_policy(
-  'dog_photos', 
+  'dog-photos', 
   'Users can delete their dog photos',
   'DELETE',
   'authenticated',

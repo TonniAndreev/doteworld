@@ -2,7 +2,7 @@
   # Create Storage Buckets for User and Dog Photos
 
   1. Changes
-    - Create dog_photos bucket for storing dog profile pictures
+    - Create dog-photos bucket for storing dog profile pictures
     - Create avatars bucket for storing user profile pictures
     - Set appropriate file size limits and MIME types
     - Add RLS policies for secure access control
@@ -14,11 +14,11 @@
     - Allow public read access to all photos
 */
 
--- Create the dog_photos bucket if it doesn't exist
+-- Create the dog-photos bucket if it doesn't exist
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
-  'dog_photos',
-  'dog_photos',
+  'dog-photos',
+  'dog-photos',
   true,
   5242880, -- 5MB limit
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -39,7 +39,7 @@ ON CONFLICT (id) DO NOTHING;
 -- Enable RLS on storage.objects if not already enabled
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
--- Create policies for dog_photos bucket
+-- Create policies for dog-photos bucket
 DO $$
 BEGIN
   -- Policy: Allow authenticated users to upload dog photos
@@ -53,7 +53,7 @@ BEGIN
     ON storage.objects
     FOR INSERT
     TO authenticated
-    WITH CHECK (bucket_id = 'dog_photos');
+    WITH CHECK (bucket_id = 'dog-photos');
   END IF;
 
   -- Policy: Allow public read access to dog photos
@@ -67,7 +67,7 @@ BEGIN
     ON storage.objects
     FOR SELECT
     TO public
-    USING (bucket_id = 'dog_photos');
+    USING (bucket_id = 'dog-photos');
   END IF;
 
   -- Policy: Allow users to update their own dog photos
@@ -81,7 +81,7 @@ BEGIN
     ON storage.objects
     FOR UPDATE
     TO authenticated
-    USING (bucket_id = 'dog_photos');
+    USING (bucket_id = 'dog-photos');
   END IF;
 
   -- Policy: Allow users to delete their own dog photos
@@ -95,7 +95,7 @@ BEGIN
     ON storage.objects
     FOR DELETE
     TO authenticated
-    USING (bucket_id = 'dog_photos');
+    USING (bucket_id = 'dog-photos');
   END IF;
 END $$;
 
