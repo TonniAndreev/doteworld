@@ -2,7 +2,7 @@
   # Create storage buckets for photos
 
   1. New Storage Buckets
-    - `dog-photos` - For storing dog profile pictures
+    - `dog_photos` - For storing dog profile pictures
     - `avatars` - For storing user profile pictures
   
   2. Security
@@ -11,9 +11,9 @@
     - Allow public read access to all photos
 */
 
--- Create the dog-photos bucket if it doesn't exist
+-- Create the dog_photos bucket if it doesn't exist
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('dog-photos', 'dog-photos', true)
+VALUES ('dog_photos', 'dog_photos', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Create the avatars bucket if it doesn't exist
@@ -24,30 +24,30 @@ ON CONFLICT (id) DO NOTHING;
 -- Enable RLS on storage.objects if not already enabled
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
--- Create policies for dog-photos bucket
+-- Create policies for dog_photos bucket
 CREATE POLICY "Authenticated users can upload dog photos"
 ON storage.objects
 FOR INSERT
 TO authenticated
-WITH CHECK (bucket_id = 'dog-photos');
+WITH CHECK (bucket_id = 'dog_photos');
 
 CREATE POLICY "Public can view dog photos"
 ON storage.objects
 FOR SELECT
 TO public
-USING (bucket_id = 'dog-photos');
+USING (bucket_id = 'dog_photos');
 
 CREATE POLICY "Users can update their dog photos"
 ON storage.objects
 FOR UPDATE
 TO authenticated
-USING (bucket_id = 'dog-photos');
+USING (bucket_id = 'dog_photos');
 
 CREATE POLICY "Users can delete their dog photos"
 ON storage.objects
 FOR DELETE
 TO authenticated
-USING (bucket_id = 'dog-photos');
+USING (bucket_id = 'dog_photos');
 
 -- Create policies for avatars bucket
 CREATE POLICY "Authenticated users can upload avatars"

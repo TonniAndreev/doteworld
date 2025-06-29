@@ -2,7 +2,7 @@
   # Create Storage Buckets for Photos
 
   1. New Buckets
-    - `dog-photos`: For storing dog profile pictures
+    - `dog_photos`: For storing dog profile pictures
     - `avatars`: For storing user profile pictures
   
   2. Security
@@ -12,9 +12,9 @@
     - Allow public read access to all files
 */
 
--- Create dog-photos bucket
+-- Create dog_photos bucket
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('dog-photos', 'dog-photos', true)
+VALUES ('dog_photos', 'dog_photos', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Create avatars bucket  
@@ -25,36 +25,36 @@ ON CONFLICT (id) DO NOTHING;
 -- Enable RLS on storage.objects
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
--- Policy for dog-photos: Allow authenticated users to upload photos
+-- Policy for dog_photos: Allow authenticated users to upload photos
 CREATE POLICY "Users can upload dog photos" ON storage.objects
 FOR INSERT TO authenticated
 WITH CHECK (
-  bucket_id = 'dog-photos' AND
+  bucket_id = 'dog_photos' AND
   (storage.foldername(name))[1] = auth.uid()::text
 );
 
--- Policy for dog-photos: Allow public read access
+-- Policy for dog_photos: Allow public read access
 CREATE POLICY "Public can view dog photos" ON storage.objects
 FOR SELECT TO public
-USING (bucket_id = 'dog-photos');
+USING (bucket_id = 'dog_photos');
 
--- Policy for dog-photos: Allow users to update their own photos
+-- Policy for dog_photos: Allow users to update their own photos
 CREATE POLICY "Users can update their dog photos" ON storage.objects
 FOR UPDATE TO authenticated
 USING (
-  bucket_id = 'dog-photos' AND
+  bucket_id = 'dog_photos' AND
   (storage.foldername(name))[1] = auth.uid()::text
 )
 WITH CHECK (
-  bucket_id = 'dog-photos' AND
+  bucket_id = 'dog_photos' AND
   (storage.foldername(name))[1] = auth.uid()::text
 );
 
--- Policy for dog-photos: Allow users to delete their own photos
+-- Policy for dog_photos: Allow users to delete their own photos
 CREATE POLICY "Users can delete their dog photos" ON storage.objects
 FOR DELETE TO authenticated
 USING (
-  bucket_id = 'dog-photos' AND
+  bucket_id = 'dog_photos' AND
   (storage.foldername(name))[1] = auth.uid()::text
 );
 

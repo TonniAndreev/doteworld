@@ -1,8 +1,8 @@
 /*
-  # Create dog-photos storage bucket
+  # Create dog_photos storage bucket
 
   1. Storage Setup
-    - Create `dog-photos` bucket for storing dog profile photos
+    - Create `dog_photos` bucket for storing dog profile photos
     - Configure bucket to be public for easy photo access
     - Set up appropriate file size and type restrictions
 
@@ -14,11 +14,11 @@
     - Set reasonable file size limits
 */
 
--- Create the dog-photos bucket
+-- Create the dog_photos bucket
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
-  'dog-photos',
-  'dog-photos',
+  'dog_photos',
+  'dog_photos',
   true,
   5242880, -- 5MB limit
   ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -31,7 +31,7 @@ ON storage.objects
 FOR INSERT
 TO authenticated
 WITH CHECK (
-  bucket_id = 'dog-photos' AND
+  bucket_id = 'dog_photos' AND
   auth.uid() IS NOT NULL
 );
 
@@ -40,7 +40,7 @@ CREATE POLICY "Public can view dog photos"
 ON storage.objects
 FOR SELECT
 TO public
-USING (bucket_id = 'dog-photos');
+USING (bucket_id = 'dog_photos');
 
 -- Policy: Allow users to update photos for dogs they own
 CREATE POLICY "Users can update photos for their dogs"
@@ -48,7 +48,7 @@ ON storage.objects
 FOR UPDATE
 TO authenticated
 USING (
-  bucket_id = 'dog-photos' AND
+  bucket_id = 'dog_photos' AND
   auth.uid() IS NOT NULL AND
   EXISTS (
     SELECT 1 FROM profile_dogs pd
@@ -64,7 +64,7 @@ ON storage.objects
 FOR DELETE
 TO authenticated
 USING (
-  bucket_id = 'dog-photos' AND
+  bucket_id = 'dog_photos' AND
   auth.uid() IS NOT NULL AND
   EXISTS (
     SELECT 1 FROM profile_dogs pd
