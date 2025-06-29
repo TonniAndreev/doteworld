@@ -5,10 +5,6 @@ import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-fonts/inter';
 import { SplashScreen } from 'expo-router';
 import { AuthProvider } from '@/contexts/AuthContext';
-import { PawsProvider } from '@/contexts/PawsContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import { TerritoryProvider } from '@/contexts/TerritoryContext';
-import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -35,23 +31,14 @@ export default function RootLayout() {
   }
 
   return (
-    <RevenueCatProvider>
-      <AuthProvider>
-        <PawsProvider>
-          <NotificationProvider>
-            <TerritoryProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="welcome" options={{ headerShown: false }} />
-                <Stack.Screen name="notifications" options={{ headerShown: false }} />
-                <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
-              </Stack>
-              <StatusBar style="auto" />
-            </TerritoryProvider>
-          </NotificationProvider>
-        </PawsProvider>
-      </AuthProvider>
-    </RevenueCatProvider>
+    <AuthProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
+      </Stack>
+      <StatusBar style="auto" />
+    </AuthProvider>
   );
 }
