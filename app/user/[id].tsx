@@ -634,36 +634,38 @@ export default function PublicUserProfileScreen() {
 
             {/* Dog Avatars Row */}
             <View style={styles.dogAvatarsRow}>
-              {userDogs.slice(0, 5).map((dog, index) => (
-                <View 
-                  key={dog.id} 
-                  style={[
-                    styles.userDogAvatarWrapper, 
-                    { zIndex: 5 - index, left: index * 20 }
-                  ]}
-                >
-                  <UserAvatar
-                    userId={dog.id}
-                    photoURL={dog.photo_url}
-                    userName={dog.name}
-                    size={70}
-                    isDogAvatar={true}
-                    dogBreed={dog.breed}
-                  />
-                </View>
-              ))}
-              
-              {userDogs.length > 5 && (
-                <View 
-                  style={[
-                    styles.userDogAvatarWrapper, 
-                    styles.userMoreDogsBadge,
-                    { zIndex: 0, left: 5 * 20 }
-                  ]}
-                >
-                  <Text style={styles.userMoreDogsBadgeText}>+{userDogs.length - 5}</Text>
-                </View>
-              )}
+              <View style={styles.dogAvatarsContainer}>
+                {userDogs.slice(0, 5).map((dog, index) => (
+                  <View 
+                    key={dog.id} 
+                    style={[
+                      styles.userDogAvatarWrapper, 
+                      { zIndex: 5 - index, left: index * -20 }
+                    ]}
+                  >
+                    <UserAvatar
+                      userId={dog.id}
+                      photoURL={dog.photo_url}
+                      userName={dog.name}
+                      size={70}
+                      isDogAvatar={true}
+                      dogBreed={dog.breed}
+                    />
+                  </View>
+                ))}
+                
+                {userDogs.length > 5 && (
+                  <View 
+                    style={[
+                      styles.userDogAvatarWrapper, 
+                      styles.userMoreDogsBadge,
+                      { zIndex: 0, left: 5 * -20 }
+                    ]}
+                  >
+                    <Text style={styles.userMoreDogsBadgeText}>+{userDogs.length - 5}</Text>
+                  </View>
+                )}
+              </View>
             </View>
 
             {/* Dog Cards */}
@@ -927,7 +929,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 24,
     height: 70,
-    marginLeft: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dogAvatarsContainer: {
+    position: 'relative',
+    height: 70,
+    width: 200,
+    alignItems: 'center',
   },
   userDogAvatarWrapper: {
     position: 'absolute',

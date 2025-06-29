@@ -161,7 +161,7 @@ export default function ProfileScreen() {
                       key={dog.id} 
                       style={[
                         styles.dogAvatarWrapper, 
-                        { zIndex: 5 - index, left: index * 30 }
+                        { zIndex: 5 - index, left: index * -20 }
                       ]}
                     >
                       <UserAvatar
@@ -181,7 +181,7 @@ export default function ProfileScreen() {
                       style={[
                         styles.dogAvatarWrapper, 
                         styles.moreDogsBadge,
-                        { zIndex: 0, left: 5 * 30 }
+                        { zIndex: 0, left: 5 * -20 }
                       ]}
                     >
                       <Text style={styles.moreDogsBadgeText}>+{user.dogs.length - 5}</Text>
@@ -381,6 +381,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     height: 60,
     width: 180, // Enough width for 5 overlapping avatars
+    justifyContent: 'center',
   },
   dogAvatarWrapper: {
     position: 'absolute',
