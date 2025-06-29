@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { ChevronLeft, Plus, CreditCard as Edit, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
@@ -110,7 +111,7 @@ interface Dog {
   id: string;
   name: string;
   breed: string;
-  photo_url?: string;
+  photo_url?: string | null;
   birthday?: string;
   bio?: string;
   weight?: number;
@@ -240,6 +241,7 @@ export default function DogProfileScreen() {
       }
       
       let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
