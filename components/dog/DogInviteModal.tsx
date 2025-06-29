@@ -9,9 +9,8 @@ import {
   Alert,
   ActivityIndicator,
   Share,
-  Clipboard,
 } from 'react-native';
-import { X, Mail, Copy, Send } from 'lucide-react-native';
+import { X, Mail, Send } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 
@@ -26,7 +25,6 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [inviteLink, setInviteLink] = useState('');
 
   const { inviteCoOwner } = useDogOwnership();
 
@@ -35,7 +33,6 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
     const inviteToken = `${dogId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const baseUrl = 'https://dote.app'; // Replace with your actual domain
     const link = `${baseUrl}/invite/${inviteToken}?dogId=${dogId}&dogName=${encodeURIComponent(dogName)}&role=co-owner`;
-    setInviteLink(link);
     return link;
   };
 
@@ -61,16 +58,6 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleCopyLink = async () => {
-    const link = generateInviteLink();
-    try {
-      await Clipboard.setString(link);
-      Alert.alert('Success', 'Invite link copied to clipboard!');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to copy link');
     }
   };
 
@@ -160,23 +147,13 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
                 Share a link directly with someone to invite them as an owner.
               </Text>
               
-              <View style={styles.linkActions}>
-                <TouchableOpacity
-                  style={styles.linkButton}
-                  onPress={handleCopyLink}
-                >
-                  <Copy size={20} color={COLORS.primary} />
-                  <Text style={styles.linkButtonText}>Copy Link</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.linkButton}
-                  onPress={handleShareLink}
-                >
-                  <Send size={20} color={COLORS.primary} />
-                  <Text style={styles.linkButtonText}>Share Link</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={handleShareLink}
+              >
+                <Send size={20} color={COLORS.primary} />
+                <Text style={styles.shareButtonText}>Share Invite Link</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Explanation */}
@@ -295,12 +272,7 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
     marginBottom: 16,
   },
-  linkActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  linkButton: {
-    flex: 1,
+  shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -309,7 +281,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     gap: 8,
   },
-  linkButtonText: {
+  shareButtonText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
@@ -331,9 +303,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.neutralMedium,
     marginBottom: 8,
-  },
-  boldText: {
-    fontFamily: 'Inter-Bold',
-    color: COLORS.neutralDark,
   },
 });
