@@ -18,6 +18,7 @@ import { calculateDistance } from '@/utils/locationUtils';
 import { USER_TERRITORY_COLOR, getColorWithOpacity } from '@/utils/mapColors';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -32,6 +33,7 @@ export default function MapScreen() {
   const [detectedCity, setDetectedCity] = useState<{id: string, name: string} | null>(null);
   const [isProcessingCityChange, setIsProcessingCityChange] = useState(false);
   const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const [lastGeocodeAttemptDate, setLastGeocodeAttemptDate] = useState<string | null>(null);
   
   const mapRef = useRef<MapView>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
@@ -81,11 +83,41 @@ export default function MapScreen() {
     setupInitialLocation();
   }, []);
 
+  // Load last geocode attempt date from AsyncStorage
+  useEffect(() => {
+    const loadLastGeocodeDate = async () => {
+      try {
+        const storedDate = await AsyncStorage.getItem('lastGeocodeAttemptDate');
+        if (storedDate) {
+          setLastGeocodeAttemptDate(storedDate);
+          console.log('Last geocode attempt date:', storedDate);
+        }
+      } catch (error) {
+        console.error('Error loading last geocode date:', error);
+      }
+    };
+    
+    loadLastGeocodeDate();
+  }, []);
+
   // Check city from location coordinates
   const checkCityFromLocation = async (latitude: number, longitude: number) => {
     try {
       // Skip if user is not logged in
       if (!user) return;
+      
+      // Get current date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Check if we already attempted geocoding today
+      if (lastGeocodeAttemptDate === today) {
+        console.log('Already attempted geocoding today, skipping');
+        return;
+      }
+      
+      // Update the last attempt date regardless of success
+      setLastGeocodeAttemptDate(today);
+      await AsyncStorage.setItem('lastGeocodeAttemptDate', today);
       
       // Get city details from coordinates
       const cityDetails = await reverseGeocodeToCity(latitude, longitude);

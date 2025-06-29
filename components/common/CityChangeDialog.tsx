@@ -8,7 +8,7 @@ import {
   ActivityIndicator 
 } from 'react-native';
 import { COLORS } from '@/constants/theme';
-import { MapPin } from 'lucide-react-native';
+import { MapPin, X } from 'lucide-react-native';
 
 interface CityChangeDialogProps {
   visible: boolean;
@@ -27,6 +27,11 @@ export default function CityChangeDialog({
   onConfirm, 
   onCancel 
 }: CityChangeDialogProps) {
+  // Don't render if cities are the same or if toCity is empty
+  if (!visible || !toCity || (fromCity === toCity)) {
+    return null;
+  }
+
   return (
     <Modal
       animationType="fade"
@@ -36,6 +41,10 @@ export default function CityChangeDialog({
     >
       <View style={styles.overlay}>
         <View style={styles.dialogContainer}>
+          <TouchableOpacity style={styles.closeButton} onPress={onCancel}>
+            <X size={24} color={COLORS.neutralDark} />
+          </TouchableOpacity>
+          
           <View style={styles.iconContainer}>
             <MapPin size={32} color={COLORS.primary} />
           </View>
@@ -96,6 +105,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    padding: 8,
+    zIndex: 10,
   },
   iconContainer: {
     width: 64,
