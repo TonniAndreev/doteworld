@@ -44,7 +44,6 @@ export default function CitySelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddCity, setShowAddCity] = useState(false);
   const [newCityName, setNewCityName] = useState('');
-  const [newCityState, setNewCityState] = useState('');
   const [newCityCountry, setNewCityCountry] = useState('');
   const [isAddingCity, setIsAddingCity] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
@@ -101,7 +100,7 @@ export default function CitySelector({
       // Create a city details object
       const cityDetails = {
         name: newCityName.trim(),
-        state: newCityState.trim() || null,
+        state: null,
         country: newCityCountry.trim(),
         lat: 0, // Default values, will be updated if location is detected
         lon: 0
@@ -130,7 +129,7 @@ export default function CitySelector({
       const newCity: City = {
         id: cityId,
         name: newCityName.trim(),
-        state: newCityState.trim() || null,
+        state: null,
         country: newCityCountry.trim(),
         territorySize: 0
       };
@@ -140,7 +139,6 @@ export default function CitySelector({
       
       // Reset form and close modal
       setNewCityName('');
-      setNewCityState('');
       setNewCityCountry('');
       setShowAddCity(false);
       closeModal();
@@ -174,21 +172,33 @@ export default function CitySelector({
         location.coords.latitude,
         location.coords.longitude
       );
-
-      if (!cityDetails) {
-        Alert.alert('Error', 'Could not determine your city from your location');
-        return;
-      }
-
-      // Pre-fill the form with detected city
-      setNewCityName(cityDetails.name);
-      setNewCityState(cityDetails.state || '');
-      setNewCityCountry(cityDetails.country);
       
-      Alert.alert('City Detected', `Found ${cityDetails.name}, ${cityDetails.country}`);
+      if (cityDetails) {
+        const cityId = await getOrCreateCityInSupabase(cityDetails);
+        if (cityId) {
+          // Create new city object
+          const newCity: City = {
+            id: cityId,
+            name: cityDetails.name,
+            state: cityDetails.state,
+            country: cityDetails.country,
+            territorySize: 0
+          };
+          
+          // Select the new city and close modal
+          onSelectCity(newCity);
+          closeModal();
+          
+          Alert.alert('Success', `Added ${cityDetails.name}, ${cityDetails.country} to your cities`);
+        } else {
+          Alert.alert('Error', 'Could not create city in database');
+        }
+      } else {
+        Alert.alert('Error', 'Could not determine your city from your location');
+      }
     } catch (error) {
       console.error('Error detecting location:', error);
-      Alert.alert('Error', 'Failed to detect your location. Please enter city details manually.');
+      Alert.alert('Error', 'Failed to detect your location. Please try again.');
     } finally {
       setIsDetectingLocation(false);
     }
@@ -289,30 +299,8 @@ export default function CitySelector({
               {showAddCity ? (
                 <ScrollView style={styles.addCityContainer}>
                   <Text style={styles.addCityDescription}>
-                    Enter the details of the city you want to add
+                    Detect your current location to add a new city
                   </Text>
-                  
-                  <View style={styles.formGroup}>
-                    <Text style={styles.inputLabel}>City Name *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={newCityName}
-                      onChangeText={setNewCityName}
-                      placeholder="Enter city name"
-                      placeholderTextColor={COLORS.neutralMedium}
-                    />
-                  </View>
-                  
-                  <View style={styles.formGroup}>
-                    <Text style={styles.inputLabel}>Country *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={newCityCountry}
-                      onChangeText={setNewCityCountry}
-                      placeholder="Enter country"
-                      placeholderTextColor={COLORS.neutralMedium}
-                    />
-                  </View>
                   
                   <TouchableOpacity 
                     style={styles.detectLocationButton}
@@ -327,24 +315,6 @@ export default function CitySelector({
                         <Text style={styles.detectLocationText}>
                           Detect My Location
                         </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[
-                      styles.addCityButton,
-                      (!newCityName.trim() || !newCityCountry.trim() || isAddingCity) && styles.disabledButton
-                    ]}
-                    onPress={handleAddCity}
-                    disabled={!newCityName.trim() || !newCityCountry.trim() || isAddingCity}
-                  >
-                    {isAddingCity ? (
-                      <ActivityIndicator size="small" color={COLORS.white} />
-                    ) : (
-                      <>
-                        <Plus size={16} color={COLORS.white} />
-                        <Text style={styles.addCityButtonText}>Add City</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -425,7 +395,6 @@ export default function CitySelector({
                                 style={styles.addNewFromSearchButton}
                                 onPress={() => {
                                   setNewCityName(searchQuery);
-                                  setNewCityState('');
                                   setNewCityCountry('');
                                   setShowAddCity(true);
                                 }}
