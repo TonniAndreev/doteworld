@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import * as turf from '@turf/turf';
@@ -65,31 +65,40 @@ export function useFriends() {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  
+  // Use refs to track subscription status
+  const friendshipsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (user) {
       loadData();
       
       // Set up real-time listeners for friendship changes
-      const friendshipsChannel = supabase
-        .channel('friendships-changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'friendships',
-            filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
-          },
-          (payload) => {
-            console.log('Friendship change detected:', payload);
-            loadData();
-          }
-        )
-        .subscribe();
+      if (!friendshipsChannelRef.current) {
+        friendshipsChannelRef.current = supabase
+          .channel('friendships-changes')
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'friendships',
+              filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
+            },
+            (payload) => {
+              console.log('Friendship change detected:', payload);
+              loadData();
+            }
+          )
+          .subscribe();
+      }
         
       return () => {
-        supabase.removeChannel(friendshipsChannel);
+        // Clean up subscription when component unmounts
+        if (friendshipsChannelRef.current) {
+          supabase.removeChannel(friendshipsChannelRef.current);
+          friendshipsChannelRef.current = null;
+        }
       };
     }
   }, [user]);

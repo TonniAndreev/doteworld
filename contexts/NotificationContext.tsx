@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/utils/supabase';
 
@@ -36,85 +36,106 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
+  
+  // Use refs to track subscription status
+  const friendshipSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const dogInviteSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const achievementSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (user) {
       // Set up real-time listener for friend requests
-      const friendshipSubscription = supabase
-        .channel('friendships')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'friendships',
-            filter: `receiver_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('New friendship notification:', payload);
-            await handleFriendshipNotification(payload.new);
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'friendships',
-            filter: `requester_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('Friendship status update:', payload);
-            if (payload.new.status === 'accepted') {
-              await handleFriendAcceptedNotification(payload.new);
+      if (!friendshipSubscriptionRef.current) {
+        friendshipSubscriptionRef.current = supabase
+          .channel('friendships')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'friendships',
+              filter: `receiver_id=eq.${user.id}`,
+            },
+            async (payload) => {
+              console.log('New friendship notification:', payload);
+              await handleFriendshipNotification(payload.new);
             }
-          }
-        )
-        .subscribe();
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'friendships',
+              filter: `requester_id=eq.${user.id}`,
+            },
+            async (payload) => {
+              console.log('Friendship status update:', payload);
+              if (payload.new.status === 'accepted') {
+                await handleFriendAcceptedNotification(payload.new);
+              }
+            }
+          )
+          .subscribe();
+      }
 
       // Set up listener for dog ownership invites
-      const dogInviteSubscription = supabase
-        .channel('dog_invites')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'dog_ownership_invites',
-            filter: `invitee_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('New dog invite notification:', payload);
-            await handleDogInviteNotification(payload.new);
-          }
-        )
-        .subscribe();
+      if (!dogInviteSubscriptionRef.current) {
+        dogInviteSubscriptionRef.current = supabase
+          .channel('dog_invites')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'dog_ownership_invites',
+              filter: `invitee_id=eq.${user.id}`,
+            },
+            async (payload) => {
+              console.log('New dog invite notification:', payload);
+              await handleDogInviteNotification(payload.new);
+            }
+          )
+          .subscribe();
+      }
 
       // Set up listener for achievements
-      const achievementSubscription = supabase
-        .channel('achievements')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'profile_achievements',
-            filter: `profile_id=eq.${user.id}`,
-          },
-          async (payload) => {
-            console.log('New achievement notification:', payload);
-            await handleAchievementNotification(payload.new);
-          }
-        )
-        .subscribe();
+      if (!achievementSubscriptionRef.current) {
+        achievementSubscriptionRef.current = supabase
+          .channel('achievements')
+          .on(
+            'postgres_changes',
+            {
+              event: 'INSERT',
+              schema: 'public',
+              table: 'profile_achievements',
+              filter: `profile_id=eq.${user.id}`,
+            },
+            async (payload) => {
+              console.log('New achievement notification:', payload);
+              await handleAchievementNotification(payload.new);
+            }
+          )
+          .subscribe();
+      }
 
       // Load existing notifications
       loadNotifications();
 
       return () => {
-        supabase.removeChannel(friendshipSubscription);
-        supabase.removeChannel(dogInviteSubscription);
-        supabase.removeChannel(achievementSubscription);
+        // Clean up subscriptions when component unmounts
+        if (friendshipSubscriptionRef.current) {
+          supabase.removeChannel(friendshipSubscriptionRef.current);
+          friendshipSubscriptionRef.current = null;
+        }
+        if (dogInviteSubscriptionRef.current) {
+          supabase.removeChannel(dogInviteSubscriptionRef.current);
+          dogInviteSubscriptionRef.current = null;
+        }
+        if (achievementSubscriptionRef.current) {
+          supabase.removeChannel(achievementSubscriptionRef.current);
+          achievementSubscriptionRef.current = null;
+        }
       };
     }
   }, [user]);
