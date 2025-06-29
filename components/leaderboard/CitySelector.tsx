@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -6,10 +6,18 @@ import {
   TouchableOpacity, 
   Modal, 
   FlatList,
-  ActivityIndicator
+  ActivityIndicator,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView
 } from 'react-native';
 import { COLORS } from '@/constants/theme';
-import { MapPin, ChevronDown, Check } from 'lucide-react-native';
+import { MapPin, ChevronDown, Check, Search, X, Plus, Globe, Navigation } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import { reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface City {
   id: string;
@@ -32,14 +40,37 @@ export default function CitySelector({
   isLoading,
   onSelectCity 
 }: CitySelectorProps) {
-  const [modalVisible, setModalVisible] = React.useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAddCity, setShowAddCity] = useState(false);
+  const [newCityName, setNewCityName] = useState('');
+  const [newCityState, setNewCityState] = useState('');
+  const [newCityCountry, setNewCityCountry] = useState('');
+  const [isAddingCity, setIsAddingCity] = useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  
+  const { user } = useAuth();
+
+  // Filter cities based on search query
+  const filteredCities = cities.filter(city => {
+    const query = searchQuery.toLowerCase();
+    return (
+      city.name.toLowerCase().includes(query) ||
+      (city.state && city.state.toLowerCase().includes(query)) ||
+      city.country.toLowerCase().includes(query)
+    );
+  });
 
   const openModal = () => {
     setModalVisible(true);
+    setSearchQuery('');
+    setShowAddCity(false);
   };
 
   const closeModal = () => {
     setModalVisible(false);
+    setSearchQuery('');
+    setShowAddCity(false);
   };
 
   const handleSelectCity = (city: City) => {
@@ -54,12 +85,155 @@ export default function CitySelector({
     return `${city.name}, ${city.country}`;
   };
 
+  const formatTerritorySize = (size?: number) => {
+    if (size === undefined || size === 0) return '0 m²';
+    return `${(size * 1000000).toFixed(0)} m²`;
+  };
+
+  const handleAddCity = async () => {
+    if (!newCityName.trim() || !newCityCountry.trim()) {
+      Alert.alert('Error', 'City name and country are required');
+      return;
+    }
+
+    setIsAddingCity(true);
+    try {
+      // Create a city details object
+      const cityDetails = {
+        name: newCityName.trim(),
+        state: newCityState.trim() || null,
+        country: newCityCountry.trim(),
+        lat: 0, // Default values, will be updated if location is detected
+        lon: 0
+      };
+
+      // Try to get current location for coordinates
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const location = await Location.getCurrentPositionAsync({});
+          cityDetails.lat = location.coords.latitude;
+          cityDetails.lon = location.coords.longitude;
+        }
+      } catch (error) {
+        console.log('Could not get location for new city:', error);
+        // Continue without coordinates
+      }
+
+      // Create city in database
+      const cityId = await getOrCreateCityInSupabase(cityDetails);
+      if (!cityId) {
+        throw new Error('Failed to create city');
+      }
+
+      // Create new city object
+      const newCity: City = {
+        id: cityId,
+        name: newCityName.trim(),
+        state: newCityState.trim() || null,
+        country: newCityCountry.trim(),
+        territorySize: 0
+      };
+
+      // Select the new city
+      onSelectCity(newCity);
+      
+      // Reset form and close modal
+      setNewCityName('');
+      setNewCityState('');
+      setNewCityCountry('');
+      setShowAddCity(false);
+      closeModal();
+      
+      Alert.alert('Success', `Added ${newCity.name} to your cities`);
+    } catch (error) {
+      console.error('Error adding city:', error);
+      Alert.alert('Error', 'Failed to add city. Please try again.');
+    } finally {
+      setIsAddingCity(false);
+    }
+  };
+
+  const detectCurrentLocation = async () => {
+    setIsDetectingLocation(true);
+    try {
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Location permission is required to detect your city');
+        return;
+      }
+
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced
+      });
+
+      // Get city from coordinates
+      const cityDetails = await reverseGeocodeToCity(
+        location.coords.latitude,
+        location.coords.longitude
+      );
+
+      if (!cityDetails) {
+        Alert.alert('Error', 'Could not determine your city from your location');
+        return;
+      }
+
+      // Pre-fill the form with detected city
+      setNewCityName(cityDetails.name);
+      setNewCityState(cityDetails.state || '');
+      setNewCityCountry(cityDetails.country);
+      
+      Alert.alert('City Detected', `Found ${cityDetails.name}, ${cityDetails.country}`);
+    } catch (error) {
+      console.error('Error detecting location:', error);
+      Alert.alert('Error', 'Failed to detect your location. Please enter city details manually.');
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
+
+  const renderCityItem = ({ item }: { item: City }) => {
+    const isCurrentUserCity = user?.current_city_id === item.id;
+    
+    return (
+      <TouchableOpacity
+        style={[
+          styles.cityItem,
+          selectedCity?.id === item.id && styles.selectedCityItem,
+          isCurrentUserCity && styles.currentUserCityItem
+        ]}
+        onPress={() => handleSelectCity(item)}
+      >
+        <View style={styles.cityInfo}>
+          <Text style={styles.cityName}>
+            {item.name}
+            {isCurrentUserCity && <Text style={styles.currentCityBadge}> (Current)</Text>}
+          </Text>
+          <Text style={styles.cityRegion}>
+            {item.state ? `${item.state}, ${item.country}` : item.country}
+          </Text>
+        </View>
+        
+        <View style={styles.cityStats}>
+          <Text style={styles.territorySize}>
+            {formatTerritorySize(item.territorySize)}
+          </Text>
+          {selectedCity?.id === item.id && (
+            <Check size={20} color={COLORS.primary} />
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <TouchableOpacity 
         style={styles.selector}
         onPress={openModal}
-        disabled={isLoading || cities.length === 0}
+        disabled={isLoading}
       >
         <MapPin size={20} color={COLORS.primary} style={styles.icon} />
         
@@ -85,53 +259,195 @@ export default function CitySelector({
         onRequestClose={closeModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select City</Text>
-              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
-                <Text style={styles.closeButtonText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-
-            {cities.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <MapPin size={32} color={COLORS.neutralMedium} />
-                <Text style={styles.emptyText}>
-                  No cities found. Start conquering territories to see cities here!
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.keyboardAvoid}
+          >
+            <View style={styles.modalContainer}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>
+                  {showAddCity ? 'Add New City' : 'Select City'}
                 </Text>
+                <TouchableOpacity 
+                  style={styles.closeButton} 
+                  onPress={showAddCity ? () => setShowAddCity(false) : closeModal}
+                >
+                  <Text style={styles.closeButtonText}>
+                    {showAddCity ? 'Back' : 'Close'}
+                  </Text>
+                </TouchableOpacity>
               </View>
-            ) : (
-              <FlatList
-                data={cities}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.cityItem,
-                      selectedCity?.id === item.id && styles.selectedCityItem
-                    ]}
-                    onPress={() => handleSelectCity(item)}
+
+              {showAddCity ? (
+                <ScrollView style={styles.addCityContainer}>
+                  <Text style={styles.addCityDescription}>
+                    Enter the details of the city you want to add
+                  </Text>
+                  
+                  <View style={styles.formGroup}>
+                    <Text style={styles.inputLabel}>City Name *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={newCityName}
+                      onChangeText={setNewCityName}
+                      placeholder="Enter city name"
+                      placeholderTextColor={COLORS.neutralMedium}
+                    />
+                  </View>
+                  
+                  <View style={styles.formGroup}>
+                    <Text style={styles.inputLabel}>State/Province (Optional)</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={newCityState}
+                      onChangeText={setNewCityState}
+                      placeholder="Enter state or province"
+                      placeholderTextColor={COLORS.neutralMedium}
+                    />
+                  </View>
+                  
+                  <View style={styles.formGroup}>
+                    <Text style={styles.inputLabel}>Country *</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={newCityCountry}
+                      onChangeText={setNewCityCountry}
+                      placeholder="Enter country"
+                      placeholderTextColor={COLORS.neutralMedium}
+                    />
+                  </View>
+                  
+                  <TouchableOpacity 
+                    style={styles.detectLocationButton}
+                    onPress={detectCurrentLocation}
+                    disabled={isDetectingLocation}
                   >
-                    <View style={styles.cityInfo}>
-                      <Text style={styles.cityName}>{item.name}</Text>
-                      <Text style={styles.cityRegion}>
-                        {item.state ? `${item.state}, ${item.country}` : item.country}
-                      </Text>
-                      {item.territorySize !== undefined && (
-                        <Text style={styles.territorySize}>
-                          {(item.territorySize * 1000000).toFixed(0)} m² conquered
+                    {isDetectingLocation ? (
+                      <ActivityIndicator size="small" color={COLORS.white} />
+                    ) : (
+                      <>
+                        <Navigation size={16} color={COLORS.white} />
+                        <Text style={styles.detectLocationText}>
+                          Detect My Location
                         </Text>
-                      )}
-                    </View>
-                    {selectedCity?.id === item.id && (
-                      <Check size={20} color={COLORS.primary} />
+                      </>
                     )}
                   </TouchableOpacity>
-                )}
-                contentContainerStyle={styles.cityList}
-              />
-            )}
-          </View>
+                  
+                  <TouchableOpacity 
+                    style={[
+                      styles.addCityButton,
+                      (!newCityName.trim() || !newCityCountry.trim() || isAddingCity) && styles.disabledButton
+                    ]}
+                    onPress={handleAddCity}
+                    disabled={!newCityName.trim() || !newCityCountry.trim() || isAddingCity}
+                  >
+                    {isAddingCity ? (
+                      <ActivityIndicator size="small" color={COLORS.white} />
+                    ) : (
+                      <>
+                        <Plus size={16} color={COLORS.white} />
+                        <Text style={styles.addCityButtonText}>Add City</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </ScrollView>
+              ) : (
+                <>
+                  <View style={styles.searchContainer}>
+                    <Search size={20} color={COLORS.neutralDark} style={styles.searchIcon} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search cities..."
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholderTextColor={COLORS.neutralMedium}
+                      autoFocus={true}
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearButton}>
+                        <X size={20} color={COLORS.neutralMedium} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* Special Options Section */}
+                  <View style={styles.specialOptionsContainer}>
+                    {user?.current_city_id && user?.current_city_name && (
+                      <TouchableOpacity 
+                        style={styles.specialOption}
+                        onPress={() => handleSelectCity({
+                          id: user.current_city_id!,
+                          name: user.current_city_name!,
+                          state: null,
+                          country: 'Current Location'
+                        })}
+                      >
+                        <MapPin size={20} color={COLORS.primary} />
+                        <Text style={styles.specialOptionText}>Your Current City: {user.current_city_name}</Text>
+                      </TouchableOpacity>
+                    )}
+                    
+                    <TouchableOpacity 
+                      style={styles.specialOption}
+                      onPress={() => setShowAddCity(true)}
+                    >
+                      <Plus size={20} color={COLORS.secondary} />
+                      <Text style={styles.specialOptionText}>Add a New City</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {cities.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                      <Globe size={32} color={COLORS.neutralMedium} />
+                      <Text style={styles.emptyText}>
+                        No cities found. Start conquering territories to see cities here!
+                      </Text>
+                    </View>
+                  ) : (
+                    <>
+                      <View style={styles.resultsHeader}>
+                        <Text style={styles.resultsCount}>
+                          {filteredCities.length} {filteredCities.length === 1 ? 'city' : 'cities'} found
+                        </Text>
+                      </View>
+                      
+                      <FlatList
+                        data={filteredCities}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderCityItem}
+                        contentContainerStyle={styles.cityList}
+                        showsVerticalScrollIndicator={false}
+                        ListEmptyComponent={
+                          searchQuery.length > 0 ? (
+                            <View style={styles.noResultsContainer}>
+                              <Text style={styles.noResultsText}>
+                                No cities match "{searchQuery}"
+                              </Text>
+                              <TouchableOpacity 
+                                style={styles.addNewFromSearchButton}
+                                onPress={() => {
+                                  setNewCityName(searchQuery);
+                                  setNewCityState('');
+                                  setNewCityCountry('');
+                                  setShowAddCity(true);
+                                }}
+                              >
+                                <Plus size={16} color={COLORS.primary} />
+                                <Text style={styles.addNewFromSearchText}>
+                                  Add "{searchQuery}" as a new city
+                                </Text>
+                              </TouchableOpacity>
+                            </View>
+                          ) : null
+                        }
+                      />
+                    </>
+                  )}
+                </>
+              )}
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
     </View>
@@ -181,6 +497,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
   },
+  keyboardAvoid: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   modalContainer: {
     backgroundColor: COLORS.white,
     borderTopLeftRadius: 20,
@@ -208,6 +528,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.primary,
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralLight,
+    margin: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    paddingVertical: 12,
+  },
+  clearButton: {
+    padding: 4,
+  },
+  specialOptionsContainer: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  specialOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralExtraLight,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  specialOptionText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginLeft: 8,
+  },
+  resultsHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  resultsCount: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.neutralMedium,
+  },
   cityList: {
     paddingHorizontal: 16,
     paddingBottom: 20,
@@ -223,8 +595,14 @@ const styles = StyleSheet.create({
   selectedCityItem: {
     backgroundColor: COLORS.primaryExtraLight,
   },
+  currentUserCityItem: {
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+    paddingLeft: 8,
+  },
   cityInfo: {
     flex: 1,
+    marginRight: 8,
   },
   cityName: {
     fontFamily: 'Inter-Bold',
@@ -232,16 +610,25 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
+  currentCityBadge: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+  },
   cityRegion: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
-    marginBottom: 4,
+  },
+  cityStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   territorySize: {
     fontFamily: 'Inter-Medium',
-    fontSize: 12,
+    fontSize: 14,
     color: COLORS.primary,
+    marginRight: 8,
   },
   emptyContainer: {
     padding: 40,
@@ -254,5 +641,91 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     lineHeight: 22,
+  },
+  noResultsContainer: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  addNewFromSearchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  addNewFromSearchText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+    marginLeft: 8,
+  },
+  addCityContainer: {
+    padding: 16,
+  },
+  addCityDescription: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 8,
+  },
+  input: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    backgroundColor: COLORS.neutralLight,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  detectLocationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  detectLocationText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
+    marginLeft: 8,
+  },
+  addCityButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  addCityButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
+    marginLeft: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
 });
