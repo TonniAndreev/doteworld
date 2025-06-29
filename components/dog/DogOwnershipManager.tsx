@@ -87,11 +87,11 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
-        return <Crown size={16} color={COLORS.accent} />;
+        return <Crown size={16} color={COLORS.accent} style={styles.roleIcon} />;
       case 'co-owner':
-        return <Shield size={16} color={COLORS.primary} />;
+        return <Shield size={16} color={COLORS.primary} style={styles.roleIcon} />;
       case 'caretaker':
-        return <Eye size={16} color={COLORS.secondary} />;
+        return <Eye size={16} color={COLORS.secondary} style={styles.roleIcon} />;
       default:
         return null;
     }
@@ -149,7 +149,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         userId={owner.profile_id}
         photoURL={owner.avatar_url}
         userName={`${owner.first_name} ${owner.last_name}`}
-        size={40}
+        size={50}
         style={styles.ownerAvatar}
       />
       
@@ -262,15 +262,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: COLORS.white,
+    backgroundColor: '#F8F8F8',
     borderRadius: 20,
     width: '100%',
     maxWidth: 500,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -342,11 +337,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   ownerAvatar: {
     marginRight: 16,
@@ -364,6 +354,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
+    paddingVertical: 9,
+  },
+  roleIcon: {
+    marginRight: 9,
   },
   roleText: {
     fontFamily: 'Inter-Medium',

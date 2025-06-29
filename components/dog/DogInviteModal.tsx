@@ -24,7 +24,7 @@ interface DogInviteModalProps {
 
 export default function DogInviteModal({ visible, onClose, dogId, dogName }: DogInviteModalProps) {
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'co-owner' | 'caretaker'>('co-owner');
+  const [inviteRole] = useState<'co-owner' | 'caretaker'>('co-owner');
   const [inviteMessage, setInviteMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
@@ -92,7 +92,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
   return (
     <Modal
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
@@ -110,34 +110,8 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
             Invite someone to help care for {dogName}
           </Text>
 
-          {/* Role Selection */}
+          {/* Email Invite Section */}
           <View style={styles.content}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Role</Text>
-              <View style={styles.roleSelector}>
-                <TouchableOpacity
-                  style={[styles.roleOption, inviteRole === 'co-owner' && styles.selectedRoleOption]}
-                  onPress={() => setInviteRole('co-owner')}
-                >
-                  <Shield size={20} color={inviteRole === 'co-owner' ? COLORS.white : COLORS.primary} />
-                  <Text style={[styles.roleOptionText, inviteRole === 'co-owner' && styles.selectedRoleOptionText]}>
-                    Owner
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.roleOption, inviteRole === 'caretaker' && styles.selectedRoleOption]}
-                  onPress={() => setInviteRole('caretaker')}
-                >
-                  <Eye size={20} color={inviteRole === 'caretaker' ? COLORS.white : COLORS.secondary} />
-                  <Text style={[styles.roleOptionText, inviteRole === 'caretaker' && styles.selectedRoleOptionText]}>
-                    Caretaker
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Email Invite Section */}
             <View style={styles.inviteSection}>
               <Text style={styles.sectionTitle}>Email Invite</Text>
               <View style={styles.inputWithIcon}>
@@ -178,13 +152,6 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
                   </>
                 )}
               </TouchableOpacity>
-            </View>
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
             </View>
 
             {/* Share Link Section */}
@@ -245,16 +212,11 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: COLORS.white,
+    backgroundColor: '#F8F8F8',
     borderRadius: 20,
     width: '100%',
     maxWidth: 500,
     maxHeight: '90%',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -285,41 +247,6 @@ const styles = StyleSheet.create({
     padding: 20,
     maxHeight: '70%',
     overflow: 'scroll',
-  },
-  inputGroup: {
-    marginBottom: 24,
-  },
-  inputLabel: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-    marginBottom: 8,
-  },
-  roleSelector: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  roleOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: COLORS.neutralLight,
-    gap: 8,
-  },
-  selectedRoleOption: {
-    backgroundColor: COLORS.primary,
-  },
-  roleOptionText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-  },
-  selectedRoleOptionText: {
-    color: COLORS.white,
   },
   inviteSection: {
     marginBottom: 24,
@@ -368,22 +295,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.neutralLight,
-  },
-  dividerText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    marginHorizontal: 12,
   },
   linkDescription: {
     fontFamily: 'Inter-Regular',
