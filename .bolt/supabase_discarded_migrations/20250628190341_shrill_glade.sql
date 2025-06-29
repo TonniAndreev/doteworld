@@ -2,7 +2,7 @@
   # Storage buckets for dog photos and avatars
   
   1. New Storage Buckets
-    - `dog_photos` - For storing dog profile pictures
+    - `dog-photos` - For storing dog profile pictures
     - `avatars` - For storing user profile pictures
   
   2. Security
@@ -11,18 +11,18 @@
 */
 
 -- Create storage buckets using Supabase's storage extension functions
-SELECT storage.create_bucket('dog_photos', 'Dog profile photos storage');
+SELECT storage.create_bucket('dog-photos', 'Dog profile photos storage');
 SELECT storage.create_bucket('avatars', 'User profile avatars storage');
 
 -- Update bucket configurations to make them public
-UPDATE storage.buckets SET public = TRUE WHERE id = 'dog_photos';
+UPDATE storage.buckets SET public = TRUE WHERE id = 'dog-photos';
 UPDATE storage.buckets SET public = TRUE WHERE id = 'avatars';
 
 -- Set file size limits and allowed MIME types
 UPDATE storage.buckets 
 SET file_size_limit = 5242880, -- 5MB
     allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-WHERE id = 'dog_photos';
+WHERE id = 'dog-photos';
 
 UPDATE storage.buckets 
 SET file_size_limit = 5242880, -- 5MB
@@ -31,10 +31,10 @@ WHERE id = 'avatars';
 
 -- Create storage policies using Supabase's storage extension functions
 -- Dog photos policies
-SELECT storage.create_policy('dog_photos', 'authenticated users can upload dog photos', 'INSERT', 'authenticated', true);
-SELECT storage.create_policy('dog_photos', 'public can view dog photos', 'SELECT', 'public', true);
-SELECT storage.create_policy('dog_photos', 'users can update their dog photos', 'UPDATE', 'authenticated', true);
-SELECT storage.create_policy('dog_photos', 'users can delete their dog photos', 'DELETE', 'authenticated', true);
+SELECT storage.create_policy('dog-photos', 'authenticated users can upload dog photos', 'INSERT', 'authenticated', true);
+SELECT storage.create_policy('dog-photos', 'public can view dog photos', 'SELECT', 'public', true);
+SELECT storage.create_policy('dog-photos', 'users can update their dog photos', 'UPDATE', 'authenticated', true);
+SELECT storage.create_policy('dog-photos', 'users can delete their dog photos', 'DELETE', 'authenticated', true);
 
 -- Avatar policies
 SELECT storage.create_policy('avatars', 'authenticated users can upload avatars', 'INSERT', 'authenticated', true);

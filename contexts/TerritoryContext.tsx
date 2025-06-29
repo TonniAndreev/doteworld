@@ -62,6 +62,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
               walk_points (
                 id,
                 path_coordinates
+
               )
             `)
             .eq('dog_id', dogId)
@@ -172,7 +173,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
 
     const newPoints = [...currentWalkPoints, coordinates];
     setCurrentWalkPoints(newPoints);
-
     // Only try to form a polygon if we have at least 3 points
     if (newPoints.length >= 3) {
       const hull = createConvexHull(newPoints);
@@ -187,12 +187,20 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   };
 
   const endWalk = async () => {
+    console.log('=== STARTING ENDWALK FUNCTION ===');
+    console.log('Current walk points:', currentWalkPoints.length);
+    console.log('Current walk distance:', currentWalkDistance);
+    console.log('User:', user?.id);
+    console.log('Dog ID:', user?.dogs[0]?.id);
+    console.log('Session ID:', currentWalkSessionId);
+    
     if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user || !user.dogs.length || !currentWalkSessionId) {
       console.log('Cannot end walk: insufficient points, no user, or no session');
       return;
     }
 
     try {
+      console.log('Creating final polygon from walk points');
       // Create final polygon from all walk points
       const finalHull = createConvexHull(currentWalkPoints);
       if (!finalHull || !isValidPolygon(finalHull)) {
@@ -203,9 +211,12 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      console.log('Calculating area of new polygon');
       // Calculate area of the new polygon before merging
       const newPolygonArea = calculatePolygonArea(finalHull);
+      console.log('New polygon area:', newPolygonArea, 'km²');
       
+      console.log('Converting to turf polygon');
       // Convert to turf polygon
       const newTurfPolygon = coordinatesToTurfPolygon(finalHull);
       if (!newTurfPolygon) {
@@ -217,6 +228,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       let newTerritorySize;
 
       if (territoryGeoJSON) {
+        console.log('Merging with existing territory');
         // Merge with existing territory
         const mergedPolygon = mergePolygons(territoryGeoJSON, newTurfPolygon);
         if (mergedPolygon) {
@@ -224,18 +236,28 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
           // Calculate total area of merged territory
           const totalArea = turf.area(mergedPolygon) / 1000000; // Convert to km²
           newTerritorySize = totalArea;
+          console.log('Merged territory size:', newTerritorySize, 'km²');
         } else {
           // If merge fails, keep existing territory
           updatedTerritoryGeoJSON = territoryGeoJSON;
           newTerritorySize = territorySize;
+          console.log('Merge failed, keeping existing territory size:', newTerritorySize, 'km²');
         }
       } else {
+        console.log('First territory for user');
         // First territory
         updatedTerritoryGeoJSON = newTurfPolygon;
         newTerritorySize = newPolygonArea;
       }
 
+      console.log('Preparing walk session data for database');
+      console.log('Dog ID:', user.dogs[0].id);
+      console.log('Distance:', currentWalkDistance);
+      console.log('Points count:', currentWalkPoints.length);
+      console.log('Territory gained:', newPolygonArea);
+      
       // Create a walk session record
+      console.log('Inserting walk session into database...');
       const { data: walkSession, error: sessionError } = await supabase
         .from('walk_sessions')
         .insert({
@@ -253,30 +275,45 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
 
       if (sessionError) {
         console.error('Error creating walk session:', sessionError);
+        console.log('Session error details:', sessionError.details);
+        console.log('Session error hint:', sessionError.hint);
+        console.log('Session error message:', sessionError.message);
         throw sessionError;
       }
 
-      console.log('Created walk session:', walkSession.id);
+      console.log('Created walk session with ID:', walkSession.id);
 
       // Save walk points with path_coordinates
-      const { error: pointsError } = await supabase
+      console.log('Preparing walk points data');
+      console.log('Walk session ID:', walkSession.id);
+      console.log('Dog ID:', user.dogs[0].id);
+      console.log('First point:', currentWalkPoints[0]);
+      console.log('Path coordinates length:', currentWalkPoints.length);
+      
+      console.log('Inserting walk points into database...');
+      const { data: pointsData, error: pointsError } = await supabase
         .from('walk_points')
         .insert({
           dog_id: user.dogs[0].id,
           walk_session_id: walkSession.id,
           path_coordinates: currentWalkPoints,
-          // Include a single point for backward compatibility
-          latitude: currentWalkPoints[0].latitude,
-          longitude: currentWalkPoints[0].longitude,
+          // Remove latitude and longitude fields as they don't exist in the schema
           timestamp: new Date().toISOString()
-        });
+        })
+        .select('id');
 
       if (pointsError) {
         console.error('Error saving walk points:', pointsError);
+        console.log('Points error details:', pointsError.details);
+        console.log('Points error hint:', pointsError.hint);
+        console.log('Points error message:', pointsError.message);
         throw pointsError;
       }
 
+      console.log('Walk points saved successfully:', pointsData);
+
       // Update state
+      console.log('Updating local state');
       setTerritoryGeoJSON(updatedTerritoryGeoJSON);
       setTerritorySize(newTerritorySize);
       setTotalDistance(prev => prev + currentWalkDistance);
@@ -286,6 +323,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentWalkDistance(0);
 
       // Save to storage
+      console.log('Saving to AsyncStorage');
       await Promise.all([
         AsyncStorage.setItem(`dote_territory_geojson_${user.uid}`, JSON.stringify(updatedTerritoryGeoJSON)),
         AsyncStorage.setItem(`dote_territory_size_${user.uid}`, newTerritorySize.toString()),
@@ -295,18 +333,28 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       // Award paws based on the NEW polygon area only (not total territory)
       const pawsEarned = Math.floor(newPolygonArea * 1000000); // Convert km² to m² for paws
       if (pawsEarned > 0) {
+        console.log('Awarding paws:', pawsEarned);
         addPaws(pawsEarned, `Territory conquered: ${(newPolygonArea * 1000000).toFixed(0)} m²`);
       }
 
       console.log(`Walk completed: ${(newPolygonArea * 1000000).toFixed(0)} m² conquered, ${pawsEarned} paws earned`);
     } catch (error) {
       console.error('Error ending walk:', error);
+      console.log('Full error object:', JSON.stringify(error, null, 2));
+      
+      if (error.response) {
+        console.log('Response status:', error.response.status);
+        console.log('Response data:', error.response.data);
+      }
+      
       // Reset current walk state on error
       setCurrentWalkPoints([]);
       setCurrentPolygon(null);
       setCurrentWalkSessionId(null);
       setCurrentWalkDistance(0);
     }
+    
+    console.log('=== ENDWALK FUNCTION COMPLETED ===');
   };
 
   // Helper function to calculate distance between two coordinates

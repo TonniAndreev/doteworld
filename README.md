@@ -282,6 +282,12 @@ Built with ❤️ for dog lovers everywhere 🐾
 
 Run the migrations in the `supabase/migrations` folder to set up the database schema.
 
+The following public storage buckets are also required:
+- `avatars` for user profile photos
+- `dog-photos` for dog photos
+
+Both buckets are public and protected by RLS policies defined in the migrations.
+
 ### Development
 
 ```bash

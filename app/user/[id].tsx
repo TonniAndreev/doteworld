@@ -208,7 +208,7 @@ export default function PublicUserProfileScreen() {
         if (firstDog?.id) {
           const { data: walkPoints, error: walkError } = await supabase
             .from('walk_points')
-            .select('latitude, longitude, walk_session_id, timestamp')
+            .select('latitude:lat, longitude:lon, walk_session_id, timestamp')
             .eq('dog_id', firstDog.id)
             .order('timestamp', { ascending: true });
 
