@@ -536,7 +536,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           if (uploadError) {
             console.error('Error uploading photo:', uploadError);
-            throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
+            throw new Error('Failed to upload dog photo');
           }
           
           console.log('Upload successful:', uploadData);
@@ -553,7 +553,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           dogData.photo_uploaded_at = new Date().toISOString();
         } catch (uploadError) {
           console.error('Photo upload error:', uploadError);
-          // Continue without photo if upload fails, but log the specific error
+          // Continue without photo if upload fails
           console.warn('Continuing dog creation without photo due to upload error');
         }
       }

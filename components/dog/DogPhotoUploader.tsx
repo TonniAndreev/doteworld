@@ -31,7 +31,6 @@ export default function DogPhotoUploader({
   onPhotoUploaded,
 }: DogPhotoUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const { user } = useAuth();
 
   const pickImage = async () => {
@@ -114,7 +113,7 @@ export default function DogPhotoUploader({
       
       if (uploadError) {
         console.error('Error uploading photo:', uploadError);
-        throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
+        throw new Error('Failed to upload dog photo');
       }
       
       console.log('Upload successful:', uploadData);

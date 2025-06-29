@@ -285,7 +285,7 @@ export default function DogProfileScreen() {
       
       if (uploadError) {
         console.error('Error uploading photo:', uploadError);
-        throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
+        throw new Error('Failed to upload dog photo');
       }
       
       console.log('Upload successful:', uploadData);
