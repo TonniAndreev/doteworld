@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, UserPlus, UserCheck, UserX, Award, Map, Route, Share2 } from 'lucide-react-native';
+import { ChevronLeft, UserPlus, UserCheck, UserX, Award, Map, Route, Share2, UserMinus, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -71,7 +71,7 @@ export default function PublicUserProfileScreen() {
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending' | 'sent'>('none');
   const [isProcessingFriend, setIsProcessingFriend] = useState(false);
   
-  const { friends, sendFriendRequest, removeFriend, refetch: refetchFriends } = useFriends();
+  const { friends, sendFriendRequest, removeFriend, cancelFriendRequest, refetch: refetchFriends } = useFriends();
   const { user: currentUser } = useAuth();
 
   // Check friendship status first, then load user data
@@ -301,6 +301,42 @@ export default function PublicUserProfileScreen() {
           { cancelable: false }
         );
         return;
+      } else if (friendshipStatus === 'sent') {
+        Alert.alert(
+          'Cancel Request',
+          `Are you sure you want to cancel your friend request to ${displayName}?`,
+          [
+            { text: 'No', style: 'cancel', onPress: () => setIsProcessingFriend(false) },
+            {
+              text: 'Yes, Cancel',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  console.log('Canceling friend request to ID:', id);
+                  const success = await cancelFriendRequest(id);
+                  
+                  if (success) {
+                    console.log('Friend request canceled successfully');
+                    setFriendshipStatus('none');
+                    Alert.alert('Success', `Friend request to ${displayName} has been canceled.`);
+                    // Refresh friends list
+                    await refetchFriends();
+                  } else {
+                    console.error('Failed to cancel friend request');
+                    Alert.alert('Error', 'Failed to cancel friend request. Please try again.');
+                  }
+                } catch (error) {
+                  console.error('Error in cancel request action:', error);
+                  Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+                } finally {
+                  setIsProcessingFriend(false);
+                }
+              },
+            },
+          ],
+          { cancelable: false }
+        );
+        return;
       }
     } catch (error) {
       console.error('Error handling friend action:', error);
@@ -430,7 +466,7 @@ export default function PublicUserProfileScreen() {
     switch (friendshipStatus) {
       case 'friend':
         return {
-          icon: <UserX size={20} color={COLORS.white} />,
+          icon: <UserMinus size={20} color={COLORS.white} />,
           text: 'Unfriend',
           style: [styles.actionButton, styles.unfriendButton],
           disabled: false,
@@ -444,10 +480,10 @@ export default function PublicUserProfileScreen() {
         };
       case 'sent':
         return {
-          icon: <UserCheck size={20} color={COLORS.neutralDark} />,
-          text: 'Request Sent',
-          style: [styles.actionButton, styles.pendingButton],
-          disabled: true,
+          icon: <X size={20} color={COLORS.neutralDark} />,
+          text: 'Cancel Request',
+          style: [styles.actionButton, styles.cancelButton],
+          disabled: false,
         };
       default:
         return {
@@ -545,7 +581,8 @@ export default function PublicUserProfileScreen() {
               )}
               <Text style={[
                 styles.actionButtonText,
-                friendButton.disabled && styles.disabledButtonText
+                friendButton.disabled && styles.disabledButtonText,
+                friendshipStatus === 'sent' && styles.cancelButtonText
               ]}>
                 {isProcessingFriend ? 'Processing...' : friendButton.text}
               </Text>
@@ -778,6 +815,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.neutralMedium,
   },
+  cancelButton: {
+    backgroundColor: COLORS.neutralLight,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
   actionButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
@@ -786,6 +828,9 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: COLORS.neutralDark,
+  },
+  cancelButtonText: {
+    color: COLORS.error,
   },
   statsSection: {
     padding: 16,

@@ -593,6 +593,37 @@ export function useFriends() {
     }
   };
 
+  const cancelFriendRequest = async (userId: string) => {
+    if (!user) return false;
+
+    try {
+      console.log(`Canceling friend request to user ID: ${userId}`);
+      
+      // Delete the pending friendship record where current user is the requester
+      const { error } = await supabase
+        .from('friendships')
+        .delete()
+        .eq('requester_id', user.id)
+        .eq('receiver_id', userId)
+        .eq('status', 'pending');
+
+      if (error) {
+        console.error('Error canceling friend request:', error);
+        return false;
+      }
+
+      console.log('Friend request canceled successfully');
+      
+      // Refresh data to update UI
+      await loadData();
+      
+      return true;
+    } catch (error) {
+      console.error('Error canceling friend request:', error);
+      return false;
+    }
+  };
+
   // Helper functions for territory calculations (same as leaderboard service)
   const calculateRealTerritoryFromWalkPoints = (walkPoints: any[]): number => {
     if (walkPoints.length < 3) return 0;
@@ -708,6 +739,7 @@ export function useFriends() {
     acceptFriendRequest,
     declineFriendRequest,
     removeFriend,
+    cancelFriendRequest,
     refetch: loadData,
   };
 }
