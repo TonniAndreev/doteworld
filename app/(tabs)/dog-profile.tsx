@@ -15,7 +15,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { ChevronLeft, Plus, CreditCard as Edit, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
@@ -270,14 +269,15 @@ export default function DogProfileScreen() {
       
       console.log('Uploading to path:', filePath);
       
-      // Use FileSystem to read the file as ArrayBuffer
-      const fileData = await FileSystem.readAsArrayBufferAsync(newDogPhoto);
+      // Use fetch to get blob from image URI
+      const response = await fetch(newDogPhoto);
+      const fileData = await response.blob();
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('dog_photos')
         .upload(filePath, fileData, {
-          contentType: `image/${fileExt}`,
+          contentType: fileData.type,
           upsert: true,
         });
       
