@@ -46,10 +46,9 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
   const [currentWalkDistance, setCurrentWalkDistance] = useState(0);
   const [showMonthlyResetDialog, setShowMonthlyResetDialog] = useState(false);
-  const [lastResetMonth, setLastResetMonth] = useState<string | null>(null);
   const [currentWalkCityId, setCurrentWalkCityId] = useState<string | null>(null);
   
-  const { user } = useAuth();
+  const { user, updateUserLastResetMonthInDb } = useAuth();
   const { addPaws } = usePaws();
 
   // Check if we need to reset territories at the beginning of a new month
@@ -62,23 +61,20 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         
-        // Get last reset month from storage
-        const storedLastResetMonth = await AsyncStorage.getItem(`dote_last_reset_month_${user.uid}`);
-        setLastResetMonth(storedLastResetMonth);
+        // Get last reset month from user object (which comes from the database)
+        const lastResetMonth = user.last_reset_month;
+        
+        console.log('Current month:', currentMonth);
+        console.log('Last reset month from database:', lastResetMonth);
         
         // If this is a new month compared to the last reset, perform reset
-        if (storedLastResetMonth !== currentMonth) {
+        if (lastResetMonth !== currentMonth) {
           console.log('New month detected, resetting territories');
           
           // Reset territory data
           setTerritoryGeoJSON(null);
           setTerritorySize(0);
           // Don't reset total distance as that's a lifetime stat
-          
-          // Save new reset month
-          await AsyncStorage.setItem(`dote_last_reset_month_${user.uid}`, currentMonth);
-          await AsyncStorage.removeItem(`dote_territory_geojson_${user.uid}`);
-          await AsyncStorage.setItem(`dote_territory_size_${user.uid}`, '0');
           
           // Show reset dialog
           setShowMonthlyResetDialog(true);
@@ -432,8 +428,15 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     return degrees * (Math.PI / 180);
   };
 
-  const closeMonthlyResetDialog = () => {
+  const closeMonthlyResetDialog = async () => {
     setShowMonthlyResetDialog(false);
+    
+    // Get current month in YYYY-MM format
+    const now = new Date();
+    const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    
+    // Update the last reset month in the database
+    await updateUserLastResetMonthInDb(currentMonth);
   };
 
   // Extract renderable polygons for the map

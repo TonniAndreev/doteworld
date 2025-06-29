@@ -9,6 +9,7 @@ import {
   Dimensions 
 } from 'react-native';
 import { COLORS } from '@/constants/theme';
+import { X } from 'lucide-react-native';
 
 interface MonthlyResetDialogProps {
   visible: boolean;
@@ -27,6 +28,10 @@ export default function MonthlyResetDialog({ visible, onClose }: MonthlyResetDia
     >
       <View style={styles.overlay}>
         <View style={styles.dialogContainer}>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <X size={24} color={COLORS.neutralDark} />
+          </TouchableOpacity>
+          
           <Image 
             source={require('@/assets/images/New-month.jpg')}
             style={styles.image}
@@ -71,6 +76,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    padding: 4,
   },
   image: {
     width: screenWidth * 0.6,
