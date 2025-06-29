@@ -79,8 +79,8 @@ export default function CitySelector({
   };
 
   const formatCityName = (city: City) => {
-    if (city.state) {
-      return `${city.name}, ${city.state}`;
+    if (city.state && city.state !== city.name) {
+      return `${city.name}, ${city.country}`;
     }
     return `${city.name}, ${city.country}`;
   };
@@ -212,7 +212,7 @@ export default function CitySelector({
             {isCurrentUserCity && <Text style={styles.currentCityBadge}> (Current)</Text>}
           </Text>
           <Text style={styles.cityRegion}>
-            {item.state ? `${item.state}, ${item.country}` : item.country}
+            {item.country}
           </Text>
         </View>
         
@@ -258,12 +258,20 @@ export default function CitySelector({
         visible={modalVisible}
         onRequestClose={closeModal}
       >
-        <View style={styles.modalOverlay}>
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={closeModal}
+        >
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardAvoid}
           >
-            <View style={styles.modalContainer}>
+            <View 
+              style={styles.modalContainer}
+              onStartShouldSetResponder={() => true}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
                   {showAddCity ? 'Add New City' : 'Select City'}
@@ -291,17 +299,6 @@ export default function CitySelector({
                       value={newCityName}
                       onChangeText={setNewCityName}
                       placeholder="Enter city name"
-                      placeholderTextColor={COLORS.neutralMedium}
-                    />
-                  </View>
-                  
-                  <View style={styles.formGroup}>
-                    <Text style={styles.inputLabel}>State/Province (Optional)</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={newCityState}
-                      onChangeText={setNewCityState}
-                      placeholder="Enter state or province"
                       placeholderTextColor={COLORS.neutralMedium}
                     />
                   </View>
@@ -389,11 +386,11 @@ export default function CitySelector({
                     )}
                     
                     <TouchableOpacity 
-                      style={styles.specialOption}
+                      style={styles.addNewCityOption}
                       onPress={() => setShowAddCity(true)}
                     >
-                      <Plus size={20} color={COLORS.secondary} />
-                      <Text style={styles.specialOptionText}>Add a New City</Text>
+                      <Plus size={20} color={COLORS.white} />
+                      <Text style={styles.addNewCityOptionText}>Add a New City</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -448,7 +445,7 @@ export default function CitySelector({
               )}
             </View>
           </KeyboardAvoidingView>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -567,6 +564,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
+    marginLeft: 8,
+  },
+  addNewCityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  addNewCityOptionText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.white,
     marginLeft: 8,
   },
   resultsHeader: {
@@ -699,7 +710,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.primary,
     paddingVertical: 14,
     borderRadius: 12,
     marginBottom: 16,
