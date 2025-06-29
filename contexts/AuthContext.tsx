@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 import * as AuthSession from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import * as Crypto from 'expo-crypto';
+import * as FileSystem from 'expo-file-system';
 
 // Complete the auth session on web
 WebBrowser.maybeCompleteAuthSession();
@@ -13,7 +14,7 @@ interface Dog {
   id: string;
   name: string;
   breed: string;
-  photo_url?: string;
+  photo_url?: string | null;
   birthday?: string;
   bio?: string;
   weight?: number;
@@ -212,7 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Create full user object
         const fullUser: DoteUser = {
           id: supaUser.id,
-          email: supaUser.email,
+          email: supaUser.email!,
           ...profile,
           displayName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
           dogs: userDogs?.map(ud => ud.dogs).filter(Boolean) || [],
@@ -497,17 +498,79 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      // Create or update dog
+      console.log('Starting dog profile update with photo:', !!dogPhoto);
+      
+      // Create dog data object
       const dogData: any = {
         name: dogName,
         breed: dogBreed,
-        photo_url: dogPhoto,
       };
       
       if (birthday) {
         dogData.birthday = birthday;
       }
       
+      // Handle photo upload if provided
+      if (dogPhoto) {
+        try {
+          console.log('Processing dog photo upload');
+          
+          // Generate a unique filename
+          const fileExt = dogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `${user.id}/${fileName}`;
+          
+          console.log('Uploading to path:', filePath);
+          
+          // Use FileSystem to read the file as base64
+          const base64 = await FileSystem.readAsStringAsync(dogPhoto, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          // Convert base64 to blob
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
+          
+          // Upload to Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('dog_photos')
+            .upload(filePath, fileData, {
+              contentType: `image/${fileExt}`,
+              upsert: true,
+            });
+          
+          if (uploadError) {
+            console.error('Error uploading photo:', uploadError);
+            throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
+          }
+          
+          console.log('Upload successful:', uploadData);
+          
+          // Get public URL
+          const { data: publicUrlData } = await supabase.storage
+            .from('dog_photos')
+            .getPublicUrl(filePath);
+          
+          console.log('Public URL:', publicUrlData);
+          
+          // Set photo URL in dog data
+          dogData.photo_url = publicUrlData.publicUrl;
+          dogData.photo_uploaded_at = new Date().toISOString();
+        } catch (uploadError) {
+          console.error('Photo upload error:', uploadError);
+          // Continue without photo if upload fails, but log the specific error
+          console.warn('Continuing dog creation without photo due to upload error');
+        }
+      }
+      
+      console.log('Creating dog with data:', dogData);
+      
+      // Create dog in database
       const { data: dog, error: dogError } = await supabase
         .from('dogs')
         .insert(dogData)
@@ -518,6 +581,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error creating dog:', dogError);
         throw dogError;
       }
+
+      console.log('Dog created successfully:', dog);
 
       // Link dog to user profile
       const { error: linkError } = await supabase
@@ -531,6 +596,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error('Error linking dog to profile:', linkError);
         throw linkError;
       }
+
+      console.log('Dog linked to profile successfully');
 
       // Update local user state
       const updatedUser = {
@@ -555,14 +622,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setIsLoading(true);
 
+      let finalAvatarUrl = data.avatar_url || user.avatar_url;
+      
+      if (data.avatar_url && (data.avatar_url.startsWith('file://') || data.avatar_url.startsWith('content://') || data.avatar_url.startsWith('data:'))) {
+        console.log('Uploading avatar from local file:', data.avatar_url);
+        
+        try {
+          // Generate a unique filename
+          const fileExt = data.avatar_url.split('.').pop()?.toLowerCase() || 'jpg';
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `${user.id}/${fileName}`;
+          
+          console.log('Uploading to path:', filePath);
+          
+          // Use FileSystem to read the file as base64
+          const base64 = await FileSystem.readAsStringAsync(data.avatar_url, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          // Convert base64 to blob
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
+          
+          // Upload to Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, fileData, {
+              contentType: `image/${fileExt}`,
+              upsert: true,
+            });
+          
+          if (uploadError) {
+            console.error('Error uploading avatar:', uploadError);
+            throw new Error(`Failed to upload profile photo: ${uploadError.message}`);
+          }
+          
+          console.log('Upload successful:', uploadData);
+          
+          // Get public URL
+          const { data: publicUrlData } = await supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          
+          console.log('Public URL:', publicUrlData);
+          
+          finalAvatarUrl = publicUrlData.publicUrl;
+        } catch (uploadError) {
+          console.error('Avatar upload error:', uploadError);
+          // Continue without updating avatar if upload fails
+        }
+      }
+
       // Update profile in database
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
-          first_name: data.first_name,
-          last_name: data.last_name,
-          phone: data.phone,
-          avatar_url: data.avatar_url,
+          first_name: data.first_name || user.first_name,
+          last_name: data.last_name || user.last_name,
+          phone: data.phone || user.phone,
+          avatar_url: finalAvatarUrl,
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
@@ -575,7 +698,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If email changed, update auth email
       if (data.email && data.email !== user.email) {
         const { error: emailError } = await supabase.auth.updateUser({
-          email: data.email,
+          email: data.email.trim(),
         });
 
         if (emailError) {
@@ -584,17 +707,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Update local user state
-      const updatedUser = {
-        ...user,
-        ...data,
-        displayName: `${data.first_name || user.first_name || ''} ${data.last_name || user.last_name || ''}`.trim() || 'User',
-      };
-
-      setUser(updatedUser);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-
-    } catch (error) {
+      // Refresh user data
+      await refreshUserData();
+      
+    } catch (error: any) {
       console.error('Error updating user profile:', error);
       throw error;
     } finally {

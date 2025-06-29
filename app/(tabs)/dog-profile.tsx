@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,13 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, ChevronDown, Search, X, Check } from 'lucide-react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { ChevronLeft, Plus, CreditCard as Edit, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -119,6 +122,7 @@ export default function DogProfileScreen() {
   const [dogs, setDogs] = useState<Dog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [selectedDog, setSelectedDog] = useState<Dog | null>(null);
   const [showBreedDropdown, setShowBreedDropdown] = useState(false);
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
@@ -131,6 +135,8 @@ export default function DogProfileScreen() {
     gender: '' as 'male' | 'female' | '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [newDogPhoto, setNewDogPhoto] = useState<string | null>(null);
 
   const { user, refreshUserData } = useAuth();
   const { updateDogData } = useDogOwnership();
@@ -190,6 +196,133 @@ export default function DogProfileScreen() {
       gender: dog.gender || '',
     });
     setEditModalVisible(true);
+  };
+
+  const handleUpdatePhoto = (dog: Dog) => {
+    setSelectedDog(dog);
+    setNewDogPhoto(null);
+    setPhotoModalVisible(true);
+  };
+
+  const pickImage = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'We need camera roll permissions to select a photo.');
+        return;
+      }
+      
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log('Image picked:', result.assets[0].uri);
+        setNewDogPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+  
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'We need camera permissions to take a photo.');
+        return;
+      }
+      
+      let result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log('Photo taken:', result.assets[0].uri);
+        setNewDogPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  const handleSavePhoto = async () => {
+    if (!selectedDog || !newDogPhoto) {
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      // Generate a unique filename
+      const fileExt = newDogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+      
+      console.log('Uploading to path:', filePath);
+      
+      // Use fetch to get blob from image URI
+      const response = await fetch(newDogPhoto);
+      const fileData = await response.blob();
+      
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('dog_photos')
+        .upload(filePath, fileData, {
+          contentType: fileData.type,
+          upsert: true,
+        });
+      
+      if (uploadError) {
+        console.error('Error uploading photo:', uploadError);
+        throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
+      }
+      
+      console.log('Upload successful:', uploadData);
+      
+      // Get public URL
+      const { data: publicUrlData } = await supabase.storage
+        .from('dog_photos')
+        .getPublicUrl(filePath);
+      
+      console.log('Public URL:', publicUrlData);
+      
+      // Update dog record with new photo URL
+      const { error: updateError } = await supabase
+        .from('dogs')
+        .update({
+          photo_url: publicUrlData.publicUrl,
+          photo_uploaded_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', selectedDog.id);
+
+      if (updateError) {
+        console.error('Error updating dog photo:', updateError);
+        throw new Error('Failed to update dog photo');
+      }
+
+      // Refresh dogs list
+      await fetchUserDogs();
+      setPhotoModalVisible(false);
+      setSelectedDog(null);
+      setNewDogPhoto(null);
+      
+      Alert.alert('Success', 'Dog photo updated successfully!');
+    } catch (error) {
+      console.error('Error saving dog photo:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update dog photo');
+    } finally {
+      setIsUploadingPhoto(false);
+    }
   };
 
   const handleSaveDog = async () => {
@@ -332,13 +465,22 @@ export default function DogProfileScreen() {
                   dog={dog} 
                   showFullDetails={true}
                 />
-                <TouchableOpacity 
-                  style={styles.editButton}
-                  onPress={() => handleEditDog(dog)}
-                >
-                  <Edit3 size={16} color={COLORS.white} />
-                  <Text style={styles.editButtonText}>Edit Profile</Text>
-                </TouchableOpacity>
+                <View style={styles.dogCardActions}>
+                  <TouchableOpacity 
+                    style={styles.editButton}
+                    onPress={() => handleEditDog(dog)}
+                  >
+                    <Edit size={16} color={COLORS.white} />
+                    <Text style={styles.editButtonText}>Edit Profile</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.photoButton}
+                    onPress={() => handleUpdatePhoto(dog)}
+                  >
+                    <Camera size={16} color={COLORS.white} />
+                    <Text style={styles.photoButtonText}>Update Photo</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
           </View>
@@ -552,6 +694,98 @@ export default function DogProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Photo Update Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={photoModalVisible}
+        onRequestClose={() => {
+          setPhotoModalVisible(false);
+          setNewDogPhoto(null);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Update Dog Photo</Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setPhotoModalVisible(false);
+                  setNewDogPhoto(null);
+                }}
+                style={styles.modalCloseButton}
+              >
+                <Text style={styles.modalCloseText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.photoModalContent}>
+              <View style={styles.photoPreviewContainer}>
+                {newDogPhoto ? (
+                  <Image 
+                    source={{ uri: newDogPhoto }} 
+                    style={styles.photoPreview} 
+                    resizeMode="cover"
+                  />
+                ) : selectedDog?.photo_url ? (
+                  <Image 
+                    source={{ uri: selectedDog.photo_url }} 
+                    style={styles.photoPreview} 
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={styles.photoPlaceholder}>
+                    <Camera size={40} color={COLORS.neutralMedium} />
+                    <Text style={styles.photoPlaceholderText}>No photo selected</Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.photoActions}>
+                <TouchableOpacity 
+                  style={styles.photoActionButton}
+                  onPress={takePhoto}
+                >
+                  <Camera size={20} color={COLORS.white} />
+                  <Text style={styles.photoActionText}>Take Photo</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.photoActionButton}
+                  onPress={pickImage}
+                >
+                  <Plus size={20} color={COLORS.white} />
+                  <Text style={styles.photoActionText}>Choose Photo</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.photoHelpText}>
+                Choose a clear photo of your dog. Square photos work best.
+              </Text>
+            </View>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={[
+                  styles.saveButton,
+                  !newDogPhoto && styles.disabledButton
+                ]}
+                onPress={handleSavePhoto}
+                disabled={!newDogPhoto || isUploadingPhoto}
+              >
+                {isUploadingPhoto ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <Text style={styles.saveButtonText}>
+                    {selectedDog?.photo_url ? 'Update Photo' : 'Add Photo'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -643,10 +877,15 @@ const styles = StyleSheet.create({
   dogCardContainer: {
     position: 'relative',
   },
-  editButton: {
+  dogCardActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     position: 'absolute',
     top: 16,
     right: 16,
+    gap: 8,
+  },
+  editButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primary,
@@ -655,6 +894,20 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   editButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.white,
+    marginLeft: 4,
+  },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  photoButtonText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
     color: COLORS.white,
@@ -694,6 +947,69 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     padding: 20,
+  },
+  photoModalContent: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  photoPreviewContainer: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    overflow: 'hidden',
+    marginBottom: 24,
+    backgroundColor: COLORS.neutralLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: COLORS.neutralLight,
+  },
+  photoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoPlaceholderText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  photoActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 16,
+    gap: 12,
+  },
+  photoActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  photoActionText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.white,
+  },
+  photoHelpText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
+    marginTop: 8,
   },
   inputGroup: {
     marginBottom: 20,
@@ -883,6 +1199,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: COLORS.neutralMedium,
+    opacity: 0.7,
   },
   saveButtonText: {
     fontFamily: 'Inter-Bold',

@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { ChevronLeft, User, Mail, Phone, Camera, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,41 +45,54 @@ export default function EditProfileScreen() {
   }, [user]);
   
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant camera roll permissions to change your profile photo.');
-      return;
-    }
-    
-    let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setAvatarUrl(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera roll permissions to change your profile photo.');
+        return;
+      }
+      
+      let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log('Image picked:', result.assets[0].uri);
+        setAvatarUrl(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
     }
   };
   
   const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    
-    if (status !== 'granted') {
-      Alert.alert('Permission needed', 'Please grant camera permissions to take a profile photo.');
-      return;
-    }
-    
-    let result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    
-    if (!result.canceled) {
-      setAvatarUrl(result.assets[0].uri);
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Please grant camera permissions to take a profile photo.');
+        return;
+      }
+      
+      let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+      
+      if (!result.canceled) {
+        console.log('Photo taken:', result.assets[0].uri);
+        setAvatarUrl(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error taking photo:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
     }
   };
   
@@ -136,33 +150,58 @@ export default function EditProfileScreen() {
       // First, upload the avatar if it's a local file
       let finalAvatarUrl = avatarUrl;
       
-      if (avatarUrl && avatarUrl.startsWith('file://')) {
-        const file = {
-          uri: avatarUrl,
-          name: `avatar-${user.id}-${Date.now()}.jpg`,
-          type: 'image/jpeg',
-        };
+      if (avatarUrl && (avatarUrl.startsWith('file://') || avatarUrl.startsWith('content://'))) {
+        console.log('Uploading avatar from local file:', avatarUrl);
         
-        // Create form data for file upload
-        const formData = new FormData();
-        formData.append('file', file as any);
-        
-        // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(`public/${user.id}/${file.name}`, formData);
-        
-        if (uploadError) {
-          console.error('Error uploading avatar:', uploadError);
-          throw new Error('Failed to upload profile photo');
+        try {
+          // Generate a unique filename
+          const fileExt = avatarUrl.split('.').pop()?.toLowerCase() || 'jpg';
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `${user.id}/${fileName}`;
+          
+          console.log('Uploading to path:', filePath);
+          
+          // Use FileSystem to read the file as base64
+          const base64 = await FileSystem.readAsStringAsync(avatarUrl, {
+            encoding: FileSystem.EncodingType.Base64,
+          });
+          
+          // Convert base64 to blob
+          const byteCharacters = atob(base64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
+          
+          // Upload to Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(filePath, fileData, {
+              contentType: `image/${fileExt}`,
+              upsert: true,
+            });
+          
+          if (uploadError) {
+            console.error('Error uploading avatar:', uploadError);
+            throw new Error('Failed to upload profile photo');
+          }
+          
+          console.log('Upload successful:', uploadData);
+          
+          // Get public URL
+          const { data: publicUrlData } = await supabase.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+          
+          console.log('Public URL:', publicUrlData);
+          
+          finalAvatarUrl = publicUrlData.publicUrl;
+        } catch (uploadError) {
+          console.error('Avatar upload error:', uploadError);
+          // Continue without updating avatar if upload fails
         }
-        
-        // Get public URL for the uploaded file
-        const { data: urlData } = await supabase.storage
-          .from('avatars')
-          .getPublicUrl(`public/${user.id}/${file.name}`);
-        
-        finalAvatarUrl = urlData.publicUrl;
       }
       
       // Update profile in database
@@ -176,28 +215,28 @@ export default function EditProfileScreen() {
           updated_at: new Date().toISOString(),
         })
         .eq('id', user.id);
-      
+
       if (updateError) {
         console.error('Error updating profile:', updateError);
         throw new Error('Failed to update profile');
       }
-      
+
       // If email changed, update auth email
       if (email.trim() !== user.email) {
         const { error: emailError } = await supabase.auth.updateUser({
           email: email.trim(),
         });
-        
+
         if (emailError) {
           console.error('Error updating email:', emailError);
           throw new Error('Failed to update email address');
         }
       }
-      
+
       // Refresh user data
       await refreshUserData();
       
-      Alert.alert('Success', 'Profile updated successfully', [
+      Alert.alert('Success', 'Profile updated successfully!', [
         { text: 'OK', onPress: () => router.back() }
       ]);
     } catch (error: any) {
