@@ -10,6 +10,7 @@ import { usePaws } from '@/contexts/PawsContext';
 import { useFriends } from '@/hooks/useFriends';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
 import PawsModal from '@/components/home/PawsModal';
+import MonthlyResetDialog from '@/components/home/MonthlyResetDialog';
 import DogMarker from '@/components/map/DogMarker';
 import { calculateDistance } from '@/utils/locationUtils';
 import { USER_TERRITORY_COLOR, getColorWithOpacity } from '@/utils/mapColors';
@@ -33,6 +34,8 @@ export default function MapScreen() {
     currentWalkPoints,
     currentPolygon,
     currentWalkDistance,
+    showMonthlyResetDialog,
+    closeMonthlyResetDialog,
     startWalk,
     addWalkPoint,
     endWalk,
@@ -367,6 +370,11 @@ export default function MapScreen() {
           <PawsModal 
             visible={showPawsModal}
             onClose={() => setShowPawsModal(false)}
+          />
+          
+          <MonthlyResetDialog
+            visible={showMonthlyResetDialog}
+            onClose={closeMonthlyResetDialog}
           />
         </View>
       ) : (

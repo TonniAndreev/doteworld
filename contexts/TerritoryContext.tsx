@@ -27,6 +27,8 @@ interface TerritoryContextType {
   currentPolygon: Coordinate[] | null;
   currentWalkSessionId: string | null;
   currentWalkDistance: number;
+  showMonthlyResetDialog: boolean;
+  closeMonthlyResetDialog: () => void;
   startWalk: () => void;
   addWalkPoint: (coordinates: Coordinate) => void;
   endWalk: () => Promise<void>;
@@ -42,9 +44,50 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
   const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
   const [currentWalkDistance, setCurrentWalkDistance] = useState(0);
+  const [showMonthlyResetDialog, setShowMonthlyResetDialog] = useState(false);
+  const [lastResetMonth, setLastResetMonth] = useState<string | null>(null);
   
   const { user } = useAuth();
   const { addPaws } = usePaws();
+
+  // Check if we need to reset territories at the beginning of a new month
+  useEffect(() => {
+    const checkMonthlyReset = async () => {
+      if (!user) return;
+      
+      try {
+        // Get current month in YYYY-MM format
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        
+        // Get last reset month from storage
+        const storedLastResetMonth = await AsyncStorage.getItem(`dote_last_reset_month_${user.uid}`);
+        setLastResetMonth(storedLastResetMonth);
+        
+        // If this is a new month compared to the last reset, perform reset
+        if (storedLastResetMonth !== currentMonth) {
+          console.log('New month detected, resetting territories');
+          
+          // Reset territory data
+          setTerritoryGeoJSON(null);
+          setTerritorySize(0);
+          // Don't reset total distance as that's a lifetime stat
+          
+          // Save new reset month
+          await AsyncStorage.setItem(`dote_last_reset_month_${user.uid}`, currentMonth);
+          await AsyncStorage.removeItem(`dote_territory_geojson_${user.uid}`);
+          await AsyncStorage.setItem(`dote_territory_size_${user.uid}`, '0');
+          
+          // Show reset dialog
+          setShowMonthlyResetDialog(true);
+        }
+      } catch (error) {
+        console.error('Error checking monthly reset:', error);
+      }
+    };
+    
+    checkMonthlyReset();
+  }, [user]);
 
   useEffect(() => {
     const loadTerritoryData = async () => {
@@ -62,7 +105,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
               walk_points (
                 id,
                 path_coordinates
-
               )
             `)
             .eq('dog_id', dogId)
@@ -370,6 +412,10 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     return degrees * (Math.PI / 180);
   };
 
+  const closeMonthlyResetDialog = () => {
+    setShowMonthlyResetDialog(false);
+  };
+
   // Extract renderable polygons for the map
   const renderablePolygons = extractPolygonCoordinates(territoryGeoJSON);
 
@@ -382,6 +428,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     currentPolygon,
     currentWalkSessionId,
     currentWalkDistance,
+    showMonthlyResetDialog,
+    closeMonthlyResetDialog,
     startWalk,
     addWalkPoint,
     endWalk,
