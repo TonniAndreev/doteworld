@@ -295,7 +295,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         .from('walk_points')
         .insert({
           dog_id: user.dogs[0].id,
-          session_id: walkSession.id,
+          walk_session_id: walkSession.id,
           path_coordinates: currentWalkPoints
         })
         .select('id');
