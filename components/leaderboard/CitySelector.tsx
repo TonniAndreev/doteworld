@@ -44,7 +44,6 @@ export default function CitySelector({
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddCity, setShowAddCity] = useState(false);
   const [newCityName, setNewCityName] = useState('');
-  const [newCityState, setNewCityState] = useState('');
   const [newCityCountry, setNewCityCountry] = useState('');
   const [isAddingCity, setIsAddingCity] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
@@ -79,8 +78,8 @@ export default function CitySelector({
   };
 
   const formatCityName = (city: City) => {
-    if (city.state) {
-      return `${city.name}, ${city.state}`;
+    if (city.state && city.state !== city.name) {
+      return `${city.name}, ${city.country}`;
     }
     return `${city.name}, ${city.country}`;
   };
@@ -101,7 +100,7 @@ export default function CitySelector({
       // Create a city details object
       const cityDetails = {
         name: newCityName.trim(),
-        state: newCityState.trim() || null,
+        state: null,
         country: newCityCountry.trim(),
         lat: 0, // Default values, will be updated if location is detected
         lon: 0
@@ -130,7 +129,7 @@ export default function CitySelector({
       const newCity: City = {
         id: cityId,
         name: newCityName.trim(),
-        state: newCityState.trim() || null,
+        state: null,
         country: newCityCountry.trim(),
         territorySize: 0
       };
@@ -140,7 +139,6 @@ export default function CitySelector({
       
       // Reset form and close modal
       setNewCityName('');
-      setNewCityState('');
       setNewCityCountry('');
       setShowAddCity(false);
       closeModal();
@@ -174,21 +172,33 @@ export default function CitySelector({
         location.coords.latitude,
         location.coords.longitude
       );
-
-      if (!cityDetails) {
-        Alert.alert('Error', 'Could not determine your city from your location');
-        return;
-      }
-
-      // Pre-fill the form with detected city
-      setNewCityName(cityDetails.name);
-      setNewCityState(cityDetails.state || '');
-      setNewCityCountry(cityDetails.country);
       
-      Alert.alert('City Detected', `Found ${cityDetails.name}, ${cityDetails.country}`);
+      if (cityDetails) {
+        const cityId = await getOrCreateCityInSupabase(cityDetails);
+        if (cityId) {
+          // Create new city object
+          const newCity: City = {
+            id: cityId,
+            name: cityDetails.name,
+            state: cityDetails.state,
+            country: cityDetails.country,
+            territorySize: 0
+          };
+          
+          // Select the new city and close modal
+          onSelectCity(newCity);
+          closeModal();
+          
+          Alert.alert('Success', `Added ${cityDetails.name}, ${cityDetails.country} to your cities`);
+        } else {
+          Alert.alert('Error', 'Could not create city in database');
+        }
+      } else {
+        Alert.alert('Error', 'Could not determine your city from your location');
+      }
     } catch (error) {
       console.error('Error detecting location:', error);
-      Alert.alert('Error', 'Failed to detect your location. Please enter city details manually.');
+      Alert.alert('Error', 'Failed to detect your location. Please try again.');
     } finally {
       setIsDetectingLocation(false);
     }
@@ -212,7 +222,7 @@ export default function CitySelector({
             {isCurrentUserCity && <Text style={styles.currentCityBadge}> (Current)</Text>}
           </Text>
           <Text style={styles.cityRegion}>
-            {item.state ? `${item.state}, ${item.country}` : item.country}
+            {item.country}
           </Text>
         </View>
         
@@ -258,12 +268,20 @@ export default function CitySelector({
         visible={modalVisible}
         onRequestClose={closeModal}
       >
-        <View style={styles.modalOverlay}>
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={closeModal}
+        >
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardAvoid}
           >
-            <View style={styles.modalContainer}>
+            <View 
+              style={styles.modalContainer}
+              onStartShouldSetResponder={() => true}
+              onTouchEnd={(e) => e.stopPropagation()}
+            >
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>
                   {showAddCity ? 'Add New City' : 'Select City'}
@@ -281,41 +299,8 @@ export default function CitySelector({
               {showAddCity ? (
                 <ScrollView style={styles.addCityContainer}>
                   <Text style={styles.addCityDescription}>
-                    Enter the details of the city you want to add
+                    Detect your current location to add a new city
                   </Text>
-                  
-                  <View style={styles.formGroup}>
-                    <Text style={styles.inputLabel}>City Name *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={newCityName}
-                      onChangeText={setNewCityName}
-                      placeholder="Enter city name"
-                      placeholderTextColor={COLORS.neutralMedium}
-                    />
-                  </View>
-                  
-                  <View style={styles.formGroup}>
-                    <Text style={styles.inputLabel}>State/Province (Optional)</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={newCityState}
-                      onChangeText={setNewCityState}
-                      placeholder="Enter state or province"
-                      placeholderTextColor={COLORS.neutralMedium}
-                    />
-                  </View>
-                  
-                  <View style={styles.formGroup}>
-                    <Text style={styles.inputLabel}>Country *</Text>
-                    <TextInput
-                      style={styles.input}
-                      value={newCityCountry}
-                      onChangeText={setNewCityCountry}
-                      placeholder="Enter country"
-                      placeholderTextColor={COLORS.neutralMedium}
-                    />
-                  </View>
                   
                   <TouchableOpacity 
                     style={styles.detectLocationButton}
@@ -330,24 +315,6 @@ export default function CitySelector({
                         <Text style={styles.detectLocationText}>
                           Detect My Location
                         </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[
-                      styles.addCityButton,
-                      (!newCityName.trim() || !newCityCountry.trim() || isAddingCity) && styles.disabledButton
-                    ]}
-                    onPress={handleAddCity}
-                    disabled={!newCityName.trim() || !newCityCountry.trim() || isAddingCity}
-                  >
-                    {isAddingCity ? (
-                      <ActivityIndicator size="small" color={COLORS.white} />
-                    ) : (
-                      <>
-                        <Plus size={16} color={COLORS.white} />
-                        <Text style={styles.addCityButtonText}>Add City</Text>
                       </>
                     )}
                   </TouchableOpacity>
@@ -389,11 +356,11 @@ export default function CitySelector({
                     )}
                     
                     <TouchableOpacity 
-                      style={styles.specialOption}
+                      style={styles.addNewCityOption}
                       onPress={() => setShowAddCity(true)}
                     >
-                      <Plus size={20} color={COLORS.secondary} />
-                      <Text style={styles.specialOptionText}>Add a New City</Text>
+                      <Plus size={20} color={COLORS.white} />
+                      <Text style={styles.addNewCityOptionText}>Add a New City</Text>
                     </TouchableOpacity>
                   </View>
 
@@ -428,7 +395,6 @@ export default function CitySelector({
                                 style={styles.addNewFromSearchButton}
                                 onPress={() => {
                                   setNewCityName(searchQuery);
-                                  setNewCityState('');
                                   setNewCityCountry('');
                                   setShowAddCity(true);
                                 }}
@@ -448,7 +414,7 @@ export default function CitySelector({
               )}
             </View>
           </KeyboardAvoidingView>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -567,6 +533,20 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
+    marginLeft: 8,
+  },
+  addNewCityOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  addNewCityOptionText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.white,
     marginLeft: 8,
   },
   resultsHeader: {
@@ -699,7 +679,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.primary,
     paddingVertical: 14,
     borderRadius: 12,
     marginBottom: 16,

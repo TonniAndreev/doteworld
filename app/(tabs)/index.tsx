@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import MapView, { Polygon, Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Polygon, Marker, Polyline, Circle, PROVIDER_GOOGLE, Region } from 'react-native-maps';
 import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
@@ -18,6 +18,9 @@ import { calculateDistance } from '@/utils/locationUtils';
 import { USER_TERRITORY_COLOR, getColorWithOpacity } from '@/utils/mapColors';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -29,6 +32,8 @@ export default function MapScreen() {
   const [showCityChangeDialog, setShowCityChangeDialog] = useState(false);
   const [detectedCity, setDetectedCity] = useState<{id: string, name: string} | null>(null);
   const [isProcessingCityChange, setIsProcessingCityChange] = useState(false);
+  const [mapRegion, setMapRegion] = useState<Region | null>(null);
+  const [lastGeocodeAttemptDate, setLastGeocodeAttemptDate] = useState<string | null>(null);
   
   const mapRef = useRef<MapView>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
@@ -78,11 +83,41 @@ export default function MapScreen() {
     setupInitialLocation();
   }, []);
 
+  // Load last geocode attempt date from AsyncStorage
+  useEffect(() => {
+    const loadLastGeocodeDate = async () => {
+      try {
+        const storedDate = await AsyncStorage.getItem('lastGeocodeAttemptDate');
+        if (storedDate) {
+          setLastGeocodeAttemptDate(storedDate);
+          console.log('Last geocode attempt date:', storedDate);
+        }
+      } catch (error) {
+        console.error('Error loading last geocode date:', error);
+      }
+    };
+    
+    loadLastGeocodeDate();
+  }, []);
+
   // Check city from location coordinates
   const checkCityFromLocation = async (latitude: number, longitude: number) => {
     try {
       // Skip if user is not logged in
       if (!user) return;
+      
+      // Get current date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Check if we already attempted geocoding today
+      if (lastGeocodeAttemptDate === today) {
+        console.log('Already attempted geocoding today, skipping');
+        return;
+      }
+      
+      // Update the last attempt date regardless of success
+      setLastGeocodeAttemptDate(today);
+      await AsyncStorage.setItem('lastGeocodeAttemptDate', today);
       
       // Get city details from coordinates
       const cityDetails = await reverseGeocodeToCity(latitude, longitude);
@@ -295,6 +330,23 @@ export default function MapScreen() {
     // You could navigate to dog profile or show more info
   };
 
+  // Calculate the appropriate radius in meters based on the current zoom level
+  const calculatePixelRadiusInMeters = (pixelRadius: number = 2): number => {
+    if (!mapRegion) return 3; // Default radius in meters if no region available
+    
+    // Calculate meters per pixel at the current latitude
+    const { latitudeDelta, longitudeDelta } = mapRegion;
+    const metersPerPixelLat = (latitudeDelta * 111320) / screenHeight;
+    
+    // Convert desired pixel radius to meters
+    return pixelRadius * metersPerPixelLat;
+  };
+
+  // Handle map region change to update the zoom level state
+  const handleRegionChange = (region: Region) => {
+    setMapRegion(region);
+  };
+
   return (
     <GestureHandlerRootView style={styles.container}>
       {location ? (
@@ -314,6 +366,7 @@ export default function MapScreen() {
             zoomEnabled={true}
             rotateEnabled={true}
             scrollEnabled={true}
+            onRegionChangeComplete={handleRegionChange}
           >
             {/* Render user's conquered territories */}
             {territory.map((polygon, index) => (
@@ -339,15 +392,15 @@ export default function MapScreen() {
               ))
             )}
             
-            {/* Render current walk points as orange circles */}
+            {/* Render current walk points as orange circles with dynamic radius */}
             {currentWalkPoints.map((point, index) => (
               <Circle
                 key={`walk-point-${index}`}
                 center={point}
-                radius={3} // 3 meter radius
+                radius={calculatePixelRadiusInMeters(2)} // Dynamic radius based on zoom
                 fillColor={COLORS.primary}
                 strokeColor={COLORS.white}
-                strokeWidth={2}
+                strokeWidth={1}
               />
             ))}
             
