@@ -561,8 +561,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               fileData = dogPhoto;
             }
           } else {
-            // For mobile, read the file as ArrayBuffer instead of Base64
-            fileData = await FileSystem.readAsArrayBufferAsync(dogPhoto);
+            // For mobile, read the file as Base64 string instead of ArrayBuffer
+            fileData = await FileSystem.readAsStringAsync(dogPhoto, { 
+              encoding: FileSystem.EncodingType.Base64 
+            });
           }
           
           // Upload to Supabase Storage
@@ -703,8 +705,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               fileData = data.avatar_url;
             }
           } else {
-            // For mobile, read the file as ArrayBuffer instead of Base64
-            fileData = await FileSystem.readAsArrayBufferAsync(data.avatar_url);
+            // For mobile, read the file as Base64 string instead of ArrayBuffer
+            fileData = await FileSystem.readAsStringAsync(data.avatar_url, { 
+              encoding: FileSystem.EncodingType.Base64 
+            });
           }
           
           // Upload to Supabase Storage

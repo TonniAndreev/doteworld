@@ -215,7 +215,7 @@ export default function DogProfileScreen() {
       }
       
       let result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: [ImagePicker.MediaTypeOptions.Images],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -241,6 +241,7 @@ export default function DogProfileScreen() {
       }
       
       let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: [ImagePicker.MediaTypeOptions.Images],
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -294,8 +295,10 @@ export default function DogProfileScreen() {
           fileData = newDogPhoto;
         }
       } else {
-        // For mobile, read the file as ArrayBuffer instead of Base64
-        fileData = await FileSystem.readAsArrayBufferAsync(newDogPhoto);
+        // For mobile, read the file as Base64 string instead of ArrayBuffer
+        fileData = await FileSystem.readAsStringAsync(newDogPhoto, { 
+          encoding: FileSystem.EncodingType.Base64 
+        });
       }
       
       // Upload to Supabase Storage
