@@ -41,14 +41,9 @@ export function getFileExtension(uri: string): string {
  * @returns Promise resolving to an object with blob data and content type
  */
 export async function prepareFileForUpload(uri: string): Promise<{ 
-  data: Blob, 
-  contentType: string 
+  data: Blob
 }> {
   try {
-    // Get file extension and determine MIME type
-    const fileExt = getFileExtension(uri);
-    const contentType = getMimeType(fileExt);
-    
     // Fetch the file as a blob
     const response = await fetch(uri);
     if (!response.ok) {
@@ -57,12 +52,8 @@ export async function prepareFileForUpload(uri: string): Promise<{
     
     const blob = await response.blob();
     
-    // If blob has a type, use it; otherwise use our determined contentType
-    const finalContentType = blob.type || contentType;
-    
     return {
-      data: blob,
-      contentType: finalContentType
+      data: blob
     };
   } catch (error) {
     console.error('Error preparing file for upload:', error);

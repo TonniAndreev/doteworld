@@ -101,13 +101,12 @@ export default function DogPhotoUploader({
       console.log('Uploading to path:', filePath);
       
       // Prepare file for upload
-      const { data: fileData, contentType } = await prepareFileForUpload(photoUri);
+      const { data: fileData } = await prepareFileForUpload(photoUri);
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .upload(filePath, fileData, {
-          contentType: contentType,
           upsert: true,
         });
       
@@ -120,7 +119,7 @@ export default function DogPhotoUploader({
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);
