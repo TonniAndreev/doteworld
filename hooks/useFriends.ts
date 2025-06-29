@@ -66,7 +66,7 @@ export function useFriends() {
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   
-  // Use refs to track subscription status
+  // Use ref to track subscription status
   const friendshipsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
@@ -75,13 +75,18 @@ export function useFriends() {
       
       // Clean up any existing subscription before creating a new one
       if (friendshipsChannelRef.current) {
+        console.log('Removing existing friendships channel subscription');
         supabase.removeChannel(friendshipsChannelRef.current);
         friendshipsChannelRef.current = null;
       }
       
+      // Create a unique channel name that includes the user ID to avoid conflicts
+      const channelName = `friendships-changes-${user.id}-${Date.now()}`;
+      console.log(`Creating new channel: ${channelName}`);
+      
       // Set up real-time listeners for friendship changes
       friendshipsChannelRef.current = supabase
-        .channel('friendships-changes')
+        .channel(channelName)
         .on(
           'postgres_changes',
           {
@@ -95,17 +100,20 @@ export function useFriends() {
             loadData();
           }
         )
-        .subscribe();
-        
+        .subscribe((status) => {
+          console.log(`Subscription status for ${channelName}:`, status);
+        });
+         
       return () => {
-        // Clean up subscription when component unmounts
+        // Clean up subscription when component unmounts or user changes
         if (friendshipsChannelRef.current) {
+          console.log('Cleaning up friendships channel subscription');
           supabase.removeChannel(friendshipsChannelRef.current);
           friendshipsChannelRef.current = null;
         }
       };
     }
-  }, [user]);
+  }, [user?.id]); // Only re-run if user ID changes
 
   const loadData = async () => {
     setIsLoading(true);
