@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -74,65 +74,17 @@ export default function PublicUserProfileScreen() {
   const { friends, sendFriendRequest, removeFriend, refetch: refetchFriends } = useFriends();
   const { user: currentUser } = useAuth();
 
-  // Check friendship status and load user data simultaneously
   useEffect(() => {
-    if (id && currentUser) {
-      setIsLoading(true);
-      Promise.all([
-        checkFriendshipStatus(),
-        loadUserData()
-      ]).finally(() => {
-        setIsLoading(false);
-      });
+    if (id) {
+      loadUserData();
+      checkFriendshipStatus();
     }
-  }, [id, currentUser]);
-
-  const checkFriendshipStatus = async () => {
-    if (!id || !currentUser) return;
-
-    try {
-      // Check if already friends
-      const isFriend = friends.some(friend => friend.id === id);
-      if (isFriend) {
-        setFriendshipStatus('friend');
-        return;
-      }
-
-      // Check if there's a pending request
-      const { data: existingRequest, error } = await supabase
-        .from('friendships')
-        .select('status, requester_id, receiver_id')
-        .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${id}),and(requester_id.eq.${id},receiver_id.eq.${currentUser.id})`)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking friendship status:', error);
-        setFriendshipStatus('none');
-        return;
-      }
-
-      if (existingRequest) {
-        if (existingRequest.status === 'pending') {
-          if (existingRequest.requester_id === currentUser.id) {
-            setFriendshipStatus('sent');
-          } else {
-            setFriendshipStatus('pending');
-          }
-        } else {
-          setFriendshipStatus('none');
-        }
-      } else {
-        setFriendshipStatus('none');
-      }
-    } catch (error) {
-      console.error('Error checking friendship status:', error);
-      setFriendshipStatus('none');
-    }
-  };
+  }, [id, friends]);
 
   const loadUserData = async () => {
     if (!id) return;
     
+    setIsLoading(true);
     try {
       // Load user profile
       const { data: profile, error: profileError } = await supabase
@@ -253,6 +205,51 @@ export default function PublicUserProfileScreen() {
       console.error('Error loading user data:', error);
       Alert.alert('Error', 'Failed to load user profile');
       router.back();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const checkFriendshipStatus = async () => {
+    if (!id || !currentUser) return;
+
+    // Check if already friends
+    const isFriend = friends.some(friend => friend.id === id);
+    if (isFriend) {
+      setFriendshipStatus('friend');
+      return;
+    }
+
+    // Check if there's a pending request
+    try {
+      const { data: existingRequest, error } = await supabase
+        .from('friendships')
+        .select('status, requester_id, receiver_id')
+        .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${id}),and(requester_id.eq.${id},receiver_id.eq.${currentUser.id})`)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking friendship status:', error);
+        setFriendshipStatus('none');
+        return;
+      }
+
+      if (existingRequest) {
+        if (existingRequest.status === 'pending') {
+          if (existingRequest.requester_id === currentUser.id) {
+            setFriendshipStatus('sent');
+          } else {
+            setFriendshipStatus('pending');
+          }
+        } else {
+          setFriendshipStatus('none');
+        }
+      } else {
+        setFriendshipStatus('none');
+      }
+    } catch (error) {
+      console.error('Error checking friendship status:', error);
+      setFriendshipStatus('none');
     }
   };
 

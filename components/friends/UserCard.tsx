@@ -65,7 +65,7 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
                   userId={`dog-${user.dogs[0].id}`}
                   photoURL={user.dogs[0].photo_url}
                   userName={user.dogs[0].name}
-                  size={28} // Increased by 20% from 23
+                  size={23}
                   isDogAvatar={true}
                   dogBreed={user.dogs[0].breed}
                   style={styles.dogAvatar}
@@ -80,7 +80,7 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
                   userId={`dog-${user.dogs[1].id}`}
                   photoURL={user.dogs[1].photo_url}
                   userName={user.dogs[1].name}
-                  size={28} // Increased by 20% from 23
+                  size={23}
                   isDogAvatar={true}
                   dogBreed={user.dogs[1].breed}
                   style={styles.dogAvatar}
@@ -96,23 +96,6 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
                 </View>
               </View>
             )}
-          </View>
-        )}
-        
-        {/* Fallback for when we don't have the dogs array but have a dog name */}
-        {!hasDogs && user.dogName && user.dogName !== 'No dog' && (
-          <View style={styles.dogAvatarsContainer}>
-            <View style={styles.dogAvatarWrapper}>
-              <UserAvatar
-                userId={`dog-${user.id}`}
-                photoURL={null}
-                userName={user.dogName}
-                size={28} // Increased by 20% from 23
-                isDogAvatar={true}
-                dogBreed={user.dogBreed}
-                style={styles.dogAvatar}
-              />
-            </View>
           </View>
         )}
       </View>
@@ -176,24 +159,24 @@ const styles = StyleSheet.create({
   dogAvatarWrapper: {
     borderWidth: 2,
     borderColor: COLORS.white,
-    borderRadius: 14, // Increased by 20% from 11.5
+    borderRadius: 11.5,
     overflow: 'hidden',
     marginRight: -10, // Negative margin for overlapping effect
   },
   dogAvatar: {
-    borderRadius: 14, // Increased by 20% from 11.5
+    borderRadius: 11.5,
   },
   moreDogsBadge: {
-    width: 28, // Increased by 20% from 23
-    height: 28, // Increased by 20% from 23
-    borderRadius: 14, // Increased by 20% from 11.5
+    width: 23,
+    height: 23,
+    borderRadius: 11.5,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   moreDogsBadgeText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 12, // Increased by 20% from 10
+    fontSize: 10,
     color: COLORS.white,
   },
   info: {

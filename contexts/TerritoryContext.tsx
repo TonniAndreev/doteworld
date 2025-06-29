@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { usePaws } from './PawsContext';
@@ -45,7 +45,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   
   const { user } = useAuth();
   const { addPaws } = usePaws();
-  const channelRef = useRef<any>(null);
 
   useEffect(() => {
     const loadTerritoryData = async () => {
@@ -106,30 +105,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
           if (savedTotalDistance) {
             setTotalDistance(parseFloat(savedTotalDistance));
           }
-          
-          // Clean up any existing channel
-          if (channelRef.current) {
-            supabase.removeChannel(channelRef.current);
-            channelRef.current = null;
-          }
-          
-          // Set up real-time listener for territory changes
-          channelRef.current = supabase
-            .channel('territory-changes')
-            .on(
-              'postgres_changes',
-              {
-                event: 'INSERT',
-                schema: 'public',
-                table: 'territory',
-                filter: `dog_id=eq.${dogId}`,
-              },
-              (payload) => {
-                console.log('Territory change detected:', payload);
-                loadTerritoryData();
-              }
-            )
-            .subscribe();
         } catch (error) {
           console.error('Error loading territory data:', error);
         }
@@ -137,13 +112,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     };
 
     loadTerritoryData();
-    
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
   }, [user]);
 
   const startWalk = () => {
