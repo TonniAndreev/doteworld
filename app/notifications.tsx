@@ -14,6 +14,7 @@ import { ChevronLeft, UserPlus, UserCheck, Award, MapPin, Crown, X, Check, MoveH
 import { COLORS } from '@/constants/theme';
 import { useNotifications, Notification } from '@/contexts/NotificationContext';
 import { useFriends } from '@/hooks/useFriends';
+import { useDogOwnership } from '@/hooks/useDogOwnership';
 import UserAvatar from '@/components/common/UserAvatar';
 
 export default function NotificationsScreen() {
@@ -25,6 +26,7 @@ export default function NotificationsScreen() {
     removeNotification 
   } = useNotifications();
   const { acceptFriendRequest, declineFriendRequest } = useFriends();
+  const { acceptInvite, declineInvite } = useDogOwnership();
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -73,6 +75,32 @@ export default function NotificationsScreen() {
     if (notification.data?.friendshipId) {
       await declineFriendRequest(notification.data.friendshipId);
       removeNotification(notification.id);
+    }
+  };
+
+  const handleAcceptDogInvite = async (notification: Notification) => {
+    if (notification.data?.inviteId) {
+      const result = await acceptInvite(notification.data.inviteId);
+      
+      if (result.success) {
+        Alert.alert('Success', `You are now a co-owner of this dog!`);
+        removeNotification(notification.id);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to accept invitation');
+      }
+    }
+  };
+
+  const handleDeclineDogInvite = async (notification: Notification) => {
+    if (notification.data?.inviteId) {
+      const result = await declineInvite(notification.data.inviteId);
+      
+      if (result.success) {
+        Alert.alert('Declined', 'Invitation declined');
+        removeNotification(notification.id);
+      } else {
+        Alert.alert('Error', result.error || 'Failed to decline invitation');
+      }
     }
   };
 
@@ -151,7 +179,7 @@ export default function NotificationsScreen() {
           )}
         </View>
 
-        {/* Friend request action buttons */}
+        {/* Action buttons based on notification type */}
         {notification.type === 'friend_request' && !notification.read && (
           <View style={styles.actionButtons}>
             <TouchableOpacity
@@ -165,6 +193,27 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               style={[styles.actionButton, styles.declineButton]}
               onPress={() => handleDeclineFriendRequest(notification)}
+            >
+              <X size={16} color={COLORS.error} />
+              <Text style={styles.declineButtonText}>Decline</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Dog invite action buttons */}
+        {notification.type === 'dog_invite' && !notification.read && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.acceptButton]}
+              onPress={() => handleAcceptDogInvite(notification)}
+            >
+              <Check size={16} color={COLORS.white} />
+              <Text style={styles.acceptButtonText}>Accept</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.actionButton, styles.declineButton]}
+              onPress={() => handleDeclineDogInvite(notification)}
             >
               <X size={16} color={COLORS.error} />
               <Text style={styles.declineButtonText}>Decline</Text>

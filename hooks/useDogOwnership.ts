@@ -116,7 +116,22 @@ export function useDogOwnership() {
     try {
       setIsLoading(true);
 
-      // First, find the user by email
+      // First, check if the dog already has 4 owners
+      const { data: existingOwners, error: ownersError } = await supabase
+        .from('profile_dogs')
+        .select('profile_id')
+        .eq('dog_id', dogId);
+
+      if (ownersError) {
+        console.error('Error checking existing owners:', ownersError);
+        return { success: false, error: 'Failed to check existing owners' };
+      }
+
+      if (existingOwners && existingOwners.length >= 4) {
+        return { success: false, error: 'This dog already has the maximum number of owners (4)' };
+      }
+
+      // Find the user by email
       const { data: inviteeProfile, error: profileError } = await supabase
         .from('profiles')
         .select('id, first_name, last_name')
