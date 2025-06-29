@@ -515,33 +515,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
           console.log('Processing dog photo upload');
           
-          // Check if the storage bucket exists
-          const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-          console.log('Available buckets:', buckets?.map(b => b.name));
-          
-          if (bucketsError) {
-            console.error('Error listing buckets:', bucketsError);
-            throw new Error(`Storage error: ${bucketsError.message}`);
-          }
-          
-          // Check if dog-photos bucket exists
-          const dogPhotosBucket = buckets?.find(b => b.name === 'dog-photos');
-          if (!dogPhotosBucket) {
-            console.error('dog-photos bucket does not exist');
-            throw new Error('Storage not properly configured: dog-photos bucket missing');
-          }
-          
-          // For Android, we need to ensure the file exists and is readable
-          if (Platform.OS === 'android' && dogPhoto.startsWith('file://')) {
-            const fileInfo = await FileSystem.getInfoAsync(dogPhoto);
-            console.log('File info:', fileInfo);
-            
-            if (!fileInfo.exists) {
-              console.error('File does not exist:', dogPhoto);
-              throw new Error('Photo file not found');
-            }
-          }
-          
           // Generate a unique filename
           const fileExt = dogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `${Date.now()}.${fileExt}`;
@@ -549,27 +522,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Read the file based on platform
+          // Prepare file data based on platform
           let fileData;
+          
           if (Platform.OS === 'web') {
-            // For web, convert data URL to blob
-            if (dogPhoto.startsWith('data:')) {
-              const response = await fetch(dogPhoto);
-              const blob = await response.blob();
-              fileData = blob;
-            } else {
-              fileData = dogPhoto;
-            }
+            // For web, fetch the image as a blob
+            const response = await fetch(dogPhoto);
+            fileData = await response.blob();
           } else {
-            // For mobile, read the file as Base64 string instead of ArrayBuffer
-            fileData = await FileSystem.readAsStringAsync(dogPhoto, { 
-              encoding: FileSystem.EncodingType.Base64 
+            // For native platforms, read the file as a blob
+            const fileInfo = await FileSystem.getInfoAsync(dogPhoto);
+            
+            if (!fileInfo.exists) {
+              throw new Error('File does not exist');
+            }
+            
+            // Read the file as base64
+            const base64 = await FileSystem.readAsStringAsync(dogPhoto, {
+              encoding: FileSystem.EncodingType.Base64,
             });
+            
+            // Convert base64 to blob
+            const byteCharacters = atob(base64);
+            const byteArrays = [];
+            
+            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+              const slice = byteCharacters.slice(offset, offset + 512);
+              
+              const byteNumbers = new Array(slice.length);
+              for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+              }
+              
+              const byteArray = new Uint8Array(byteNumbers);
+              byteArrays.push(byteArray);
+            }
+            
+            fileData = new Blob(byteArrays, { type: `image/${fileExt}` });
           }
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('dog-photos')
+            .from('dog_photos')
             .upload(filePath, fileData, {
               contentType: `image/${fileExt}`,
               upsert: true,
@@ -584,7 +578,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           // Get public URL
           const { data: publicUrlData } = await supabase.storage
-            .from('dog-photos')
+            .from('dog_photos')
             .getPublicUrl(filePath);
           
           console.log('Public URL:', publicUrlData);
@@ -659,33 +653,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.log('Uploading avatar from local file:', data.avatar_url);
         
         try {
-          // Check if the storage bucket exists
-          const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-          console.log('Available buckets:', buckets?.map(b => b.name));
-          
-          if (bucketsError) {
-            console.error('Error listing buckets:', bucketsError);
-            throw new Error(`Storage error: ${bucketsError.message}`);
-          }
-          
-          // Check if avatars bucket exists
-          const avatarsBucket = buckets?.find(b => b.name === 'avatars');
-          if (!avatarsBucket) {
-            console.error('avatars bucket does not exist');
-            throw new Error('Storage not properly configured: avatars bucket missing');
-          }
-          
-          // For Android, we need to ensure the file exists and is readable
-          if (Platform.OS === 'android' && data.avatar_url.startsWith('file://')) {
-            const fileInfo = await FileSystem.getInfoAsync(data.avatar_url);
-            console.log('File info:', fileInfo);
-            
-            if (!fileInfo.exists) {
-              console.error('File does not exist:', data.avatar_url);
-              throw new Error('Photo file not found');
-            }
-          }
-          
           // Generate a unique filename
           const fileExt = data.avatar_url.split('.').pop()?.toLowerCase() || 'jpg';
           const fileName = `${Date.now()}.${fileExt}`;
@@ -693,22 +660,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Read the file based on platform
+          // Prepare file data based on platform
           let fileData;
+          
           if (Platform.OS === 'web') {
-            // For web, convert data URL to blob
-            if (data.avatar_url.startsWith('data:')) {
-              const response = await fetch(data.avatar_url);
-              const blob = await response.blob();
-              fileData = blob;
-            } else {
-              fileData = data.avatar_url;
-            }
+            // For web, fetch the image as a blob
+            const response = await fetch(data.avatar_url);
+            fileData = await response.blob();
           } else {
-            // For mobile, read the file as Base64 string instead of ArrayBuffer
-            fileData = await FileSystem.readAsStringAsync(data.avatar_url, { 
-              encoding: FileSystem.EncodingType.Base64 
+            // For native platforms, read the file as a blob
+            const fileInfo = await FileSystem.getInfoAsync(data.avatar_url);
+            
+            if (!fileInfo.exists) {
+              throw new Error('File does not exist');
+            }
+            
+            // Read the file as base64
+            const base64 = await FileSystem.readAsStringAsync(data.avatar_url, {
+              encoding: FileSystem.EncodingType.Base64,
             });
+            
+            // Convert base64 to blob
+            const byteCharacters = atob(base64);
+            const byteArrays = [];
+            
+            for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+              const slice = byteCharacters.slice(offset, offset + 512);
+              
+              const byteNumbers = new Array(slice.length);
+              for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+              }
+              
+              const byteArray = new Uint8Array(byteNumbers);
+              byteArrays.push(byteArray);
+            }
+            
+            fileData = new Blob(byteArrays, { type: `image/${fileExt}` });
           }
           
           // Upload to Supabase Storage

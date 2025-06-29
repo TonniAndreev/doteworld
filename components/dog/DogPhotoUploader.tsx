@@ -69,7 +69,6 @@ export default function DogPhotoUploader({
       }
       
       let result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -94,17 +93,6 @@ export default function DogPhotoUploader({
       setIsUploading(true);
       setUploadProgress(0);
       
-      // For Android, we need to ensure the file exists and is readable
-      if (Platform.OS === 'android') {
-        const fileInfo = await FileSystem.getInfoAsync(photoUri);
-        console.log('File info:', fileInfo);
-        
-        if (!fileInfo.exists) {
-          console.error('File does not exist:', photoUri);
-          throw new Error('Photo file not found');
-        }
-      }
-      
       // Generate a unique filename
       const fileExt = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${Date.now()}.${fileExt}`;
@@ -112,28 +100,47 @@ export default function DogPhotoUploader({
       
       console.log('Uploading to path:', filePath);
       
-      // Read the file as base64 or blob depending on platform
       let fileData;
+      
       if (Platform.OS === 'web') {
-        // For web, we need to handle data URLs properly
-        if (photoUri.startsWith('data:')) {
-          // Convert data URL to blob for web
-          const response = await fetch(photoUri);
-          const blob = await response.blob();
-          fileData = blob;
-        } else {
-          fileData = photoUri;
-        }
+        // For web, fetch the image as a blob
+        const response = await fetch(photoUri);
+        fileData = await response.blob();
       } else {
-        // For mobile, read the file as Base64 string instead of ArrayBuffer
-        fileData = await FileSystem.readAsStringAsync(photoUri, { 
-          encoding: FileSystem.EncodingType.Base64 
+        // For native platforms, read the file as a blob
+        const fileInfo = await FileSystem.getInfoAsync(photoUri);
+        
+        if (!fileInfo.exists) {
+          throw new Error('File does not exist');
+        }
+        
+        // Read the file as base64
+        const base64 = await FileSystem.readAsStringAsync(photoUri, {
+          encoding: FileSystem.EncodingType.Base64,
         });
+        
+        // Convert base64 to blob
+        const byteCharacters = atob(base64);
+        const byteArrays = [];
+        
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+          const slice = byteCharacters.slice(offset, offset + 512);
+          
+          const byteNumbers = new Array(slice.length);
+          for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          
+          const byteArray = new Uint8Array(byteNumbers);
+          byteArrays.push(byteArray);
+        }
+        
+        fileData = new Blob(byteArrays, { type: `image/${fileExt}` });
       }
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog-photos')
+        .from('dog_photos')
         .upload(filePath, fileData, {
           contentType: `image/${fileExt}`,
           upsert: true,
@@ -148,7 +155,7 @@ export default function DogPhotoUploader({
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog-photos')
+        .from('dog_photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);
@@ -162,19 +169,19 @@ export default function DogPhotoUploader({
           updated_at: new Date().toISOString()
         })
         .eq('id', dogId);
-      
+
       if (updateError) {
-        console.error('Error updating dog record:', updateError);
-        throw new Error(`Failed to update dog record: ${updateError.message}`);
+        console.error('Error updating dog photo:', updateError);
+        throw new Error('Failed to update dog photo');
       }
-      
+
       // Call the callback with the new photo URL
       onPhotoUploaded(publicUrlData.publicUrl);
       
-      Alert.alert('Success', 'Photo uploaded successfully!');
+      Alert.alert('Success', 'Dog photo updated successfully!');
     } catch (error) {
-      console.error('Error uploading photo:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to upload photo. Please try again.');
+      console.error('Error saving dog photo:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update dog photo');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
@@ -208,7 +215,7 @@ export default function DogPhotoUploader({
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', dogId);
-              
+
               if (updateError) {
                 console.error('Error updating dog record:', updateError);
                 throw new Error(`Failed to update dog record: ${updateError.message}`);
@@ -220,7 +227,7 @@ export default function DogPhotoUploader({
               Alert.alert('Success', 'Photo removed successfully!');
             } catch (error) {
               console.error('Error removing photo:', error);
-              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to remove photo. Please try again.');
+              Alert.alert('Error', error instanceof Error ? error.message : 'Failed to remove photo');
             } finally {
               setIsUploading(false);
             }

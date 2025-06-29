@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
+  TouchableOpacity,
   Modal,
+  TextInput,
   Alert,
   ActivityIndicator,
   Image,
@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { ChevronLeft, Plus, CreditCard as Edit3, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
+import { ChevronLeft, Plus, CreditCard as Edit, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -111,7 +111,7 @@ interface Dog {
   id: string;
   name: string;
   breed: string;
-  photo_url?: string | null;
+  photo_url?: string;
   birthday?: string;
   bio?: string;
   weight?: number;
@@ -241,7 +241,6 @@ export default function DogProfileScreen() {
       }
       
       let result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -264,17 +263,6 @@ export default function DogProfileScreen() {
 
     setIsUploadingPhoto(true);
     try {
-      // For Android, we need to ensure the file exists and is readable
-      if (Platform.OS === 'android') {
-        const fileInfo = await FileSystem.getInfoAsync(newDogPhoto);
-        console.log('File info:', fileInfo);
-        
-        if (!fileInfo.exists) {
-          console.error('File does not exist:', newDogPhoto);
-          throw new Error('Photo file not found');
-        }
-      }
-      
       // Generate a unique filename
       const fileExt = newDogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
       const fileName = `${Date.now()}.${fileExt}`;
@@ -282,28 +270,47 @@ export default function DogProfileScreen() {
       
       console.log('Uploading to path:', filePath);
       
-      // Read the file based on platform
       let fileData;
+      
       if (Platform.OS === 'web') {
-        // For web, we need to handle data URLs properly
-        if (newDogPhoto.startsWith('data:')) {
-          // Convert data URL to blob for web
-          const response = await fetch(newDogPhoto);
-          const blob = await response.blob();
-          fileData = blob;
-        } else {
-          fileData = newDogPhoto;
-        }
+        // For web, fetch the image as a blob
+        const response = await fetch(newDogPhoto);
+        fileData = await response.blob();
       } else {
-        // For mobile, read the file as Base64 string instead of ArrayBuffer
-        fileData = await FileSystem.readAsStringAsync(newDogPhoto, { 
-          encoding: FileSystem.EncodingType.Base64 
+        // For native platforms, read the file as a blob
+        const fileInfo = await FileSystem.getInfoAsync(newDogPhoto);
+        
+        if (!fileInfo.exists) {
+          throw new Error('File does not exist');
+        }
+        
+        // Read the file as base64
+        const base64 = await FileSystem.readAsStringAsync(newDogPhoto, {
+          encoding: FileSystem.EncodingType.Base64,
         });
+        
+        // Convert base64 to blob
+        const byteCharacters = atob(base64);
+        const byteArrays = [];
+        
+        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+          const slice = byteCharacters.slice(offset, offset + 512);
+          
+          const byteNumbers = new Array(slice.length);
+          for (let i = 0; i < slice.length; i++) {
+            byteNumbers[i] = slice.charCodeAt(i);
+          }
+          
+          const byteArray = new Uint8Array(byteNumbers);
+          byteArrays.push(byteArray);
+        }
+        
+        fileData = new Blob(byteArrays, { type: `image/${fileExt}` });
       }
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog-photos')
+        .from('dog_photos')
         .upload(filePath, fileData, {
           contentType: `image/${fileExt}`,
           upsert: true,
@@ -318,7 +325,7 @@ export default function DogProfileScreen() {
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog-photos')
+        .from('dog_photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);
@@ -498,7 +505,7 @@ export default function DogProfileScreen() {
                     style={styles.editButton}
                     onPress={() => handleEditDog(dog)}
                   >
-                    <Edit3 size={16} color={COLORS.white} />
+                    <Edit size={16} color={COLORS.white} />
                     <Text style={styles.editButtonText}>Edit Profile</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
