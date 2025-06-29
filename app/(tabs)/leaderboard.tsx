@@ -14,11 +14,22 @@ import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import LeaderboardItem from '@/components/leaderboard/LeaderboardItem';
+import CitySelector from '@/components/leaderboard/CitySelector';
 import UserAvatar from '@/components/common/UserAvatar';
 import { fetchLeaderboard } from '@/services/leaderboardService';
+import { getUserCities, findNearestCity, reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
 import { useAuth } from '@/contexts/AuthContext';
+import * as Location from 'expo-location';
 
 type LeaderboardTab = 'territory' | 'distance' | 'achievements';
+
+interface City {
+  id: string;
+  name: string;
+  state: string | null;
+  country: string;
+  territorySize?: number;
+}
 
 export default function LeaderboardScreen() {
   const [activeTab, setActiveTab] = useState<LeaderboardTab>('territory');
@@ -26,14 +37,106 @@ export default function LeaderboardScreen() {
   const [leaderboardData, setLeaderboardData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [userCities, setUserCities] = useState<City[]>([]);
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [isLoadingCities, setIsLoadingCities] = useState(true);
+  
   const { user } = useAuth();
+
+  // Load user cities
+  useEffect(() => {
+    const loadUserCities = async () => {
+      if (!user) return;
+      
+      setIsLoadingCities(true);
+      try {
+        // Get cities where user has territory
+        const cities = await getUserCities();
+        setUserCities(cities);
+        
+        // If user has cities, select the first one
+        if (cities.length > 0) {
+          setSelectedCity(cities[0]);
+        } else if (user.current_city_id && user.current_city_name) {
+          // If user has a current city but no territories, use that
+          setSelectedCity({
+            id: user.current_city_id,
+            name: user.current_city_name,
+            state: null,
+            country: 'Unknown'
+          });
+        } else {
+          // If no cities at all, try to get current location and find nearest city
+          await findUserCity();
+        }
+      } catch (error) {
+        console.error('Error loading user cities:', error);
+      } finally {
+        setIsLoadingCities(false);
+      }
+    };
+    
+    loadUserCities();
+  }, [user]);
+
+  // Find user's city based on current location
+  const findUserCity = async () => {
+    try {
+      // Request location permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Location permission denied');
+        return;
+      }
+      
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced
+      });
+      
+      // Try to find nearest city first (faster)
+      const nearestCity = await findNearestCity(
+        location.coords.latitude,
+        location.coords.longitude
+      );
+      
+      if (nearestCity) {
+        setSelectedCity(nearestCity);
+        return;
+      }
+      
+      // If no nearest city found, try reverse geocoding
+      const cityDetails = await reverseGeocodeToCity(
+        location.coords.latitude,
+        location.coords.longitude
+      );
+      
+      if (cityDetails) {
+        const cityId = await getOrCreateCityInSupabase(cityDetails);
+        if (cityId) {
+          setSelectedCity({
+            id: cityId,
+            name: cityDetails.name,
+            state: cityDetails.state,
+            country: cityDetails.country
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error finding user city:', error);
+    }
+  };
 
   // Load leaderboard data
   useEffect(() => {
-    loadLeaderboardData();
-  }, [activeTab]);
+    if (selectedCity) {
+      loadLeaderboardData();
+    }
+  }, [activeTab, selectedCity]);
 
   const loadLeaderboardData = async (refresh = false) => {
+    if (!selectedCity) return;
+    
     if (refresh) {
       setIsRefreshing(true);
     } else {
@@ -41,8 +144,8 @@ export default function LeaderboardScreen() {
     }
 
     try {
-      console.log('Loading leaderboard data for category:', activeTab);
-      const data = await fetchLeaderboard(activeTab);
+      console.log('Loading leaderboard data for category:', activeTab, 'in city:', selectedCity.name);
+      const data = await fetchLeaderboard(activeTab, selectedCity.id);
       console.log('Received leaderboard data:', data.length, 'users');
       setLeaderboardData(data);
     } catch (error) {
@@ -65,6 +168,10 @@ export default function LeaderboardScreen() {
   const handleUserPress = (userData) => {
     // Navigate directly to the public profile page
     router.push(`/user/${userData.id}`);
+  };
+
+  const handleCitySelect = (city: City) => {
+    setSelectedCity(city);
   };
 
   // Find current user's position in the full leaderboard
@@ -267,6 +374,14 @@ export default function LeaderboardScreen() {
         <NotificationsButton />
       </View>
 
+      {/* City Selector */}
+      <CitySelector
+        cities={userCities}
+        selectedCity={selectedCity}
+        isLoading={isLoadingCities}
+        onSelectCity={handleCitySelect}
+      />
+
       <View style={styles.searchContainer}>
         <Search size={20} color={COLORS.neutralDark} style={styles.searchIcon} />
         <TextInput
@@ -336,7 +451,7 @@ export default function LeaderboardScreen() {
               !isLoading && leaderboardData.length === 0 ? (
                 <View style={styles.emptyContainer}>
                   <Text style={styles.emptyText}>
-                    {searchQuery.trim() !== '' ? 'No results found' : 'No leaderboard data'}
+                    {searchQuery.trim() !== '' ? 'No results found' : selectedCity ? `No leaderboard data for ${selectedCity.name}` : 'No leaderboard data'}
                   </Text>
                 </View>
               ) : null
