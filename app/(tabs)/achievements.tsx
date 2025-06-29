@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -21,7 +21,16 @@ export default function BadgesScreen() {
   const [selectedBadge, setSelectedBadge] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
   
-  const { achievements: badges, isLoading } = useAchievements();
+  const { achievements: badges, isLoading, checkAchievements } = useAchievements();
+
+  // Check for achievements when the screen loads
+  useEffect(() => {
+    const checkForNewAchievements = async () => {
+      await checkAchievements();
+    };
+    
+    checkForNewAchievements();
+  }, []);
 
   // Filter badges based on search query
   const filteredBadges = badges.filter(badge => 
@@ -117,7 +126,7 @@ export default function BadgesScreen() {
           styles.progressText,
           !item.completed && styles.incompleteText
         ]}>
-          {item.completed ? 'Earned!' : `${item.currentValue}/${item.targetValue}`}
+          {item.completed ? 'Earned!' : `${Math.round(item.currentValue * 100)}%`}
         </Text>
       </View>
     </TouchableOpacity>
@@ -229,7 +238,7 @@ export default function BadgesScreen() {
               <Text style={styles.modalProgressText}>
                 {selectedBadge.completed 
                   ? 'Badge Earned!' 
-                  : `${selectedBadge.currentValue}/${selectedBadge.targetValue} ${selectedBadge.unit}`}
+                  : `${Math.round(selectedBadge.currentValue * 100)}% Complete`}
               </Text>
               
               {selectedBadge.completed && (

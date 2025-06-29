@@ -74,6 +74,7 @@ const isValidEmail = (email: string): boolean => {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<DoteUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
 
   // Create redirect URI for OAuth - Use custom scheme for mobile
  const redirectTo = AuthSession.makeRedirectUri({
@@ -103,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('Auth state changed:', event, session?.user?.id);
       
       if (event === 'SIGNED_IN' && session?.user) {
+        setIsFirstLogin(true);
         await fetchUserProfile(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
@@ -280,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error('No user returned from login');
       }
 
+      setIsFirstLogin(true);
       // fetchUserProfile will be called automatically by the auth state change listener
       console.log('Login successful for user:', data.user.id);
       
@@ -335,7 +338,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       console.log('Registration successful for user:', data.user.id);
-      
+      setIsFirstLogin(true);
       // fetchUserProfile will be called automatically by the auth state change listener
       
     } catch (error) {
@@ -411,6 +414,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             console.log('Google login successful:', data.user?.id);
+            setIsFirstLogin(true);
             // fetchUserProfile will be called automatically by the auth state change listener
           } else {
             throw new Error('No tokens received from Google OAuth');
@@ -494,6 +498,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             console.log('Facebook login successful:', data.user?.id);
+            setIsFirstLogin(true);
             // fetchUserProfile will be called automatically by the auth state change listener
           } else {
             throw new Error('No tokens received from Facebook OAuth');
