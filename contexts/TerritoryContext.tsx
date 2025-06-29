@@ -296,9 +296,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         .insert({
           dog_id: user.dogs[0].id,
           walk_session_id: walkSession.id,
-          path_coordinates: currentWalkPoints,
-          // Remove latitude and longitude fields as they don't exist in the schema
-          timestamp: new Date().toISOString()
+          path_coordinates: currentWalkPoints
+          // Removed timestamp field to let the database use the DEFAULT value
         })
         .select('id');
 
