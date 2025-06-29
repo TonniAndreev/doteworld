@@ -1,210 +1,341 @@
-import { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Mail, Lock, User, Eye, EyeOff, ArrowLeft } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS } from '@/constants/Colors';
+import { router, useLocalSearchParams } from 'expo-router';
+import { User, Mail, Phone, Lock, CircleAlert as AlertCircle, ChevronLeft, ChevronRight, CircleCheck as CheckCircle } from 'lucide-react-native';
+import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDogOwnership } from '@/hooks/useDogOwnership';
 
 export default function RegisterScreen() {
-  const [username, setUsername] = useState('');
+  const [step, setStep] = useState(1);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [registrationComplete, setRegistrationComplete] = useState(false);
   
-  const { signUp } = useAuth();
+  const { register } = useAuth();
+  const { acceptInvite } = useDogOwnership();
+  const params = useLocalSearchParams();
+  
+  // Check if this is an invite flow
+  const isInviteFlow = params.inviteToken && params.dogName && params.role;
 
-  const validateForm = () => {
-    if (!username || !email || !password || !confirmPassword) {
-      setError('All fields are required');
+  useEffect(() => {
+    if (isInviteFlow) {
+      console.log('Registration with invite context:', params);
+    }
+  }, [isInviteFlow, params]);
+
+  const handlePostRegistrationInvite = async () => {
+    if (!isInviteFlow) return;
+
+    try {
+      // Get stored invite data
+      const storedInvite = localStorage.getItem('pendingDogInvite');
+      if (storedInvite) {
+        const inviteData = JSON.parse(storedInvite);
+        
+        // Accept the invite
+        const result = await acceptInvite(inviteData.inviteId || 'mock-invite-id');
+        
+        if (result.success) {
+          Alert.alert(
+            'Welcome to Dote!', 
+            `You're now a ${inviteData.role} of ${inviteData.dogName}! You can start exploring the app.`,
+            [{ text: 'Get Started', onPress: () => router.replace('/(tabs)') }]
+          );
+        } else {
+          Alert.alert('Welcome!', 'Registration successful! You can accept the dog invitation from your profile.');
+          router.replace('/(tabs)');
+        }
+        
+        // Clean up stored invite
+        localStorage.removeItem('pendingDogInvite');
+      }
+    } catch (error) {
+      console.error('Error handling post-registration invite:', error);
+      router.replace('/(tabs)');
+    }
+  };
+
+  const validateStep1 = () => {
+    if (!firstName || !lastName) {
+      setError('Please enter your first and last name');
       return false;
     }
-    
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (!email) {
+      setError('Please enter your email address');
       return false;
     }
-    
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return false;
-    }
-    
+    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setError('Please enter a valid email address');
       return false;
     }
-    
+    if (!phone) {
+      setError('Please enter your phone number');
+      return false;
+    }
     return true;
   };
-
-  const handleRegister = async () => {
-    if (!validateForm()) {
-      return;
+  
+  const validateStep2 = () => {
+    if (!password) {
+      setError('Please enter a password');
+      return false;
     }
-
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters');
+      return false;
+    }
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return false;
+    }
+    return true;
+  };
+  
+  const nextStep = () => {
+    setError('');
+    if (step === 1 && validateStep1()) {
+      setStep(2);
+    } else if (step === 2 && validateStep2()) {
+      handleRegister();
+    }
+  };
+  
+  const prevStep = () => {
+    if (step > 1) {
+      setStep(step - 1);
+      setError('');
+    }
+  };
+  
+  const handleRegister = async () => {
     setIsLoading(true);
     setError('');
-
+    
     try {
-      const { error } = await signUp(email, password, username);
+      await register(email, password, firstName, lastName, phone);
       
-      if (error) {
-        setError(error.message);
+      if (isInviteFlow) {
+        await handlePostRegistrationInvite();
       } else {
-        router.replace('/(tabs)');
+        router.replace('/(auth)/dog-profile');
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during registration');
+    } catch (error: any) {
+      console.error(error);
+      setError(error.message || 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (registrationComplete) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.successContainer}>
+          <CheckCircle size={64} color={COLORS.success} />
+          <Text style={styles.successTitle}>Check Your Email!</Text>
+          <Text style={styles.successMessage}>
+            We've sent a confirmation link to {email}. Please click the link in your email to verify your account and complete the registration process.
+          </Text>
+          <TouchableOpacity 
+            style={styles.backToLoginButton}
+            onPress={() => router.replace('/(auth)/login')}
+          >
+            <Text style={styles.backToLoginText}>Back to Login</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        {step > 1 && (
+          <TouchableOpacity style={styles.backButton} onPress={prevStep}>
+            <ChevronLeft size={24} color={COLORS.neutralDark} />
+          </TouchableOpacity>
+        )}
+        
+        <Text style={styles.headerTitle}>
+          {isInviteFlow ? 'Join Dote' : 'Create Account'}
+        </Text>
+        
+        <View style={styles.stepIndicator}>
+          <View style={[styles.stepDot, step >= 1 && styles.activeStepDot]} />
+          <View style={[styles.stepDot, step >= 2 && styles.activeStepDot]} />
+        </View>
+      </View>
+
+      {/* Invite Context Banner */}
+      {isInviteFlow && (
+        <View style={styles.inviteBanner}>
+          <Text style={styles.inviteBannerText}>
+            Create account to accept invitation for {params.dogName} as {params.role}
+          </Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardAvoid}
       >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => router.back()}
-            >
-              <ArrowLeft size={24} color={COLORS.dark} />
-            </TouchableOpacity>
-            
-            <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <Paw size={32} color={COLORS.primary} />
-              </View>
-              <Text style={styles.appName}>DogTerritory</Text>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {error ? (
+            <View style={styles.errorContainer}>
+              <AlertCircle size={20} color={COLORS.error} />
+              <Text style={styles.errorText}>{error}</Text>
             </View>
-          </View>
+          ) : null}
+          
+          {step === 1 && (
+            <View style={styles.formContainer}>
+              <Text style={styles.stepTitle}>Personal Information</Text>
 
-          <View style={styles.formContainer}>
-            <Text style={styles.welcomeText}>Create Account</Text>
-            <Text style={styles.subtitleText}>Join our community of dog walkers</Text>
-
-            {error ? (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
-
-            <View style={styles.inputContainer}>
               <View style={styles.inputWrapper}>
-                <User size={20} color={COLORS.gray600} style={styles.inputIcon} />
+                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Username"
-                  value={username}
-                  onChangeText={setUsername}
-                  autoCapitalize="none"
-                  placeholderTextColor={COLORS.gray500}
+                  placeholder="First Name"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
 
               <View style={styles.inputWrapper}>
-                <Mail size={20} color={COLORS.gray600} style={styles.inputIcon} />
+                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Last Name"
+                  value={lastName}
+                  onChangeText={setLastName}
+                  placeholderTextColor={COLORS.neutralMedium}
+                />
+              </View>
+
+              <View style={styles.inputWrapper}>
+                <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Email"
                   value={email}
                   onChangeText={setEmail}
-                  keyboardType="email-address"
                   autoCapitalize="none"
-                  placeholderTextColor={COLORS.gray500}
+                  keyboardType="email-address"
+                  placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
 
               <View style={styles.inputWrapper}>
-                <Lock size={20} color={COLORS.gray600} style={styles.inputIcon} />
+                <Phone size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Phone Number"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
+                  placeholderTextColor={COLORS.neutralMedium}
+                />
+              </View>
+            </View>
+          )}
+          
+          {step === 2 && (
+            <View style={styles.formContainer}>
+              <Text style={styles.stepTitle}>Create Password</Text>
+
+              <View style={styles.inputWrapper}>
+                <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
                   value={password}
                   onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  placeholderTextColor={COLORS.gray500}
+                  secureTextEntry
+                  placeholderTextColor={COLORS.neutralMedium}
                 />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff size={20} color={COLORS.gray600} />
-                  ) : (
-                    <Eye size={20} color={COLORS.gray600} />
-                  )}
-                </TouchableOpacity>
               </View>
 
               <View style={styles.inputWrapper}>
-                <Lock size={20} color={COLORS.gray600} style={styles.inputIcon} />
+                <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm Password"
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  placeholderTextColor={COLORS.gray500}
+                  secureTextEntry
+                  placeholderTextColor={COLORS.neutralMedium}
                 />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={20} color={COLORS.gray600} />
-                  ) : (
-                    <Eye size={20} color={COLORS.gray600} />
-                  )}
-                </TouchableOpacity>
               </View>
-            </View>
 
-            <TouchableOpacity
-              style={styles.registerButton}
-              onPress={handleRegister}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={COLORS.white} />
-              ) : (
-                <Text style={styles.registerButtonText}>Create Account</Text>
-              )}
+              <Text style={styles.passwordRequirements}>
+                Password must be at least 6 characters
+              </Text>
+            </View>
+          )}
+
+          <TouchableOpacity 
+            style={styles.nextButton}
+            onPress={nextStep}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={COLORS.white} />
+            ) : (
+              <>
+                <Text style={styles.nextButtonText}>
+                  {step === 1 ? 'Continue' : (isInviteFlow ? 'Create Account & Accept' : 'Create Account')}
+                </Text>
+                {step === 1 && (
+                  <ChevronRight size={20} color={COLORS.white} />
+                )}
+              </>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.loginContainer}>
+            <Text style={styles.haveAccountText}>Already have an account?</Text>
+            <TouchableOpacity onPress={() => {
+              if (isInviteFlow) {
+                router.replace({
+                  pathname: '/(auth)/login',
+                  params: params
+                });
+              } else {
+                router.replace('/(auth)/login');
+              }
+            }}>
+              <Text style={styles.loginText}>Login</Text>
             </TouchableOpacity>
-
-            <View style={styles.loginContainer}>
-              <Text style={styles.haveAccountText}>Already have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-                <Text style={styles.loginText}>Sign In</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
-}
-
-function Paw(props: { size: number; color: string }) {
-  return (
-    <View style={{ width: props.size, height: props.size }}>
-      <svg width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke={props.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12.83 13.38a3.1 3.1 0 0 0-1.66 0 3.11 3.11 0 0 0-2 2.83V21h5.66v-4.79a3.11 3.11 0 0 0-2-2.83Z" />
-        <path d="M21.33 17.33A6.78 6.78 0 0 0 20.1 15a6.82 6.82 0 0 0-3.76-1.85c-.29-.04-.58-.15-.85-.35a3 3 0 0 1-1.2-1.8 3 3 0 0 1 .34-2.16 3 3 0 0 1 1.8-1.2c.27-.1.56-.17.85-.35a6.82 6.82 0 0 0 3.76-1.85 6.78 6.78 0 0 0 1.23-2.33" />
-        <path d="M2.67 17.33A6.78 6.78 0 0 1 3.9 15a6.82 6.82 0 0 1 3.76-1.85c.29-.04.58-.15.85-.35a3 3 0 0 0 1.2-1.8 3 3 0 0 0-.34-2.16 3 3 0 0 0-1.8-1.2c-.27-.1-.56-.17-.85-.35A6.82 6.82 0 0 1 3.9 5.44a6.78 6.78 0 0 1-1.23-2.33" />
-      </svg>
-    </View>
   );
 }
 
@@ -213,6 +344,51 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.white,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  backButton: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: COLORS.neutralDark,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+  },
+  stepDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.neutralLight,
+    marginHorizontal: 4,
+  },
+  activeStepDot: {
+    backgroundColor: COLORS.primary,
+  },
+  inviteBanner: {
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+  },
+  inviteBannerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+    textAlign: 'center',
+  },
   keyboardAvoid: {
     flex: 1,
   },
@@ -220,93 +396,67 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logoCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  appName: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.dark,
-  },
-  formContainer: {
-    flex: 1,
-  },
-  welcomeText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 24,
-    color: COLORS.dark,
-    marginBottom: 8,
-  },
-  subtitleText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.gray600,
-    marginBottom: 24,
-  },
   errorContainer: {
-    backgroundColor: '#FFEBEE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.errorLight,
     padding: 12,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   errorText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.error,
+    marginLeft: 8,
   },
-  inputContainer: {
+  formContainer: {
+    marginBottom: 24,
+  },
+  stepTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 24,
+    color: COLORS.neutralDark,
     marginBottom: 24,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.neutralLight,
     borderRadius: 12,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     marginBottom: 16,
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 8,
   },
   input: {
     flex: 1,
     fontFamily: 'Inter-Regular',
     fontSize: 16,
-    color: COLORS.dark,
-    paddingVertical: 16,
+    color: COLORS.neutralDark,
+    padding: 12,
   },
-  eyeIcon: {
-    padding: 4,
+  passwordRequirements: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginTop: 8,
   },
-  registerButton: {
+  nextButton: {
+    flexDirection: 'row',
     backgroundColor: COLORS.primary,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 24,
   },
-  registerButtonText: {
+  nextButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
+    marginRight: 8,
   },
   loginContainer: {
     flexDirection: 'row',
@@ -316,12 +466,45 @@ const styles = StyleSheet.create({
   haveAccountText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: COLORS.gray700,
+    color: COLORS.neutralDark,
     marginRight: 4,
   },
   loginText: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
     color: COLORS.primary,
+  },
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  successTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 24,
+    color: COLORS.neutralDark,
+    marginTop: 24,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  successMessage: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  backToLoginButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+  },
+  backToLoginText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
   },
 });

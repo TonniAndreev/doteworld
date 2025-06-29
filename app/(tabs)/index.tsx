@@ -1,194 +1,224 @@
 import { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import MapView, { Marker, Polygon, PROVIDER_GOOGLE } from 'react-native-maps';
+import { MapPin, Play, Pause, Locate } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import { Play, Pause, MapPin, Award } from 'lucide-react-native';
-import { COLORS } from '@/constants/Colors';
-import { useAuth } from '@/contexts/AuthContext';
+import MapView, { Polygon, Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import { COLORS } from '@/constants/theme';
+import { useTerritory } from '@/contexts/TerritoryContext';
+import { usePaws } from '@/contexts/PawsContext';
+import { useFriends } from '@/hooks/useFriends';
+import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
+import PawsModal from '@/components/home/PawsModal';
+import DogMarker from '@/components/map/DogMarker';
+import { calculateDistance } from '@/utils/locationUtils';
+import { USER_TERRITORY_COLOR, getColorWithOpacity } from '@/utils/mapColors';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isWalking, setIsWalking] = useState(false);
-  const [walkPoints, setWalkPoints] = useState<any[]>([]);
-  const [territory, setTerritory] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalDistance: 0,
-    totalTerritory: 0,
-    currentWalkDistance: 0,
-  });
-
+  const [walkDistance, setWalkDistance] = useState(0);
+  const [isLocating, setIsLocating] = useState(false);
+  const [showPawsModal, setShowPawsModal] = useState(false);
+  
   const mapRef = useRef<MapView>(null);
-  const { user, profile } = useAuth();
+  const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const lastLocationRef = useRef<Location.LocationObject | null>(null);
+  
+  const { 
+    territory,
+    territorySize,
+    currentWalkPoints,
+    currentPolygon,
+    currentWalkDistance,
+    startWalk,
+    addWalkPoint,
+    endWalk,
+  } = useTerritory();
+  
+  const { canStartConquest, startConquest, isSubscribed } = usePaws();
+  const { friends, isLoading: isFriendsLoading } = useFriends();
 
+  // Initial location setup
   useEffect(() => {
-    (async () => {
-      setIsLoading(true);
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setErrorMsg('Permission to access location was denied');
-        setIsLoading(false);
+    const setupInitialLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Permission to access location was denied');
+          return;
+        }
+
+        const initialLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        setLocation(initialLocation);
+        lastLocationRef.current = initialLocation;
+      } catch (error) {
+        console.error('Error getting initial location:', error);
+        setErrorMsg('Failed to get your location');
+      }
+    };
+
+    setupInitialLocation();
+  }, []);
+
+  // Location tracking during walking
+  useEffect(() => {
+    const startLocationTracking = async () => {
+      if (!isWalking) {
+        // Stop tracking when not walking
+        if (locationSubscriptionRef.current) {
+          locationSubscriptionRef.current.remove();
+          locationSubscriptionRef.current = null;
+        }
         return;
       }
 
-      let location = await Location.getCurrentPositionAsync({});
-      setLocation(location);
-      setIsLoading(false);
+      try {
+        console.log('Starting location tracking for conquest...');
+        
+        // Start location subscription for walking
+        locationSubscriptionRef.current = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            distanceInterval: 5, // Update every 5 meters
+            timeInterval: 3000, // Update every 3 seconds minimum
+          },
+          (newLocation) => {
+            console.log('New location received:', newLocation.coords.latitude, newLocation.coords.longitude);
+            setLocation(newLocation);
 
-      // Load user's territory from database
-      if (user) {
-        // This would be replaced with actual database call
-        const mockTerritory = [
-          [
-            { latitude: location.coords.latitude + 0.001, longitude: location.coords.longitude + 0.001 },
-            { latitude: location.coords.latitude + 0.001, longitude: location.coords.longitude - 0.001 },
-            { latitude: location.coords.latitude - 0.001, longitude: location.coords.longitude - 0.001 },
-            { latitude: location.coords.latitude - 0.001, longitude: location.coords.longitude + 0.001 },
-          ]
-        ];
-        setTerritory(mockTerritory);
-        setStats({
-          totalDistance: 5.2, // km
-          totalTerritory: 12500, // m²
-          currentWalkDistance: 0,
-        });
+            if (lastLocationRef.current) {
+              const distance = calculateDistance(
+                lastLocationRef.current.coords.latitude,
+                lastLocationRef.current.coords.longitude,
+                newLocation.coords.latitude,
+                newLocation.coords.longitude
+              );
+
+              console.log('Distance moved:', distance * 1000, 'meters');
+
+              // Only add point if we've moved at least 5 meters to avoid duplicate points
+              if (distance >= 0.005) { // 5 meters in km
+                console.log('Adding new walk point');
+                setWalkDistance(prev => prev + distance);
+                addWalkPoint({
+                  latitude: newLocation.coords.latitude,
+                  longitude: newLocation.coords.longitude
+                });
+                lastLocationRef.current = newLocation;
+              }
+            } else {
+              // First point during walk
+              console.log('Adding first walk point');
+              addWalkPoint({
+                latitude: newLocation.coords.latitude,
+                longitude: newLocation.coords.longitude
+              });
+              lastLocationRef.current = newLocation;
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error setting up location tracking:', error);
+        setErrorMsg('Failed to start location tracking');
       }
-    })();
-  }, [user]);
+    };
 
-  useEffect(() => {
-    if (isWalking) {
-      const interval = setInterval(async () => {
-        try {
-          const newLocation = await Location.getCurrentPositionAsync({});
-          setLocation(newLocation);
-          
-          // Add point to walk
-          const newPoint = {
-            latitude: newLocation.coords.latitude,
-            longitude: newLocation.coords.longitude,
-            timestamp: new Date().toISOString(),
-          };
-          
-          setWalkPoints(prev => [...prev, newPoint]);
-          
-          // Calculate distance
-          if (walkPoints.length > 0) {
-            const lastPoint = walkPoints[walkPoints.length - 1];
-            const distance = calculateDistance(
-              lastPoint.latitude,
-              lastPoint.longitude,
-              newPoint.latitude,
-              newPoint.longitude
-            );
-            
-            setStats(prev => ({
-              ...prev,
-              currentWalkDistance: prev.currentWalkDistance + distance,
-            }));
-          }
-        } catch (error) {
-          console.error('Error updating location:', error);
-        }
-      }, 5000); // Update every 5 seconds
+    startLocationTracking();
+
+    // Cleanup function
+    return () => {
+      if (locationSubscriptionRef.current) {
+        locationSubscriptionRef.current.remove();
+        locationSubscriptionRef.current = null;
+      }
+    };
+  }, [isWalking, addWalkPoint]);
+  
+  const toggleWalking = async () => {
+    if (!isWalking) {
+      // Check if user can start conquest
+      if (!canStartConquest) {
+        setShowPawsModal(true);
+        return;
+      }
+
+      // Attempt to start conquest (consumes paw if not subscribed)
+      const success = await startConquest();
+      if (!success) {
+        setShowPawsModal(true);
+        return;
+      }
+
+      console.log('Starting conquest...');
+      setWalkDistance(0);
+      setIsWalking(true);
+      startWalk();
       
-      return () => clearInterval(interval);
+      // Add initial point if we have a location
+      if (location) {
+        console.log('Adding initial walk point');
+        addWalkPoint({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude
+        });
+        lastLocationRef.current = location;
+      }
+    } else {
+      console.log('Ending conquest...');
+      setIsWalking(false);
+      
+      // Stop location tracking
+      if (locationSubscriptionRef.current) {
+        locationSubscriptionRef.current.remove();
+        locationSubscriptionRef.current = null;
+      }
+      
+      endWalk();
     }
-  }, [isWalking, walkPoints]);
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
-    const R = 6371; // Radius of the earth in km
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in km
-    return distance;
   };
 
-  const deg2rad = (deg: number) => {
-    return deg * (Math.PI / 180);
-  };
-
-  const startWalk = () => {
-    if (!location) {
-      Alert.alert('Error', 'Unable to get your location. Please try again.');
-      return;
+  const handleLocateMe = async () => {
+    if (!mapRef.current || !location) return;
+    
+    setIsLocating(true);
+    try {
+      mapRef.current.animateToRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.005,
+        longitudeDelta: 0.005,
+      }, 1000);
+    } catch (error) {
+      console.error('Error animating to location:', error);
+    } finally {
+      setIsLocating(false);
     }
-    
-    setIsWalking(true);
-    setWalkPoints([{
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      timestamp: new Date().toISOString(),
-    }]);
-    setStats(prev => ({
-      ...prev,
-      currentWalkDistance: 0,
-    }));
   };
 
-  const endWalk = () => {
-    setIsWalking(false);
-    
-    if (walkPoints.length < 3) {
-      Alert.alert('Walk too short', 'Your walk was too short to claim territory. Keep walking!');
-      setWalkPoints([]);
-      return;
-    }
-    
-    // Calculate territory gained
-    // In a real app, this would use a proper algorithm to calculate the polygon area
-    const territoryGained = Math.floor(stats.currentWalkDistance * 1000 * 2.5); // Simple formula: distance * 2.5
-    
-    Alert.alert(
-      'Walk Completed',
-      `Distance: ${stats.currentWalkDistance.toFixed(2)} km\nTerritory gained: ${territoryGained} m²`,
-      [
-        { text: 'OK', onPress: () => {
-          // Update stats
-          setStats(prev => ({
-            totalDistance: prev.totalDistance + prev.currentWalkDistance,
-            totalTerritory: prev.totalTerritory + territoryGained,
-            currentWalkDistance: 0,
-          }));
-          
-          // Create a new territory polygon from walk points
-          // In a real app, this would use a proper algorithm to create a polygon
-          if (walkPoints.length >= 3) {
-            setTerritory(prev => [...prev, walkPoints]);
-          }
-          
-          setWalkPoints([]);
-        }}
-      ]
-    );
+  const getButtonText = () => {
+    if (isWalking) return 'Finish Conquest';
+    if (!canStartConquest && !isSubscribed) return 'Need Paws to Conquer';
+    return 'Conquer Territory';
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Loading map...</Text>
-      </View>
-    );
-  }
+  const getButtonStyle = () => {
+    if (isWalking) return [styles.startWalkButton, styles.activeButton];
+    if (!canStartConquest && !isSubscribed) return [styles.startWalkButton, styles.disabledButton];
+    return styles.startWalkButton;
+  };
 
-  if (errorMsg) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>{errorMsg}</Text>
-      </View>
-    );
-  }
+  const handleDogMarkerPress = (dogId: string, dogName: string) => {
+    console.log(`Dog marker pressed: ${dogName} (${dogId})`);
+    // You could navigate to dog profile or show more info
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <GestureHandlerRootView style={styles.container}>
       {location ? (
         <View style={styles.mapContainer}>
           <MapView
@@ -202,243 +232,273 @@ export default function MapScreen() {
               longitudeDelta: 0.005,
             }}
             showsUserLocation
-            followsUserLocation
+            followsUserLocation={!isWalking} // Don't follow when walking to see the path
+            zoomEnabled={true}
+            rotateEnabled={true}
+            scrollEnabled={true}
           >
-            {/* User's current walk */}
-            {walkPoints.length > 0 && (
-              <Polygon
-                coordinates={walkPoints}
-                fillColor="rgba(255, 107, 53, 0.2)"
-                strokeColor={COLORS.primary}
-                strokeWidth={2}
-              />
-            )}
-            
-            {/* User's territory */}
+            {/* Render user's conquered territories */}
             {territory.map((polygon, index) => (
               <Polygon
                 key={`territory-${index}`}
                 coordinates={polygon}
-                fillColor="rgba(255, 107, 53, 0.4)"
-                strokeColor={COLORS.primary}
+                fillColor={getColorWithOpacity(USER_TERRITORY_COLOR, 0.3)}
+                strokeColor={USER_TERRITORY_COLOR}
                 strokeWidth={2}
               />
             ))}
             
-            {/* Other users' territories (mock data) */}
-            <Polygon
-              coordinates={[
-                { latitude: location.coords.latitude + 0.003, longitude: location.coords.longitude + 0.003 },
-                { latitude: location.coords.latitude + 0.003, longitude: location.coords.longitude + 0.001 },
-                { latitude: location.coords.latitude + 0.001, longitude: location.coords.longitude + 0.001 },
-                { latitude: location.coords.latitude + 0.001, longitude: location.coords.longitude + 0.003 },
-              ]}
-              fillColor="rgba(78, 205, 196, 0.4)"
-              strokeColor={COLORS.secondary}
-              strokeWidth={2}
-            />
+            {/* Render friends' territories */}
+            {!isFriendsLoading && friends.map(friend => 
+              friend.territoryPolygons?.map(territory => (
+                <Polygon
+                  key={`friend-territory-${friend.id}-${territory.id}`}
+                  coordinates={territory.coordinates}
+                  fillColor={getColorWithOpacity(territory.color, 0.3)}
+                  strokeColor={territory.color}
+                  strokeWidth={2}
+                />
+              ))
+            )}
             
-            {/* Other dog markers */}
-            <Marker
-              coordinate={{
-                latitude: location.coords.latitude + 0.002,
-                longitude: location.coords.longitude + 0.002,
-              }}
-              title="Max"
-              description="Golden Retriever"
-            >
-              <View style={styles.dogMarker}>
-                <MapPin size={24} color={COLORS.secondary} />
-              </View>
-            </Marker>
+            {/* Render current walk points as orange circles */}
+            {currentWalkPoints.map((point, index) => (
+              <Circle
+                key={`walk-point-${index}`}
+                center={point}
+                radius={3} // 3 meter radius
+                fillColor={COLORS.primary}
+                strokeColor={COLORS.white}
+                strokeWidth={2}
+              />
+            ))}
+            
+            {/* Render current walk path as dashed line */}
+            {currentWalkPoints.length > 1 && (
+              <Polyline
+                coordinates={currentWalkPoints}
+                strokeColor={COLORS.primary}
+                strokeWidth={3}
+                lineDashPattern={[10, 5]} // Dashed line pattern
+              />
+            )}
+            
+            {/* Render current polygon preview with dashed border and more transparent fill */}
+            {currentPolygon && (
+              <Polygon
+                coordinates={currentPolygon}
+                fillColor={getColorWithOpacity(USER_TERRITORY_COLOR, 0.15)}
+                strokeColor={USER_TERRITORY_COLOR}
+                strokeWidth={2}
+                lineDashPattern={[5, 5]}
+              />
+            )}
+            
+            {/* Render dog markers at the center of each friend's territory */}
+            {!isFriendsLoading && friends.map(friend => 
+              friend.territoryPolygons?.map(territory => 
+                territory.centroid && (
+                  <DogMarker
+                    key={`dog-marker-${friend.id}-${territory.dogId}-${territory.id}`}
+                    coordinate={territory.centroid}
+                    dogId={territory.dogId}
+                    dogName={territory.dogName}
+                    dogPhotoURL={territory.dogPhotoURL}
+                    dogBreed={territory.dogBreed}
+                    color={territory.color}
+                    onPress={() => handleDogMarkerPress(territory.dogId, territory.dogName)}
+                  />
+                )
+              )
+            )}
           </MapView>
-          
-          {/* Stats overlay */}
-          <View style={styles.statsOverlay}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{stats.totalTerritory} m²</Text>
-              <Text style={styles.statLabel}>Territory</Text>
+
+          <SafeAreaView style={styles.overlay} pointerEvents="box-none">
+            <View style={styles.topBar}>
+              <FloatingPawsBalance />
             </View>
             
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{stats.totalDistance.toFixed(1)} km</Text>
-              <Text style={styles.statLabel}>Distance</Text>
-            </View>
-            
-            {isWalking && (
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{stats.currentWalkDistance.toFixed(2)} km</Text>
-                <Text style={styles.statLabel}>Current Walk</Text>
+            <View style={styles.controlsContainer}>
+              <View style={styles.territorySizeContainer}>
+                <Text style={styles.territorySizeText}>
+                  {(territorySize * 1000000).toFixed(0)} m² territory conquered
+                </Text>
               </View>
-            )}
-          </View>
-          
-          {/* Walk controls */}
-          <View style={styles.walkControls}>
-            {isWalking ? (
-              <TouchableOpacity style={[styles.walkButton, styles.stopButton]} onPress={endWalk}>
-                <Pause size={24} color={COLORS.white} />
-                <Text style={styles.walkButtonText}>End Walk</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity style={styles.walkButton} onPress={startWalk}>
-                <Play size={24} color={COLORS.white} />
-                <Text style={styles.walkButtonText}>Start Walk</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          {/* Achievement notification (mock) */}
-          {!isWalking && (
-            <View style={styles.achievementContainer}>
-              <View style={styles.achievementCard}>
-                <Award size={24} color={COLORS.accent} />
-                <View style={styles.achievementTextContainer}>
-                  <Text style={styles.achievementTitle}>New Achievement!</Text>
-                  <Text style={styles.achievementDescription}>Early Bird: Complete a walk before 8 AM</Text>
+
+              {isWalking && (
+                <View style={styles.walkStatsContainer}>
+                  <Text style={styles.walkStatsText}>
+                    {(currentWalkDistance * 1000).toFixed(0)}m walked • {currentWalkPoints.length} points
+                  </Text>
                 </View>
+              )}
+
+              <View style={styles.bottomControlsRow}>
+                <TouchableOpacity 
+                  style={getButtonStyle()}
+                  onPress={toggleWalking}
+                  disabled={!isWalking && !canStartConquest && !isSubscribed}
+                >
+                  {isWalking ? (
+                    <Pause size={24} color={COLORS.white} />
+                  ) : (
+                    <Play size={24} color={COLORS.white} />
+                  )}
+                  <Text style={styles.startWalkText}>
+                    {getButtonText()}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.locateButton}
+                  onPress={handleLocateMe}
+                  disabled={isLocating}
+                >
+                  {isLocating ? (
+                    <ActivityIndicator color={COLORS.primary} />
+                  ) : (
+                    <Locate size={24} color={COLORS.primary} />
+                  )}
+                </TouchableOpacity>
               </View>
             </View>
-          )}
+          </SafeAreaView>
+
+          <PawsModal 
+            visible={showPawsModal}
+            onClose={() => setShowPawsModal(false)}
+          />
         </View>
       ) : (
-        <View style={styles.container}>
-          <Text style={styles.loadingText}>Getting your location...</Text>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>
+            {errorMsg || "Finding your location..."}
+          </Text>
         </View>
       )}
-    </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.white,
-  },
-  loadingText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: COLORS.gray700,
-    marginTop: 10,
-  },
-  errorText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: COLORS.error,
-    textAlign: 'center',
-    padding: 20,
   },
   mapContainer: {
     flex: 1,
-    width: '100%',
-    position: 'relative',
   },
   map: {
-    width: '100%',
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
   },
-  statsOverlay: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  overlay: {
+    flex: 1,
   },
-  statCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 100,
+  },
+  loadingText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+  },
+  walkPoint: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: COLORS.primary,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
+  controlsContainer: {
+    position: 'absolute',
+    bottom: 32,
+    left: 16,
+    right: 16,
+    alignItems: 'center',
+  },
+  territorySizeContainer: {
+    backgroundColor: COLORS.white,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 16,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
-  statValue: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.dark,
-    marginBottom: 4,
+  territorySizeText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
   },
-  statLabel: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: COLORS.gray600,
-  },
-  walkControls: {
-    position: 'absolute',
-    bottom: 30,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-  },
-  walkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 30,
+  walkStatsContainer: {
+    backgroundColor: COLORS.white,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginBottom: 16,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 3,
   },
-  stopButton: {
+  walkStatsText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.secondary,
+  },
+  bottomControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  startWalkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    flex: 1,
+    marginRight: 12,
+  },
+  activeButton: {
     backgroundColor: COLORS.error,
   },
-  walkButtonText: {
+  disabledButton: {
+    backgroundColor: COLORS.neutralMedium,
+  },
+  startWalkText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
     marginLeft: 8,
   },
-  dogMarker: {
+  locateButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: 8,
-    borderWidth: 2,
-    borderColor: COLORS.secondary,
-  },
-  achievementContainer: {
-    position: 'absolute',
-    top: 100,
-    left: 0,
-    right: 0,
+    justifyContent: 'center',
     alignItems: 'center',
-  },
-  achievementCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-    maxWidth: '90%',
-  },
-  achievementTextContainer: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  achievementTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.dark,
-    marginBottom: 4,
-  },
-  achievementDescription: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.gray700,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });

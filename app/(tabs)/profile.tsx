@@ -1,144 +1,255 @@
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  Alert,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MapPin, Route, Award, Settings, LogOut, Pencil } from 'lucide-react-native';
 import { router } from 'expo-router';
-import { COLORS } from '@/constants/Colors';
+import { Award, Users, Map, Route, LogOut, CreditCard as Edit, Pencil } from 'lucide-react-native';
+import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTerritory } from '@/contexts/TerritoryContext';
+import StatsCard from '@/components/profile/StatsCard';
+import BadgesRow from '@/components/profile/BadgesRow';
+import NotificationsButton from '@/components/common/NotificationsButton';
+import DogOwnershipInvites from '@/components/dog/DogOwnershipInvites';
+import UserAvatar from '@/components/common/UserAvatar';
 
 export default function ProfileScreen() {
-  const { signOut } = useAuth();
+  const [showInvites, setShowInvites] = useState(false);
+  const [thisMonthDistance, setThisMonthDistance] = useState(0);
+  
+  const { user, logout } = useAuth();
+  const { territorySize, totalDistance } = useTerritory();
 
-  const handleLogout = async () => {
-    await signOut();
-    router.replace('/(auth)/login');
+  useEffect(() => {
+    // Calculate this month's distance (for now, we'll use 30% of total as a placeholder)
+    // In a real implementation, you would filter walk data by current month
+    if (user) {
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      
+      // Simulate monthly distance (30% of total)
+      // In a real app, you would query the database for walks in the current month
+      setThisMonthDistance(totalDistance * 0.3);
+    }
+  }, [user, totalDistance]);
+
+  if (!user) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/(auth)/login');
+          },
+        },
+      ]
+    );
   };
+
+  const handleEditProfile = () => {
+    router.push('/edit-profile');
+  };
+
+  const firstDog = user.dogs?.[0];
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Profile</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>Profile</Text>
+        
+        <View style={styles.headerButtons}>
           <TouchableOpacity 
-            style={styles.settingsButton}
-            onPress={() => router.push('/settings')}
+            style={styles.editButton}
+            onPress={handleEditProfile}
           >
-            <Settings size={24} color={COLORS.dark} />
+            <Pencil size={20} color={COLORS.primary} />
           </TouchableOpacity>
+          <NotificationsButton />
         </View>
+      </View>
 
+      <ScrollView 
+        style={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.profileSection}>
-          <View style={styles.profileHeader}>
-            <Image 
-              source={{ uri: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=300' }} 
-              style={styles.profileImage} 
+          <View style={styles.profileImageContainer}>
+            <UserAvatar
+              userId={user.id}
+              photoURL={user.avatar_url}
+              userName={user.displayName || 'User'}
+              size={100}
             />
-            <TouchableOpacity 
-              style={styles.editProfileButton}
-              onPress={() => router.push('/profile/edit')}
-            >
-              <Pencil size={16} color={COLORS.white} />
-            </TouchableOpacity>
           </View>
           
-          <Text style={styles.profileName}>Michael Chen</Text>
-          <Text style={styles.profileUsername}>@michaelchen</Text>
+          <Text style={styles.userName}>{user.displayName || 'User'}</Text>
           
-          <View style={styles.profileStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>18,750 m²</Text>
-              <Text style={styles.statLabel}>Territory</Text>
-            </View>
-            
-            <View style={styles.statDivider} />
-            
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>36.8 km</Text>
-              <Text style={styles.statLabel}>Distance</Text>
-            </View>
-            
-            <View style={styles.statDivider} />
-            
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>24</Text>
-              <Text style={styles.statLabel}>Walks</Text>
-            </View>
+          <View style={styles.dogInfoContainer}>
+            <Text style={styles.dogName}>{firstDog?.name || 'No dog'}</Text>
+            <Text style={styles.dogBreed}>{firstDog?.breed || ''}</Text>
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={styles.statsSection}>
+          <View style={styles.statsRow}>
+            <StatsCard
+              icon={<Map size={24} color={COLORS.primary} />}
+              value={`${(territorySize * 1000000).toFixed(0)} m²`}
+              label="Territory"
+              emphasis={true}
+            />
+            <StatsCard
+              icon={<Award size={24} color={COLORS.primary} />}
+              value={(user.achievementCount || 0).toString()}
+              label="Badges"
+            />
+          </View>
+          
+          <View style={styles.statsRow}>
+            <StatsCard
+              icon={<Route size={24} color={COLORS.primary} />}
+              value={`${(thisMonthDistance * 1000).toFixed(0)} m`}
+              label="This Month"
+            />
+            <StatsCard
+              icon={<Route size={24} color={COLORS.primary} />}
+              value={`${(totalDistance * 1000).toFixed(0)} m`}
+              label="Total Distance"
+            />
+          </View>
+        </View>
+
+        <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>My Dogs</Text>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/dogs')}>
-              <Text style={styles.seeAllText}>See All</Text>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push('/(tabs)/dog-profile')}
+            >
+              <Text style={styles.seeAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dogsScroll}>
-            <TouchableOpacity style={styles.dogCard} onPress={() => router.push('/dog/1')}>
-              <Image 
-                source={{ uri: 'https://images.pexels.com/photos/2253275/pexels-photo-2253275.jpeg?auto=compress&cs=tinysrgb&w=300' }} 
-                style={styles.dogImage} 
-              />
-              <Text style={styles.dogName}>Baxter</Text>
-              <Text style={styles.dogBreed}>Golden Retriever</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.dogCard} onPress={() => router.push('/dog/2')}>
-              <Image 
-                source={{ uri: 'https://images.pexels.com/photos/551628/pexels-photo-551628.jpeg?auto=compress&cs=tinysrgb&w=300' }} 
-                style={styles.dogImage} 
-              />
-              <Text style={styles.dogName}>Luna</Text>
-              <Text style={styles.dogBreed}>Border Collie</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.addDogCard} onPress={() => router.push('/dog/add')}>
-              <View style={styles.addDogButton}>
-                <Plus size={24} color={COLORS.primary} />
-              </View>
-              <Text style={styles.addDogText}>Add Dog</Text>
-            </TouchableOpacity>
-          </ScrollView>
+
+          <View style={styles.dogPreviewContainer}>
+            {firstDog ? (
+              <TouchableOpacity 
+                style={styles.dogPreviewCard}
+                onPress={() => router.push('/(tabs)/dog-profile')}
+              >
+                <UserAvatar
+                  userId={firstDog.id}
+                  photoURL={firstDog.photo_url}
+                  userName={firstDog.name}
+                  size={60}
+                  isDogAvatar={true}
+                  dogBreed={firstDog.breed}
+                />
+                <View style={styles.dogPreviewInfo}>
+                  <Text style={styles.dogPreviewName}>{firstDog.name}</Text>
+                  <Text style={styles.dogPreviewBreed}>{firstDog.breed}</Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity 
+                style={styles.addDogCard}
+                onPress={() => router.push('/(auth)/dog-profile')}
+              >
+                <Text style={styles.addDogText}>Add your first dog</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Achievements</Text>
-            <TouchableOpacity onPress={() => router.push('/achievements')}>
+            <Text style={styles.sectionTitle}>Recent Badges</Text>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push('/(tabs)/achievements')}
+            >
               <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
           </View>
-          
-          <View style={styles.achievementsContainer}>
-            <TouchableOpacity style={styles.achievementCard} onPress={() => router.push('/achievements')}>
-              <View style={styles.achievementIconContainer}>
-                <Award size={24} color={COLORS.accent} />
-              </View>
-              <Text style={styles.achievementName}>Early Bird</Text>
-              <Text style={styles.achievementDesc}>Complete a walk before 8 AM</Text>
+
+          <BadgesRow />
+        </View>
+
+        {/* Dog Ownership Invites Section */}
+        <View style={styles.sectionContainer}>
+          <DogOwnershipInvites 
+            onInviteHandled={() => {
+              // Refresh user data when invites are handled
+              // This will update the dogs list
+            }}
+          />
+        </View>
+
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Friends</Text>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => router.push('/(tabs)/friends')}
+            >
+              <Text style={styles.seeAllText}>See All</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.achievementCard} onPress={() => router.push('/achievements')}>
-              <View style={styles.achievementIconContainer}>
-                <Route size={24} color={COLORS.secondary} />
+          </View>
+
+          <View style={styles.friendsPreviewContainer}>
+            {user.friends && user.friends.length > 0 ? (
+              <View style={styles.friendsList}>
+                {user.friends.slice(0, 3).map((friend: any) => (
+                  <View key={friend.id} style={styles.friendItem}>
+                    <UserAvatar
+                      userId={friend.id}
+                      photoURL={friend.photoURL}
+                      userName={friend.name}
+                      size={60}
+                    />
+                    <Text style={styles.friendName} numberOfLines={1}>
+                      {friend.name || 'Friend'}
+                    </Text>
+                  </View>
+                ))}
               </View>
-              <Text style={styles.achievementName}>Marathon</Text>
-              <Text style={styles.achievementDesc}>Walk 10 km in a single session</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.achievementCard} onPress={() => router.push('/achievements')}>
-              <View style={styles.achievementIconContainer}>
-                <MapPin size={24} color={COLORS.primary} />
-              </View>
-              <Text style={styles.achievementName}>Conqueror</Text>
-              <Text style={styles.achievementDesc}>Claim 10,000 m² of territory</Text>
-            </TouchableOpacity>
+            ) : (
+              <Text style={styles.noFriendsText}>Add friends to see them here</Text>
+            )}
           </View>
         </View>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <TouchableOpacity 
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
           <LogOut size={20} color={COLORS.error} />
-          <Text style={styles.logoutText}>Log Out</Text>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -150,90 +261,80 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.white,
   },
-  scrollContent: {
-    padding: 20,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   title: {
     fontFamily: 'Inter-Bold',
     fontSize: 28,
-    color: COLORS.dark,
+    color: COLORS.neutralDark,
   },
-  settingsButton: {
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  editButton: {
     padding: 8,
+  },
+  scrollContainer: {
+    flex: 1,
   },
   profileSection: {
     alignItems: 'center',
-    marginBottom: 30,
+    paddingVertical: 24,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+    marginHorizontal: 16,
   },
-  profileHeader: {
-    position: 'relative',
+  profileImageContainer: {
     marginBottom: 16,
   },
-  profileImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
-  editProfileButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: COLORS.primary,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.white,
-  },
-  profileName: {
+  userName: {
     fontFamily: 'Inter-Bold',
-    fontSize: 22,
-    color: COLORS.dark,
+    fontSize: 24,
+    color: COLORS.neutralDark,
     marginBottom: 4,
   },
-  profileUsername: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.gray600,
-    marginBottom: 20,
+  dogInfoContainer: {
+    alignItems: 'center',
   },
-  profileStats: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.gray100,
-    borderRadius: 12,
+  dogName: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 18,
+    color: COLORS.primary,
+  },
+  dogBreed: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+  },
+  statsSection: {
     padding: 16,
-    width: '100%',
   },
-  statItem: {
-    flex: 1,
-    alignItems: 'center',
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
   },
-  statValue: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.dark,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: COLORS.gray600,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: COLORS.gray300,
-    marginHorizontal: 8,
-  },
-  section: {
-    marginBottom: 30,
+  sectionContainer: {
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.neutralLight,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -244,105 +345,90 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
-    color: COLORS.dark,
+    color: COLORS.neutralDark,
+  },
+  seeAllButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   seeAllText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
-  dogsScroll: {
-    marginBottom: 10,
+  dogPreviewContainer: {
+    paddingVertical: 8,
   },
-  dogCard: {
-    width: 120,
-    marginRight: 16,
+  dogPreviewCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: COLORS.neutralExtraLight,
+    padding: 16,
+    borderRadius: 12,
   },
-  dogImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 8,
+  dogPreviewInfo: {
+    marginLeft: 16,
+    flex: 1,
   },
-  dogName: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: COLORS.dark,
-    marginBottom: 2,
+  dogPreviewName: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 18,
+    color: COLORS.neutralDark,
+    marginBottom: 4,
   },
-  dogBreed: {
+  dogPreviewBreed: {
     fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: COLORS.gray600,
+    fontSize: 14,
+    color: COLORS.neutralMedium,
   },
   addDogCard: {
-    width: 120,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addDogButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
     backgroundColor: COLORS.primaryLight,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderStyle: 'dashed',
   },
   addDogText: {
     fontFamily: 'Inter-Medium',
     fontSize: 16,
     color: COLORS.primary,
   },
-  achievementsContainer: {
+  friendsPreviewContainer: {
+    paddingVertical: 8,
+  },
+  friendsList: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
   },
-  achievementCard: {
-    width: '31%',
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
+  friendItem: {
     alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    width: 80,
   },
-  achievementIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: COLORS.gray100,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  achievementName: {
+  friendName: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
-    color: COLORS.dark,
+    color: COLORS.neutralDark,
     textAlign: 'center',
-    marginBottom: 4,
+    marginTop: 8,
   },
-  achievementDesc: {
+  noFriendsText: {
     fontFamily: 'Inter-Regular',
-    fontSize: 10,
-    color: COLORS.gray600,
+    fontSize: 14,
+    color: COLORS.neutralMedium,
     textAlign: 'center',
+    paddingVertical: 16,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.errorLight,
-    paddingVertical: 12,
+    padding: 16,
+    margin: 16,
+    borderWidth: 1,
+    borderColor: COLORS.error,
     borderRadius: 12,
-    marginTop: 10,
   },
   logoutText: {
     fontFamily: 'Inter-Medium',

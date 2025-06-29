@@ -1,154 +1,343 @@
-import { useState } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+  Linking,
+  Dimensions,
+  Alert,
+} from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
+import { Mail, Lock, Facebook, CircleAlert as AlertCircle, Eye, EyeOff } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS } from '@/constants/Colors';
+import { BlurView } from 'expo-blur';
+import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDogOwnership } from '@/hooks/useDogOwnership';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [facebookLoading, setFacebookLoading] = useState(false);
   const [error, setError] = useState('');
   
-  const { signIn } = useAuth();
+  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
+  const { acceptInvite } = useDogOwnership();
+  const params = useLocalSearchParams();
+  
+  // Check if this is an invite flow
+  const isInviteFlow = params.inviteToken && params.dogName && params.role;
 
-  const handleLogin = async () => {
+  useEffect(() => {
+    if (isInviteFlow) {
+      console.log('Login with invite context:', params);
+    }
+  }, [isInviteFlow, params]);
+
+  const handlePostLoginInvite = async () => {
+    if (!isInviteFlow) return;
+
+    try {
+      // Get stored invite data
+      const storedInvite = localStorage.getItem('pendingDogInvite');
+      if (storedInvite) {
+        const inviteData = JSON.parse(storedInvite);
+        
+        // Accept the invite
+        const result = await acceptInvite(inviteData.inviteId || 'mock-invite-id');
+        
+        if (result.success) {
+          Alert.alert(
+            'Welcome!', 
+            `You're now a ${inviteData.role} of ${inviteData.dogName}!`,
+            [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+          );
+        } else {
+          Alert.alert('Error', 'Failed to accept invitation. You can try again from your profile.');
+          router.replace('/(tabs)');
+        }
+        
+        // Clean up stored invite
+        localStorage.removeItem('pendingDogInvite');
+      }
+    } catch (error) {
+      console.error('Error handling post-login invite:', error);
+      router.replace('/(tabs)');
+    }
+  };
+  
+  const handleEmailLogin = async () => {
+    console.log('🔵 Email login button pressed');
+    
     if (!email || !password) {
       setError('Please enter both email and password');
       return;
     }
-
+    
     setIsLoading(true);
     setError('');
-
+    
     try {
-      const { error } = await signIn(email, password);
+      console.log('🔵 Attempting email login for:', email);
+      await login(email, password);
+      console.log('🔵 Email login successful, navigating to tabs');
       
-      if (error) {
-        setError(error.message);
+      if (isInviteFlow) {
+        await handlePostLoginInvite();
       } else {
         router.replace('/(tabs)');
       }
-    } catch (err: any) {
-      setError(err.message || 'An error occurred during login');
+    } catch (error: any) {
+      console.error('🔴 Email login error:', error);
+      setError(error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const handleGoogleLogin = async () => {
+    console.log('🟢 Google login button pressed');
+    setGoogleLoading(true);
+    setError('');
+    
+    try {
+      console.log('🟢 Calling loginWithGoogle function');
+      await loginWithGoogle();
+      console.log('🟢 Google login completed successfully');
+      
+      if (isInviteFlow) {
+        await handlePostLoginInvite();
+      }
+      // The auth state change listener will handle navigation after successful login
+    } catch (error: any) {
+      console.error('🔴 Google login error:', error);
+      setError(error.message || 'Google login failed');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+  
+  const handleFacebookLogin = async () => {
+    console.log('🔵 Facebook login button pressed');
+    setFacebookLoading(true);
+    setError('');
+    
+    try {
+      console.log('🔵 Calling loginWithFacebook function');
+      await loginWithFacebook();
+      console.log('🔵 Facebook login completed successfully');
+      
+      if (isInviteFlow) {
+        await handlePostLoginInvite();
+      }
+      // The auth state change listener will handle navigation after successful login
+    } catch (error: any) {
+      console.error('🔴 Facebook login error:', error);
+      setError(error.message || 'Facebook login failed');
+    } finally {
+      setFacebookLoading(false);
+    }
+  };
+
+  const handleBoltNewPress = () => {
+    Linking.openURL('https://bolt.new');
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardAvoid}
-      >
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <View style={styles.topSection}>
-            <Image
-              source={{ uri: 'https://images.pexels.com/photos/1108099/pexels-photo-1108099.jpeg?auto=compress&cs=tinysrgb&w=300' }}
-              style={styles.backgroundImage}
-            />
-            <LinearGradient
-              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)']}
-              style={styles.gradient}
-            />
+    <View style={styles.container}>
+      {/* Background Map Image - Maintains aspect ratio, starts from top */}
+      <Image
+        source={require('@/assets/images/Map.jpg')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+        height="60%"
+      />
+      
+      {/* Overlapping Form Container with Blur and Gradient */}
+      <View style={styles.formOverlay}>
+        {/* Blur Effect */}
+        <BlurView intensity={4} style={StyleSheet.absoluteFillObject} />
+        
+        {/* Gradient Overlay */}
+        <LinearGradient
+          colors={['rgba(255, 255, 255, 0.5)', 'rgba(255, 255, 255, 0.8)', '#FFFFFF']}
+          locations={[0, 0.3, 0.6]}
+          style={StyleSheet.absoluteFillObject}
+        />
+        
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.keyboardAvoid}
+        >
+          <View style={styles.content}>
+            {/* Logo Section */}
             <View style={styles.logoContainer}>
-              <View style={styles.logoCircle}>
-                <Paw size={40} color={COLORS.primary} />
-              </View>
-              <Text style={styles.appName}>DogTerritory</Text>
-              <Text style={styles.tagline}>Walk. Conquer. Connect.</Text>
+              <Image
+                source={require('@/assets/images/Logo-full-vertical.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
-          </View>
 
-          <View style={styles.formContainer}>
-            <Text style={styles.welcomeText}>Welcome Back!</Text>
-            <Text style={styles.subtitleText}>Sign in to continue your adventure</Text>
-
+            {/* Invite Context Banner */}
+            {isInviteFlow && (
+              <View style={styles.inviteBanner}>
+                <Text style={styles.inviteBannerText}>
+                  Login to accept invitation for {params.dogName} as {params.role}
+                </Text>
+              </View>
+            )}
+            
+            {/* Error Display */}
             {error ? (
               <View style={styles.errorContainer}>
+                <AlertCircle size={20} color={COLORS.error} />
                 <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
-
+            
+            {/* Input Fields */}
             <View style={styles.inputContainer}>
               <View style={styles.inputWrapper}>
-                <Mail size={20} color={COLORS.gray600} style={styles.inputIcon} />
+                <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Email"
                   value={email}
                   onChangeText={setEmail}
-                  keyboardType="email-address"
                   autoCapitalize="none"
-                  placeholderTextColor={COLORS.gray500}
+                  keyboardType="email-address"
+                  placeholderTextColor={COLORS.neutralMedium}
                 />
               </View>
-
+              
               <View style={styles.inputWrapper}>
-                <Lock size={20} color={COLORS.gray600} style={styles.inputIcon} />
+                <Lock size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
-                  placeholderTextColor={COLORS.gray500}
+                  placeholderTextColor={COLORS.neutralMedium}
                 />
                 <TouchableOpacity
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff size={20} color={COLORS.gray600} />
+                    <EyeOff size={20} color={COLORS.neutralMedium} />
                   ) : (
-                    <Eye size={20} color={COLORS.gray600} />
+                    <Eye size={20} color={COLORS.neutralMedium} />
                   )}
                 </TouchableOpacity>
               </View>
-
+              
               <TouchableOpacity style={styles.forgotPassword}>
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity
+            
+            {/* Login Button */}
+            <TouchableOpacity 
               style={styles.loginButton}
-              onPress={handleLogin}
+              onPress={handleEmailLogin}
               disabled={isLoading}
             >
               {isLoading ? (
                 <ActivityIndicator color={COLORS.white} />
               ) : (
-                <Text style={styles.loginButtonText}>Sign In</Text>
+                <Text style={styles.loginButtonText}>
+                  {isInviteFlow ? 'Login & Accept Invite' : 'Login'}
+                </Text>
               )}
             </TouchableOpacity>
-
-            <View style={styles.registerContainer}>
-              <Text style={styles.noAccountText}>Don't have an account?</Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
-                <Text style={styles.registerText}>Sign Up</Text>
+            
+            {/* OR Divider */}
+            <View style={styles.orContainer}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>OR</Text>
+              <View style={styles.orLine} />
+            </View>
+            
+            {/* Social Login Buttons */}
+            <View style={styles.socialButtonsContainer}>
+              <TouchableOpacity 
+                style={[styles.socialButton, styles.googleButton]}
+                onPress={handleGoogleLogin}
+                disabled={googleLoading || isLoading || facebookLoading}
+              >
+                {googleLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.neutralDark} />
+                ) : (
+                  <>
+                    <Image
+                      source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }}
+                      style={styles.googleIcon}
+                    />
+                    <Text style={styles.socialButtonText}>Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.socialButton, styles.facebookButton]}
+                onPress={handleFacebookLogin}
+                disabled={facebookLoading || isLoading || googleLoading}
+              >
+                {facebookLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.white} />
+                ) : (
+                  <>
+                    <Facebook size={20} color={COLORS.white} />
+                    <Text style={[styles.socialButtonText, styles.facebookButtonText]}>Facebook</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
-}
+            
+            {/* Register Link */}
+            <View style={styles.registerContainer}>
+              <Text style={styles.noAccountText}>Don't have an account?</Text>
+              <TouchableOpacity onPress={() => {
+                if (isInviteFlow) {
+                  router.push({
+                    pathname: '/(auth)/register',
+                    params: params
+                  });
+                } else {
+                  router.push('/(auth)/register');
+                }
+              }}>
+                <Text style={styles.registerText}>Register</Text>
+              </TouchableOpacity>
+            </View>
 
-function Paw(props: { size: number; color: string }) {
-  return (
-    <View style={{ width: props.size, height: props.size }}>
-      <svg width={props.size} height={props.size} viewBox="0 0 24 24" fill="none" stroke={props.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12.83 13.38a3.1 3.1 0 0 0-1.66 0 3.11 3.11 0 0 0-2 2.83V21h5.66v-4.79a3.11 3.11 0 0 0-2-2.83Z" />
-        <path d="M21.33 17.33A6.78 6.78 0 0 0 20.1 15a6.82 6.82 0 0 0-3.76-1.85c-.29-.04-.58-.15-.85-.35a3 3 0 0 1-1.2-1.8 3 3 0 0 1 .34-2.16 3 3 0 0 1 1.8-1.2c.27-.1.56-.17.85-.35a6.82 6.82 0 0 0 3.76-1.85 6.78 6.78 0 0 0 1.23-2.33" />
-        <path d="M2.67 17.33A6.78 6.78 0 0 1 3.9 15a6.82 6.82 0 0 1 3.76-1.85c.29-.04.58-.15.85-.35a3 3 0 0 0 1.2-1.8 3 3 0 0 0-.34-2.16 3 3 0 0 0-1.8-1.2c-.27-.1-.56-.17-.85-.35A6.82 6.82 0 0 1 3.9 5.44a6.78 6.78 0 0 1-1.23-2.33" />
-      </svg>
+            {/* Bolt.new Attribution */}
+            <TouchableOpacity 
+              style={styles.boltNewContainer}
+              onPress={handleBoltNewPress}
+            >
+              <Image
+                source={require('@/assets/images/white_circle_360x360.png')}
+                style={styles.boltNewImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </View>
     </View>
   );
 }
@@ -158,112 +347,86 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.white,
   },
-  keyboardAvoid: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-  },
-  topSection: {
-    height: 300,
-    position: 'relative',
-  },
   backgroundImage: {
     position: 'absolute',
     top: 0,
     left: 0,
-    right: 0,
-    height: 300,
-    width: '100%',
+    width: screenWidth,
+    height: screenWidth * (3/4), // Assuming a 4:3 aspect ratio for the map image
   },
-  gradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 100,
+  formOverlay: {
+    flex: 1,
+    marginTop: screenHeight * 0.25, // Pushed down more to show more of the background
+    borderTopLeftRadius: 50,
+    borderTopRightRadius: 50,
+    overflow: 'hidden',
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'space-between',
   },
   logoContainer: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 4, // Further reduced from 8 to 4
   },
-  logoCircle: {
+  logoImage: {
     width: 80,
     height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 16,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 8,
   },
-  appName: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 28,
-    color: COLORS.white,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  tagline: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: COLORS.white,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  formContainer: {
-    padding: 24,
-  },
-  welcomeText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 24,
-    color: COLORS.dark,
+  inviteBanner: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: 12,
+    padding: 12,
     marginBottom: 8,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
   },
-  subtitleText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.gray600,
-    marginBottom: 24,
+  inviteBannerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+    textAlign: 'center',
   },
   errorContainer: {
-    backgroundColor: '#FFEBEE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.errorLight,
     padding: 12,
     borderRadius: 8,
-    marginBottom: 16,
+    marginBottom: 4, // Further reduced from 8 to 4
   },
   errorText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.error,
+    marginLeft: 8,
   },
   inputContainer: {
-    marginBottom: 24,
+    marginBottom: 4, // Further reduced from 8 to 4
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.gray100,
+    backgroundColor: COLORS.neutralLight,
     borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    paddingHorizontal: 12,
+    marginBottom: 6, // Further reduced from 6 to 3
+    borderWidth: 1,
+    borderColor: '#C1C1C1', // Dark gray thin border
   },
   inputIcon: {
-    marginRight: 12,
+    marginRight: 8,
   },
   input: {
     flex: 1,
     fontFamily: 'Inter-Regular',
     fontSize: 16,
-    color: COLORS.dark,
-    paddingVertical: 16,
+    color: COLORS.neutralDark,
+    paddingVertical: 14,
   },
   eyeIcon: {
     padding: 4,
@@ -281,27 +444,86 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 4, // Further reduced from 8 to 4
   },
   loginButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
   },
+  orContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.neutralLight,
+  },
+  orText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginHorizontal: 16,
+  },
+  socialButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 5, // Further reduced from 10 to 5
+  },
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    width: '48%',
+  },
+  googleButton: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: '#C1C1C1', // Dark gray thin border
+  },
+  googleIcon: {
+    width: 20,
+    height: 20,
+    marginRight: 8,
+  },
+  facebookButton: {
+    backgroundColor: '#4267B2',
+  },
+  socialButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+  },
+  facebookButtonText: {
+    color: COLORS.white,
+    marginLeft: 8,
+  },
   registerContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 4, // Further reduced from 8 to 4
   },
   noAccountText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
-    color: COLORS.gray700,
+    color: COLORS.neutralDark,
     marginRight: 4,
   },
   registerText: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
     color: COLORS.primary,
+  },
+  boltNewContainer: {
+    alignItems: 'center',
+    paddingVertical: 2, // Further reduced from 4 to 2
+  },
+  boltNewImage: {
+    width: 180,
+    height: 54,
   },
 });
