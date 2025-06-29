@@ -104,7 +104,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
               id,
               territory_gained,
               distance,
-              walk_points (
+              walk_points!walk_points_walk_session_id_fkey (
                 id,
                 path_coordinates
               )
@@ -303,7 +303,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       console.log('Distance:', currentWalkDistance);
       console.log('Points count:', currentWalkPoints.length);
       console.log('Territory gained:', newPolygonArea);
-      console.log('City ID:', currentWalkCityId);
       
       // Create a walk session record
       console.log('Inserting walk session into database...');
