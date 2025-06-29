@@ -3,14 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
   TextInput,
-  Alert,
-  ActivityIndicator,
-  Image,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';

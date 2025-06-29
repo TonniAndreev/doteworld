@@ -136,17 +136,17 @@ export default function DogPhotoUploader({
         .eq('id', dogId);
 
       if (updateError) {
-        console.error('Error updating dog photo:', updateError);
-        throw new Error('Failed to update dog photo');
+        console.error('Error updating dog record:', updateError);
+        throw new Error('Failed to update dog record');
       }
-
+      
       // Call the callback with the new photo URL
       onPhotoUploaded(publicUrlData.publicUrl);
       
-      Alert.alert('Success', 'Dog photo updated successfully!');
+      Alert.alert('Success', 'Photo uploaded successfully!');
     } catch (error) {
       console.error('Error saving dog photo:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to update dog photo');
+      Alert.alert('Error', error instanceof Error ? error.message : 'Failed to upload photo');
     } finally {
       setIsUploading(false);
     }
