@@ -161,9 +161,8 @@ export default function EditProfileScreen() {
           
           console.log('Uploading to path:', filePath);
           
-          // Use fetch API to get the file data
-          const response = await fetch(avatarUrl);
-          const fileData = await response.blob();
+          // Use FileSystem to read the file as ArrayBuffer
+          const fileData = await FileSystem.readAsArrayBufferAsync(avatarUrl);
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage

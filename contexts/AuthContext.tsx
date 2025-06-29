@@ -522,12 +522,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Prepare file data based on platform
-          let fileData;
-          
-          // Use fetch API to get the file data
-          const response = await fetch(dogPhoto);
-          fileData = await response.blob();
+          // Use FileSystem to read the file as ArrayBuffer
+          const fileData = await FileSystem.readAsArrayBufferAsync(dogPhoto);
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
@@ -628,12 +624,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           
           console.log('Uploading to path:', filePath);
           
-          // Prepare file data based on platform
-          let fileData;
-          
-          // Use fetch API to get the file data
-          const response = await fetch(data.avatar_url);
-          fileData = await response.blob();
+          // Use FileSystem to read the file as ArrayBuffer
+          const fileData = await FileSystem.readAsArrayBufferAsync(data.avatar_url);
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
