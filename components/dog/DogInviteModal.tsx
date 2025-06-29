@@ -77,7 +77,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
   const handleShareLink = async () => {
     const link = generateInviteLink();
-    const message = `Hi! I'd like to invite you to be a ${inviteRole} of my dog ${dogName} on Dote. Click this link to join: ${link}`;
+    const message = `Hi! I'd like to invite you to be a ${inviteRole === 'co-owner' ? 'owner' : 'caretaker'} of my dog ${dogName} on Dote. Click this link to join: ${link}`;
     
     try {
       await Share.share({
@@ -100,7 +100,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Invite Co-Owner</Text>
+            <Text style={styles.modalTitle}>Add New Owner</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color={COLORS.neutralDark} />
             </TouchableOpacity>
@@ -121,7 +121,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
                 >
                   <Shield size={20} color={inviteRole === 'co-owner' ? COLORS.white : COLORS.primary} />
                   <Text style={[styles.roleOptionText, inviteRole === 'co-owner' && styles.selectedRoleOptionText]}>
-                    Co-Owner
+                    Owner
                   </Text>
                 </TouchableOpacity>
 
@@ -191,7 +191,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
             <View style={styles.inviteSection}>
               <Text style={styles.sectionTitle}>Share Invite Link</Text>
               <Text style={styles.linkDescription}>
-                Share a link directly with someone to invite them as a {inviteRole}.
+                Share a link directly with someone to invite them as a {inviteRole === 'co-owner' ? 'owner' : 'caretaker'}.
               </Text>
               
               <View style={styles.linkActions}>
@@ -219,7 +219,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
               <View style={styles.explanationItem}>
                 <Shield size={16} color={COLORS.primary} />
                 <Text style={styles.explanationText}>
-                  <Text style={styles.boldText}>Co-Owner:</Text> Can edit dog info and invite others
+                  <Text style={styles.boldText}>Owner:</Text> Can edit dog info and invite others
                 </Text>
               </View>
               <View style={styles.explanationItem}>

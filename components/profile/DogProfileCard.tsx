@@ -72,8 +72,8 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
   const handleRemoveOwner = async (profileId: string, ownerName: string) => {
     Alert.alert(
-      'Remove Co-Owner',
-      `Are you sure you want to remove ${ownerName} as a co-owner of ${dog.name}?`,
+      'Remove Owner',
+      `Are you sure you want to remove ${ownerName} as an owner of ${dog.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -82,10 +82,10 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
           onPress: async () => {
             const result = await removeCoOwner(dog.id, profileId);
             if (result.success) {
-              Alert.alert('Success', 'Co-owner removed successfully');
+              Alert.alert('Success', 'Owner removed successfully');
               loadOwners();
             } else {
-              Alert.alert('Error', result.error || 'Failed to remove co-owner');
+              Alert.alert('Error', result.error || 'Failed to remove owner');
             }
           },
         },
@@ -136,6 +136,19 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
         return COLORS.secondary;
       default:
         return COLORS.neutralMedium;
+    }
+  };
+
+  const getRoleDisplayName = (role: string) => {
+    switch (role) {
+      case 'owner':
+        return 'Alpha Owner';
+      case 'co-owner':
+        return 'Owner';
+      case 'caretaker':
+        return 'Caretaker';
+      default:
+        return role.charAt(0).toUpperCase() + role.slice(1);
     }
   };
 
@@ -262,12 +275,12 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 <View style={styles.ownersHeaderLeft}>
                   <Users size={16} color={COLORS.neutralDark} />
                   <Text style={styles.ownersTitle}>
-                    Owners ({owners.length})
+                    Owners ({owners.length}/4)
                   </Text>
                 </View>
                 
                 <View style={styles.ownersActions}>
-                  {canInviteOwners() && (
+                  {canInviteOwners() && owners.length < 4 && (
                     <TouchableOpacity
                       style={styles.addOwnerButton}
                       onPress={() => setShowInviteModal(true)}
@@ -309,7 +322,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                         <View style={styles.ownerRole}>
                           {getRoleIcon(owner.role)}
                           <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-                            {owner.role.charAt(0).toUpperCase() + owner.role.slice(1)}
+                            {getRoleDisplayName(owner.role)}
                           </Text>
                         </View>
                       </View>
