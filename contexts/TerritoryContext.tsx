@@ -11,6 +11,7 @@ import {
   mergePolygons,
   extractPolygonCoordinates
 } from '@/utils/locationUtils';
+import { addTerritoryToCity } from '@/utils/geocoding';
 import * as turf from '@turf/turf';
 
 interface Coordinate {
@@ -27,7 +28,9 @@ interface TerritoryContextType {
   currentPolygon: Coordinate[] | null;
   currentWalkSessionId: string | null;
   currentWalkDistance: number;
-  startWalk: () => void;
+  showMonthlyResetDialog: boolean;
+  closeMonthlyResetDialog: () => void;
+  startWalk: (cityId?: string) => void;
   addWalkPoint: (coordinates: Coordinate) => void;
   endWalk: () => Promise<void>;
 }
@@ -42,9 +45,51 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [currentPolygon, setCurrentPolygon] = useState<Coordinate[] | null>(null);
   const [currentWalkSessionId, setCurrentWalkSessionId] = useState<string | null>(null);
   const [currentWalkDistance, setCurrentWalkDistance] = useState(0);
+  const [showMonthlyResetDialog, setShowMonthlyResetDialog] = useState(false);
+  const [lastResetMonth, setLastResetMonth] = useState<string | null>(null);
+  const [currentWalkCityId, setCurrentWalkCityId] = useState<string | null>(null);
   
   const { user } = useAuth();
   const { addPaws } = usePaws();
+
+  // Check if we need to reset territories at the beginning of a new month
+  useEffect(() => {
+    const checkMonthlyReset = async () => {
+      if (!user) return;
+      
+      try {
+        // Get current month in YYYY-MM format
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        
+        // Get last reset month from storage
+        const storedLastResetMonth = await AsyncStorage.getItem(`dote_last_reset_month_${user.uid}`);
+        setLastResetMonth(storedLastResetMonth);
+        
+        // If this is a new month compared to the last reset, perform reset
+        if (storedLastResetMonth !== currentMonth) {
+          console.log('New month detected, resetting territories');
+          
+          // Reset territory data
+          setTerritoryGeoJSON(null);
+          setTerritorySize(0);
+          // Don't reset total distance as that's a lifetime stat
+          
+          // Save new reset month
+          await AsyncStorage.setItem(`dote_last_reset_month_${user.uid}`, currentMonth);
+          await AsyncStorage.removeItem(`dote_territory_geojson_${user.uid}`);
+          await AsyncStorage.setItem(`dote_territory_size_${user.uid}`, '0');
+          
+          // Show reset dialog
+          setShowMonthlyResetDialog(true);
+        }
+      } catch (error) {
+        console.error('Error checking monthly reset:', error);
+      }
+    };
+    
+    checkMonthlyReset();
+  }, [user]);
 
   useEffect(() => {
     const loadTerritoryData = async () => {
@@ -59,10 +104,9 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
               id,
               territory_gained,
               distance,
-              walk_points (
+              walk_points!walk_points_walk_session_id_fkey (
                 id,
                 path_coordinates
-
               )
             `)
             .eq('dog_id', dogId)
@@ -148,10 +192,12 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     loadTerritoryData();
   }, [user]);
 
-  const startWalk = () => {
+  const startWalk = (cityId?: string) => {
     setCurrentWalkPoints([]);
     setCurrentPolygon(null);
     setCurrentWalkDistance(0);
+    // Store the city ID for this walk
+    setCurrentWalkCityId(cityId || null);
     // Generate a unique session ID for this walk
     setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   };
@@ -193,6 +239,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     console.log('User:', user?.id);
     console.log('Dog ID:', user?.dogs[0]?.id);
     console.log('Session ID:', currentWalkSessionId);
+    console.log('City ID:', currentWalkCityId);
     
     if (!currentWalkPoints.length || currentWalkPoints.length < 3 || !user || !user.dogs.length || !currentWalkSessionId) {
       console.log('Cannot end walk: insufficient points, no user, or no session');
@@ -208,6 +255,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         setCurrentWalkPoints([]);
         setCurrentPolygon(null);
         setCurrentWalkSessionId(null);
+        setCurrentWalkCityId(null);
         return;
       }
 
@@ -268,6 +316,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
           points_count: currentWalkPoints.length,
           territory_gained: newPolygonArea,
           status: 'completed',
+          city_id: currentWalkCityId,
           weather_conditions: null // Could add weather data in the future
         })
         .select('id')
@@ -295,7 +344,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         .from('walk_points')
         .insert({
           dog_id: user.dogs[0].id,
-          session_id: walkSession.id,
+          walk_session_id: walkSession.id,
           path_coordinates: currentWalkPoints
         })
         .select('id');
@@ -310,6 +359,17 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
 
       console.log('Walk points saved successfully:', pointsData);
 
+      // If we have a city ID, update the user's territory in that city
+      if (currentWalkCityId) {
+        console.log('Updating territory for city:', currentWalkCityId);
+        const success = await addTerritoryToCity(currentWalkCityId, newPolygonArea);
+        if (success) {
+          console.log('Successfully updated city territory');
+        } else {
+          console.error('Failed to update city territory');
+        }
+      }
+
       // Update state
       console.log('Updating local state');
       setTerritoryGeoJSON(updatedTerritoryGeoJSON);
@@ -318,6 +378,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentWalkPoints([]);
       setCurrentPolygon(null);
       setCurrentWalkSessionId(null);
+      setCurrentWalkCityId(null);
       setCurrentWalkDistance(0);
 
       // Save to storage
@@ -343,6 +404,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
       setCurrentWalkPoints([]);
       setCurrentPolygon(null);
       setCurrentWalkSessionId(null);
+      setCurrentWalkCityId(null);
       setCurrentWalkDistance(0);
     }
     
@@ -370,6 +432,10 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     return degrees * (Math.PI / 180);
   };
 
+  const closeMonthlyResetDialog = () => {
+    setShowMonthlyResetDialog(false);
+  };
+
   // Extract renderable polygons for the map
   const renderablePolygons = extractPolygonCoordinates(territoryGeoJSON);
 
@@ -382,6 +448,8 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     currentPolygon,
     currentWalkSessionId,
     currentWalkDistance,
+    showMonthlyResetDialog,
+    closeMonthlyResetDialog,
     startWalk,
     addWalkPoint,
     endWalk,

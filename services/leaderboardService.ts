@@ -33,9 +33,12 @@ function toRad(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
-export async function fetchLeaderboard(category: 'territory' | 'distance' | 'achievements'): Promise<LeaderboardUser[]> {
+export async function fetchLeaderboard(
+  category: 'territory' | 'distance' | 'achievements',
+  cityId?: string
+): Promise<LeaderboardUser[]> {
   try {
-    console.log('Fetching leaderboard for category:', category);
+    console.log('Fetching leaderboard for category:', category, 'in city:', cityId);
     
     // Fetch profiles
     const { data: profiles, error } = await supabase
@@ -99,11 +102,19 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
         if (firstDog?.id) {
           console.log('Fetching walk sessions for dog:', firstDog.id);
           
-          const { data: walkSessions, error: sessionsError } = await supabase
+          // Build query for walk sessions
+          let query = supabase
             .from('walk_sessions')
             .select('territory_gained, distance')
             .eq('dog_id', firstDog.id)
             .eq('status', 'completed');
+          
+          // Add city filter if provided
+          if (cityId) {
+            query = query.eq('city_id', cityId);
+          }
+          
+          const { data: walkSessions, error: sessionsError } = await query;
 
           if (sessionsError) {
             console.error('Error fetching walk sessions:', sessionsError);
@@ -120,6 +131,12 @@ export async function fetchLeaderboard(category: 'territory' | 'distance' | 'ach
           }
         } else {
           console.log('No dog found for profile:', profile.id);
+        }
+
+        // If we're filtering by city and user has no territory in this city, skip them
+        if (cityId && territorySize === 0 && category === 'territory') {
+          console.log('Skipping user with no territory in selected city:', profile.id);
+          continue;
         }
 
         console.log('Final stats for profile:', profile.id, { territorySize, totalDistance, badgeCount });

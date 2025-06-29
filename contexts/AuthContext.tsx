@@ -36,6 +36,8 @@ interface DoteUser {
   friends?: any[];
   badgeCount?: number;
   uid?: string;
+  current_city_id?: string | null;
+  current_city_name?: string | null;
 }
 
 interface AuthContextType {
@@ -56,6 +58,7 @@ interface AuthContextType {
   updateDogProfile: (dogName: string, dogBreed: string, dogPhoto?: string | null, birthday?: string) => Promise<void>;
   refreshUserData: () => Promise<void>;
   updateUserProfile: (data: Partial<DoteUser>) => Promise<void>;
+  updateUserCity: (cityId: string, cityName: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -135,7 +138,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Fetch user profile from profiles table
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          cities:current_city_id (
+            id,
+            name,
+            state,
+            country
+          )
+        `)
         .eq('id', userId)
         .single();
 
@@ -171,6 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             friends: [],
             badgeCount: 0,
             uid: supaUser.id,
+            current_city_id: null,
+            current_city_name: null,
           };
 
           setUser(fullUser);
@@ -221,6 +234,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           friends: [], // This would be fetched separately in a real app
           badgeCount: badgeCount || 0,
           uid: supaUser.id,
+          current_city_id: profile.current_city_id || null,
+          current_city_name: profile.cities ? profile.cities.name : null,
         };
 
         console.log('Final user object with dogs:', fullUser.dogs);
@@ -711,6 +726,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUserCity = async (cityId: string, cityName: string): Promise<boolean> => {
+    if (!user) {
+      return false;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // Update profile in database
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          current_city_id: cityId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Error updating user city:', updateError);
+        return false;
+      }
+
+      // Update local user state
+      const updatedUser = {
+        ...user,
+        current_city_id: cityId,
+        current_city_name: cityName,
+      };
+
+      setUser(updatedUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating user city:', error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -740,6 +796,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     updateDogProfile,
     refreshUserData: () => fetchUserProfile(user?.id || ''),
     updateUserProfile,
+    updateUserCity,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

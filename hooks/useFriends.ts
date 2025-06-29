@@ -201,7 +201,7 @@ export function useFriends() {
               id,
               territory_gained,
               distance,
-              walk_points (
+              walk_points!walk_points_walk_session_id_fkey (
                 id,
                 path_coordinates
               )

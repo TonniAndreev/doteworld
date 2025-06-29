@@ -8,12 +8,16 @@ import { COLORS } from '@/constants/theme';
 import { useTerritory } from '@/contexts/TerritoryContext';
 import { usePaws } from '@/contexts/PawsContext';
 import { useFriends } from '@/hooks/useFriends';
+import { useAuth } from '@/contexts/AuthContext';
 import FloatingPawsBalance from '@/components/common/FloatingPawsBalance';
 import PawsModal from '@/components/home/PawsModal';
+import MonthlyResetDialog from '@/components/home/MonthlyResetDialog';
+import CityChangeDialog from '@/components/common/CityChangeDialog';
 import DogMarker from '@/components/map/DogMarker';
 import { calculateDistance } from '@/utils/locationUtils';
 import { USER_TERRITORY_COLOR, getColorWithOpacity } from '@/utils/mapColors';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
 
 export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -22,6 +26,9 @@ export default function MapScreen() {
   const [walkDistance, setWalkDistance] = useState(0);
   const [isLocating, setIsLocating] = useState(false);
   const [showPawsModal, setShowPawsModal] = useState(false);
+  const [showCityChangeDialog, setShowCityChangeDialog] = useState(false);
+  const [detectedCity, setDetectedCity] = useState<{id: string, name: string} | null>(null);
+  const [isProcessingCityChange, setIsProcessingCityChange] = useState(false);
   
   const mapRef = useRef<MapView>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
@@ -33,6 +40,8 @@ export default function MapScreen() {
     currentWalkPoints,
     currentPolygon,
     currentWalkDistance,
+    showMonthlyResetDialog,
+    closeMonthlyResetDialog,
     startWalk,
     addWalkPoint,
     endWalk,
@@ -40,6 +49,7 @@ export default function MapScreen() {
   
   const { canStartConquest, startConquest, isSubscribed } = usePaws();
   const { friends, isLoading: isFriendsLoading } = useFriends();
+  const { user, updateUserCity } = useAuth();
 
   // Initial location setup
   useEffect(() => {
@@ -56,6 +66,9 @@ export default function MapScreen() {
         });
         setLocation(initialLocation);
         lastLocationRef.current = initialLocation;
+        
+        // Check city based on location
+        await checkCityFromLocation(initialLocation.coords.latitude, initialLocation.coords.longitude);
       } catch (error) {
         console.error('Error getting initial location:', error);
         setErrorMsg('Failed to get your location');
@@ -64,6 +77,69 @@ export default function MapScreen() {
 
     setupInitialLocation();
   }, []);
+
+  // Check city from location coordinates
+  const checkCityFromLocation = async (latitude: number, longitude: number) => {
+    try {
+      // Skip if user is not logged in
+      if (!user) return;
+      
+      // Get city details from coordinates
+      const cityDetails = await reverseGeocodeToCity(latitude, longitude);
+      if (!cityDetails) {
+        console.log('Could not determine city from coordinates');
+        return;
+      }
+      
+      console.log('Detected city:', cityDetails.name, cityDetails.country);
+      
+      // Get or create city in database
+      const cityId = await getOrCreateCityInSupabase(cityDetails);
+      if (!cityId) {
+        console.log('Failed to get or create city in database');
+        return;
+      }
+      
+      // If user doesn't have a current city, set it automatically
+      if (!user.current_city_id) {
+        console.log('User has no current city, setting automatically');
+        await updateUserCity(cityId, cityDetails.name);
+        return;
+      }
+      
+      // If user's current city is different from detected city, show dialog
+      if (user.current_city_id !== cityId) {
+        console.log('Detected city change:', user.current_city_name, '->', cityDetails.name);
+        setDetectedCity({
+          id: cityId,
+          name: cityDetails.name
+        });
+        setShowCityChangeDialog(true);
+      }
+    } catch (error) {
+      console.error('Error checking city from location:', error);
+    }
+  };
+
+  // Handle city change confirmation
+  const handleConfirmCityChange = async () => {
+    if (!detectedCity) return;
+    
+    setIsProcessingCityChange(true);
+    try {
+      const success = await updateUserCity(detectedCity.id, detectedCity.name);
+      if (success) {
+        console.log('Successfully updated user city to:', detectedCity.name);
+      } else {
+        console.error('Failed to update user city');
+      }
+    } catch (error) {
+      console.error('Error updating user city:', error);
+    } finally {
+      setIsProcessingCityChange(false);
+      setShowCityChangeDialog(false);
+    }
+  };
 
   // Location tracking during walking
   useEffect(() => {
@@ -157,7 +233,9 @@ export default function MapScreen() {
       console.log('Starting conquest...');
       setWalkDistance(0);
       setIsWalking(true);
-      startWalk();
+      
+      // Start walk with current city ID if available
+      startWalk(user?.current_city_id || undefined);
       
       // Add initial point if we have a location
       if (location) {
@@ -316,6 +394,13 @@ export default function MapScreen() {
           <SafeAreaView style={styles.overlay} pointerEvents="box-none">
             <View style={styles.topBar}>
               <FloatingPawsBalance />
+              
+              {user?.current_city_name && (
+                <View style={styles.cityContainer}>
+                  <MapPin size={16} color={COLORS.primary} />
+                  <Text style={styles.cityText}>{user.current_city_name}</Text>
+                </View>
+              )}
             </View>
             
             <View style={styles.controlsContainer}>
@@ -368,6 +453,20 @@ export default function MapScreen() {
             visible={showPawsModal}
             onClose={() => setShowPawsModal(false)}
           />
+          
+          <MonthlyResetDialog
+            visible={showMonthlyResetDialog}
+            onClose={closeMonthlyResetDialog}
+          />
+          
+          <CityChangeDialog
+            visible={showCityChangeDialog}
+            fromCity={user?.current_city_name || null}
+            toCity={detectedCity?.name || ''}
+            isLoading={isProcessingCityChange}
+            onConfirm={handleConfirmCityChange}
+            onCancel={() => setShowCityChangeDialog(false)}
+          />
         </View>
       ) : (
         <View style={styles.loadingContainer}>
@@ -413,10 +512,29 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
+  },
+  cityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  cityText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginLeft: 6,
   },
   controlsContainer: {
     position: 'absolute',
