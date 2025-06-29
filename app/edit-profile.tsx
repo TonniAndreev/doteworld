@@ -21,6 +21,7 @@ import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
+import { prepareFileForUpload } from '@/utils/fileUtils';
 
 export default function EditProfileScreen() {
   const { user, refreshUserData } = useAuth();
@@ -161,15 +162,14 @@ export default function EditProfileScreen() {
           
           console.log('Uploading to path:', filePath);
           
-          // Use fetch to get blob from image URI
-          const response = await fetch(avatarUrl);
-          const fileData = await response.blob();
+          // Prepare file for upload
+          const { data: fileData, contentType } = await prepareFileForUpload(avatarUrl);
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('avatars')
             .upload(filePath, fileData, {
-              contentType: fileData.type,
+              contentType,
               upsert: true,
             });
           

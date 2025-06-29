@@ -1,4 +1,4 @@
-// Utility functions for file handling and uploads
+import * as FileSystem from 'expo-file-system';
 
 /**
  * Get the MIME type based on file extension
@@ -38,22 +38,32 @@ export function getFileExtension(uri: string): string {
 /**
  * Prepare file data for upload to Supabase Storage
  * @param uri File URI
- * @returns Promise resolving to an object with blob data and content type
+ * @returns Promise resolving to an object with ArrayBuffer data and content type
  */
 export async function prepareFileForUpload(uri: string): Promise<{ 
-  data: Blob
+  data: ArrayBuffer;
+  contentType: string;
 }> {
   try {
-    // Fetch the file as a blob
-    const response = await fetch(uri);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status} ${response.statusText}`);
+    // Get file extension and determine content type
+    const extension = getFileExtension(uri);
+    const contentType = getMimeType(extension);
+    
+    // Read file as ArrayBuffer using expo-file-system
+    const base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    
+    // Convert base64 to ArrayBuffer
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
     }
     
-    const blob = await response.blob();
-    
     return {
-      data: blob
+      data: bytes.buffer,
+      contentType
     };
   } catch (error) {
     console.error('Error preparing file for upload:', error);

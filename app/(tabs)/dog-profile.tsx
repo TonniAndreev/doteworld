@@ -3,14 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
   TextInput,
-  Alert,
-  ActivityIndicator,
-  Image,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -273,12 +274,13 @@ export default function DogProfileScreen() {
       console.log('Uploading to path:', filePath);
       
       // Prepare file for upload
-      const { data: fileData } = await prepareFileForUpload(newDogPhoto);
+      const { data: fileData, contentType } = await prepareFileForUpload(newDogPhoto);
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('dog-photos')
         .upload(filePath, fileData, {
+          contentType,
           upsert: true,
         });
       
