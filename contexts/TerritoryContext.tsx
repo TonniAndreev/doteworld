@@ -297,9 +297,7 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
           dog_id: user.dogs[0].id,
           walk_session_id: walkSession.id,
           path_coordinates: currentWalkPoints,
-          // Include a single point for backward compatibility
-          latitude: currentWalkPoints[0].latitude,
-          longitude: currentWalkPoints[0].longitude,
+          // Remove latitude and longitude fields as they don't exist in the schema
           timestamp: new Date().toISOString()
         })
         .select('id');
