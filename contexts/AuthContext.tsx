@@ -38,6 +38,7 @@ interface DoteUser {
   uid?: string;
   current_city_id?: string | null;
   current_city_name?: string | null;
+  last_reset_month?: string | null;
 }
 
 interface AuthContextType {
@@ -59,6 +60,7 @@ interface AuthContextType {
   refreshUserData: () => Promise<void>;
   updateUserProfile: (data: Partial<DoteUser>) => Promise<void>;
   updateUserCity: (cityId: string, cityName: string) => Promise<boolean>;
+  updateUserLastResetMonthInDb: (month: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -184,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             uid: supaUser.id,
             current_city_id: null,
             current_city_name: null,
+            last_reset_month: null,
           };
 
           setUser(fullUser);
@@ -236,6 +239,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           uid: supaUser.id,
           current_city_id: profile.current_city_id || null,
           current_city_name: profile.cities ? profile.cities.name : null,
+          last_reset_month: profile.last_reset_month || null,
         };
 
         console.log('Final user object with dogs:', fullUser.dogs);
@@ -767,6 +771,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updateUserLastResetMonthInDb = async (month: string): Promise<boolean> => {
+    if (!user) {
+      return false;
+    }
+
+    try {
+      console.log('Updating last_reset_month in database to:', month);
+      
+      // Update profile in database
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          last_reset_month: month,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Error updating last_reset_month:', updateError);
+        return false;
+      }
+
+      // Update local user state
+      const updatedUser = {
+        ...user,
+        last_reset_month: month,
+      };
+
+      setUser(updatedUser);
+      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating last_reset_month:', error);
+      return false;
+    }
+  };
+
   const logout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -797,6 +839,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refreshUserData: () => fetchUserProfile(user?.id || ''),
     updateUserProfile,
     updateUserCity,
+    updateUserLastResetMonthInDb,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

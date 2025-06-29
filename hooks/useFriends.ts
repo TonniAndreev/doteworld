@@ -424,7 +424,6 @@ export function useFriends() {
           const { data: walkSessions, error: sessionsError } = await supabase
             .from('walk_sessions')
             .select('territory_gained, distance')
-
             .eq('dog_id', firstDog.id)
             .eq('status', 'completed');
 

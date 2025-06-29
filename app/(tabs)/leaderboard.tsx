@@ -45,39 +45,41 @@ export default function LeaderboardScreen() {
 
   // Load user cities
   useEffect(() => {
-    const loadUserCities = async () => {
-      if (!user) return;
-      
-      setIsLoadingCities(true);
-      try {
-        // Get cities where user has territory
-        const cities = await getUserCities();
-        setUserCities(cities);
-        
-        // If user has cities, select the first one
-        if (cities.length > 0) {
-          setSelectedCity(cities[0]);
-        } else if (user.current_city_id && user.current_city_name) {
-          // If user has a current city but no territories, use that
-          setSelectedCity({
-            id: user.current_city_id,
-            name: user.current_city_name,
-            state: null,
-            country: 'Unknown'
-          });
-        } else {
-          // If no cities at all, try to get current location and find nearest city
-          await findUserCity();
-        }
-      } catch (error) {
-        console.error('Error loading user cities:', error);
-      } finally {
-        setIsLoadingCities(false);
-      }
-    };
-    
-    loadUserCities();
+    if (user) {
+      loadUserCities();
+    }
   }, [user]);
+
+  const loadUserCities = async () => {
+    if (!user) return;
+    
+    setIsLoadingCities(true);
+    try {
+      // Get cities where user has territory
+      const cities = await getUserCities();
+      setUserCities(cities);
+      
+      // If user has cities, select the first one
+      if (cities.length > 0) {
+        setSelectedCity(cities[0]);
+      } else if (user.current_city_id && user.current_city_name) {
+        // If user has a current city but no territories, use that
+        setSelectedCity({
+          id: user.current_city_id,
+          name: user.current_city_name,
+          state: null,
+          country: 'Unknown'
+        });
+      } else {
+        // If no cities at all, try to get current location and find nearest city
+        await findUserCity();
+      }
+    } catch (error) {
+      console.error('Error loading user cities:', error);
+    } finally {
+      setIsLoadingCities(false);
+    }
+  };
 
   // Find user's city based on current location
   const findUserCity = async () => {
