@@ -11,7 +11,7 @@ import {
   Share,
   Clipboard,
 } from 'react-native';
-import { X, Mail, Link, Copy, Send, Shield, Eye } from 'lucide-react-native';
+import { X, Mail, Copy, Send } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 
@@ -24,7 +24,6 @@ interface DogInviteModalProps {
 
 export default function DogInviteModal({ visible, onClose, dogId, dogName }: DogInviteModalProps) {
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole] = useState<'co-owner' | 'caretaker'>('co-owner');
   const [inviteMessage, setInviteMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState('');
@@ -35,7 +34,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
     // Create a deep link that includes the dog ID and invite token
     const inviteToken = `${dogId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const baseUrl = 'https://dote.app'; // Replace with your actual domain
-    const link = `${baseUrl}/invite/${inviteToken}?dogId=${dogId}&dogName=${encodeURIComponent(dogName)}&role=${inviteRole}`;
+    const link = `${baseUrl}/invite/${inviteToken}?dogId=${dogId}&dogName=${encodeURIComponent(dogName)}&role=co-owner`;
     setInviteLink(link);
     return link;
   };
@@ -48,7 +47,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
     setIsLoading(true);
     try {
-      const result = await inviteCoOwner(dogId, inviteEmail.trim(), inviteRole, inviteMessage.trim());
+      const result = await inviteCoOwner(dogId, inviteEmail.trim(), 'co-owner', inviteMessage.trim());
       
       if (result.success) {
         Alert.alert('Success', 'Invitation sent successfully!');
@@ -77,13 +76,13 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
   const handleShareLink = async () => {
     const link = generateInviteLink();
-    const message = `Hi! I'd like to invite you to be a ${inviteRole === 'co-owner' ? 'owner' : 'caretaker'} of my dog ${dogName} on Dote. Click this link to join: ${link}`;
+    const message = `Hi! I'd like to invite you to be an owner of my dog ${dogName} on Dote. Download the app and click this link to join: ${link}`;
     
     try {
       await Share.share({
         message,
         url: link,
-        title: `Invite to co-own ${dogName}`,
+        title: `Invite to own ${dogName}`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -110,8 +109,8 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
             Invite someone to help care for {dogName}
           </Text>
 
-          {/* Email Invite Section */}
           <View style={styles.content}>
+            {/* Email Invite Section */}
             <View style={styles.inviteSection}>
               <Text style={styles.sectionTitle}>Email Invite</Text>
               <View style={styles.inputWithIcon}>
@@ -158,7 +157,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
             <View style={styles.inviteSection}>
               <Text style={styles.sectionTitle}>Share Invite Link</Text>
               <Text style={styles.linkDescription}>
-                Share a link directly with someone to invite them as a {inviteRole === 'co-owner' ? 'owner' : 'caretaker'}.
+                Share a link directly with someone to invite them as an owner.
               </Text>
               
               <View style={styles.linkActions}>
@@ -180,21 +179,15 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
               </View>
             </View>
 
-            {/* Role Explanation */}
+            {/* Explanation */}
             <View style={styles.roleExplanation}>
-              <Text style={styles.explanationTitle}>Role Permissions:</Text>
-              <View style={styles.explanationItem}>
-                <Shield size={16} color={COLORS.primary} />
-                <Text style={styles.explanationText}>
-                  <Text style={styles.boldText}>Owner:</Text> Can edit dog info and invite others
-                </Text>
-              </View>
-              <View style={styles.explanationItem}>
-                <Eye size={16} color={COLORS.secondary} />
-                <Text style={styles.explanationText}>
-                  <Text style={styles.boldText}>Caretaker:</Text> Can view dog info only
-                </Text>
-              </View>
+              <Text style={styles.explanationTitle}>Owner Permissions:</Text>
+              <Text style={styles.explanationText}>
+                Owners can view and edit dog information, track walks, and manage the dog's profile.
+              </Text>
+              <Text style={styles.explanationText}>
+                After downloading the app, they'll be automatically added as an owner when they click the invite link.
+              </Text>
             </View>
           </View>
         </View>
@@ -333,17 +326,11 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 12,
   },
-  explanationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
   explanationText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
-    flex: 1,
+    marginBottom: 8,
   },
   boldText: {
     fontFamily: 'Inter-Bold',

@@ -594,6 +594,7 @@ const styles = StyleSheet.create({
   ownerRole: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 9,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
