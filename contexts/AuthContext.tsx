@@ -511,105 +511,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         dogData.birthday = birthday;
       }
       
-      // Handle photo upload if provided
-      if (dogPhoto) {
-        try {
-          console.log('Processing dog photo upload');
-          
-          // Create dog in database first to get the ID
-          const { data: dog, error: dogError } = await supabase
-            .from('dogs')
-            .insert(dogData)
-            .select()
-            .single();
-
-          if (dogError) {
-            console.error('Error creating dog:', dogError);
-            throw dogError;
-          }
-
-          console.log('Dog created successfully:', dog);
-          
-          // Generate a unique filename
-          const fileExt = dogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
-          const fileName = `${Date.now()}.${fileExt}`;
-          const filePath = `${dog.id}/${fileName}`;
-          
-          console.log('Uploading to path:', filePath);
-          
-          // Prepare file for upload
-          const { data: fileData } = await prepareFileForUpload(dogPhoto);
-          
-          // Upload to Supabase Storage
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('dog-photos')
-            .upload(filePath, fileData, {
-              upsert: true,
-            });
-          
-          if (uploadError) {
-            console.error('Error uploading photo:', uploadError);
-            throw new Error('Failed to upload dog photo');
-          }
-          
-          console.log('Upload successful:', uploadData);
-          
-          // Get public URL
-          const { data: publicUrlData } = await supabase.storage
-            .from('dog-photos')
-            .getPublicUrl(filePath);
-          
-          console.log('Public URL:', publicUrlData);
-          
-          // Update dog with photo URL
-          const { error: updateError } = await supabase
-            .from('dogs')
-            .update({
-              photo_url: publicUrlData.publicUrl,
-              photo_uploaded_at: new Date().toISOString()
-            })
-            .eq('id', dog.id);
-
-          if (updateError) {
-            console.error('Error updating dog with photo URL:', updateError);
-            throw updateError;
-          }
-
-          // Link dog to user profile
-          const { error: linkError } = await supabase
-            .from('profile_dogs')
-            .insert({
-              profile_id: user.id,
-              dog_id: dog.id,
-            });
-
-          if (linkError) {
-            console.error('Error linking dog to profile:', linkError);
-            throw linkError;
-          }
-
-          console.log('Dog linked to profile successfully');
-
-          // Update local user state
-          const updatedUser = {
-            ...user,
-            dogs: [...user.dogs, {...dog, photo_url: publicUrlData.publicUrl}],
-          };
-
-          setUser(updatedUser);
-          await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-          
-          return;
-        } catch (uploadError) {
-          console.error('Photo upload error:', uploadError);
-          // Continue without photo if upload fails
-          console.warn('Continuing dog creation without photo due to upload error');
-        }
-      }
-      
-      console.log('Creating dog with data:', dogData);
-      
-      // Create dog in database
+      // Create dog in database first to get the ID
       const { data: dog, error: dogError } = await supabase
         .from('dogs')
         .insert(dogData)
@@ -623,7 +525,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Dog created successfully:', dog);
 
-      // Link dog to user profile
+      // Link dog to user profile before uploading photo
       const { error: linkError } = await supabase
         .from('profile_dogs')
         .insert({
@@ -638,15 +540,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       console.log('Dog linked to profile successfully');
 
+      let finalDog = dog;
+
+      // Handle photo upload if provided
+      if (dogPhoto) {
+        try {
+          console.log('Processing dog photo upload');
+
+          // Generate a unique filename
+          const fileExt = dogPhoto.split('.').pop()?.toLowerCase() || 'jpg';
+          const fileName = `${Date.now()}.${fileExt}`;
+          const filePath = `${dog.id}/${fileName}`;
+
+          console.log('Uploading to path:', filePath);
+
+          // Prepare file for upload
+          const { data: fileData } = await prepareFileForUpload(dogPhoto);
+
+          // Upload to Supabase Storage
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('dog-photos')
+            .upload(filePath, fileData, {
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error('Error uploading photo:', uploadError);
+            throw new Error('Failed to upload dog photo');
+          }
+
+          console.log('Upload successful:', uploadData);
+
+          // Get public URL
+          const { data: publicUrlData } = await supabase.storage
+            .from('dog-photos')
+            .getPublicUrl(filePath);
+
+          console.log('Public URL:', publicUrlData);
+
+          // Update dog with photo URL
+          const { error: updateError } = await supabase
+            .from('dogs')
+            .update({
+              photo_url: publicUrlData.publicUrl,
+              photo_uploaded_at: new Date().toISOString()
+            })
+            .eq('id', dog.id);
+
+          if (updateError) {
+            console.error('Error updating dog with photo URL:', updateError);
+            throw updateError;
+          }
+
+          finalDog = { ...dog, photo_url: publicUrlData.publicUrl };
+        } catch (uploadError) {
+          console.error('Photo upload error:', uploadError);
+          // Continue without photo if upload fails
+          console.warn('Continuing dog creation without photo due to upload error');
+        }
+      }
+
+      console.log('Final dog object:', finalDog);
+
       // Update local user state
       const updatedUser = {
         ...user,
-        dogs: [...user.dogs, dog],
+        dogs: [...user.dogs, finalDog],
       };
 
       setUser(updatedUser);
       await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
-      
+
     } catch (error) {
       console.error('Error updating dog profile:', error);
       throw error;
