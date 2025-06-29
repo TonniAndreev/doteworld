@@ -240,7 +240,6 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
         .from('walk_sessions')
         .insert({
           dog_id: user.dogs[0].id,
-          user_id: user.id,
           started_at: new Date(Date.now() - (currentWalkDistance * 60000)).toISOString(), // Approximate start time
           ended_at: new Date().toISOString(),
           distance: currentWalkDistance,
