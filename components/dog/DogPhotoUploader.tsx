@@ -16,6 +16,7 @@ import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
+import { prepareFileForUpload } from '@/utils/fileUtils';
 
 interface DogPhotoUploaderProps {
   dogId: string;
@@ -31,7 +32,6 @@ export default function DogPhotoUploader({
   onPhotoUploaded,
 }: DogPhotoUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const { user } = useAuth();
 
   const pickImage = async () => {
@@ -69,6 +69,7 @@ export default function DogPhotoUploader({
       }
       
       let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -91,7 +92,6 @@ export default function DogPhotoUploader({
 
     try {
       setIsUploading(true);
-      setUploadProgress(0);
       
       // Generate a unique filename
       const fileExt = photoUri.split('.').pop()?.toLowerCase() || 'jpg';
@@ -100,38 +100,26 @@ export default function DogPhotoUploader({
       
       console.log('Uploading to path:', filePath);
       
-      // Use FileSystem to read the file as base64
-      const base64 = await FileSystem.readAsStringAsync(photoUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-      
-      // Convert base64 to blob
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
+      // Prepare file for upload
+      const { data: fileData } = await prepareFileForUpload(photoUri);
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .upload(filePath, fileData, {
-          contentType: `image/${fileExt}`,
           upsert: true,
         });
       
       if (uploadError) {
         console.error('Error uploading photo:', uploadError);
-        throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
+        throw new Error('Failed to upload dog photo');
       }
       
       console.log('Upload successful:', uploadData);
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);

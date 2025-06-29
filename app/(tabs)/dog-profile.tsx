@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import { ChevronLeft, Plus, CreditCard as Edit, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
@@ -22,6 +23,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import DogProfileCard from '@/components/profile/DogProfileCard';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
+import { prepareFileForUpload } from '@/utils/fileUtils';
 
 // Same breed list as in dog-profile creation
 const DOG_BREEDS = [
@@ -110,7 +112,7 @@ interface Dog {
   id: string;
   name: string;
   breed: string;
-  photo_url?: string;
+  photo_url?: string | null;
   birthday?: string;
   bio?: string;
   weight?: number;
@@ -240,6 +242,7 @@ export default function DogProfileScreen() {
       }
       
       let result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
@@ -269,28 +272,26 @@ export default function DogProfileScreen() {
       
       console.log('Uploading to path:', filePath);
       
-      // Use fetch to get blob from image URI
-      const response = await fetch(newDogPhoto);
-      const fileData = await response.blob();
+      // Prepare file for upload
+      const { data: fileData } = await prepareFileForUpload(newDogPhoto);
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .upload(filePath, fileData, {
-          contentType: fileData.type,
           upsert: true,
         });
       
       if (uploadError) {
         console.error('Error uploading photo:', uploadError);
-        throw new Error(`Failed to upload dog photo: ${uploadError.message}`);
+        throw new Error('Failed to upload dog photo');
       }
       
       console.log('Upload successful:', uploadData);
       
       // Get public URL
       const { data: publicUrlData } = await supabase.storage
-        .from('dog_photos')
+        .from('dog-photos')
         .getPublicUrl(filePath);
       
       console.log('Public URL:', publicUrlData);

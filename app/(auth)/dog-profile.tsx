@@ -20,6 +20,7 @@ import { Camera, ChevronDown, CircleAlert as AlertCircle, Check, Search, X, Cale
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
+import { prepareFileForUpload } from '@/utils/fileUtils';
 
 const DOG_BREEDS = [
   // Popular breeds
@@ -113,7 +114,6 @@ export default function DogProfileScreen() {
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [uploadProgress, setUploadProgress] = useState(0);
   
   const { user, updateDogProfile } = useAuth();
   

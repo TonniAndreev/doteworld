@@ -161,25 +161,15 @@ export default function EditProfileScreen() {
           
           console.log('Uploading to path:', filePath);
           
-          // Use FileSystem to read the file as base64
-          const base64 = await FileSystem.readAsStringAsync(avatarUrl, {
-            encoding: FileSystem.EncodingType.Base64,
-          });
-          
-          // Convert base64 to blob
-          const byteCharacters = atob(base64);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          const fileData = new Blob([byteArray], { type: `image/${fileExt}` });
+          // Use fetch to get blob from image URI
+          const response = await fetch(avatarUrl);
+          const fileData = await response.blob();
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('avatars')
             .upload(filePath, fileData, {
-              contentType: `image/${fileExt}`,
+              contentType: fileData.type,
               upsert: true,
             });
           
