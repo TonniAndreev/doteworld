@@ -161,7 +161,7 @@ export default function ProfileScreen() {
                       key={dog.id} 
                       style={[
                         styles.dogAvatarWrapper, 
-                        { zIndex: 5 - index, right: index * 15 }
+                        { zIndex: 5 - index, left: index * 30 }
                       ]}
                     >
                       <UserAvatar
@@ -181,7 +181,7 @@ export default function ProfileScreen() {
                       style={[
                         styles.dogAvatarWrapper, 
                         styles.moreDogsBadge,
-                        { zIndex: 0, right: 5 * 15 }
+                        { zIndex: 0, left: 5 * 30 }
                       ]}
                     >
                       <Text style={styles.moreDogsBadgeText}>+{user.dogs.length - 5}</Text>
@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     position: 'relative',
     height: 60,
-    marginRight: 16,
+    width: 180, // Enough width for 5 overlapping avatars
   },
   dogAvatarWrapper: {
     position: 'absolute',
@@ -390,6 +390,11 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     overflow: 'hidden',
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   dogAvatar: {
     borderRadius: 30,
@@ -406,7 +411,7 @@ const styles = StyleSheet.create({
   },
   dogPreviewInfo: {
     flex: 1,
-    marginLeft: 60, // Add extra margin to account for overlapping avatars
+    marginLeft: 16,
   },
   dogPreviewCount: {
     fontFamily: 'Inter-Bold',
