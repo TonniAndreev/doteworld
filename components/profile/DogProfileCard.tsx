@@ -116,11 +116,11 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
-        return <Crown size={20} color={COLORS.accent} />;
+        return <Crown size={14} color={COLORS.accent} />;
       case 'co-owner':
-        return <Shield size={20} color={COLORS.primary} />;
+        return <Shield size={14} color={COLORS.primary} />;
       case 'caretaker':
-        return <Eye size={20} color={COLORS.secondary} />;
+        return <Eye size={14} color={COLORS.secondary} />;
       default:
         return null;
     }
@@ -310,7 +310,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                         userId={owner.profile_id}
                         photoURL={owner.avatar_url}
                         userName={`${owner.first_name} ${owner.last_name}`}
-                        size={40}
+                        size={32}
                         style={styles.ownerAvatar}
                       />
                       
@@ -401,6 +401,11 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 16,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
     marginBottom: 16,
   },
   fullDetailsContainer: {
@@ -565,14 +570,17 @@ const styles = StyleSheet.create({
   ownerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.neutralExtraLight,
+    backgroundColor: COLORS.white,
     borderRadius: 12,
     padding: 12,
+    shadowColor: COLORS.black,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   ownerAvatar: {
     marginRight: 12,
-    width: 40,
-    height: 40,
   },
   ownerInfo: {
     flex: 1,
@@ -586,12 +594,11 @@ const styles = StyleSheet.create({
   ownerRole: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 4,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    marginLeft: 9,
+    fontSize: 12,
+    marginLeft: 4,
   },
   removeOwnerButton: {
     width: 24,
