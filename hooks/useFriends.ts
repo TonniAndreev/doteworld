@@ -23,6 +23,8 @@ interface User {
   territorySize: number;
   totalDistance: number;
   achievementCount: number;
+  requestSent?: boolean;
+  isFriend?: boolean;
   dogs?: Array<{
     id: string;
     name: string;
@@ -67,6 +69,28 @@ export function useFriends() {
   useEffect(() => {
     if (user) {
       loadData();
+      
+      // Set up real-time listeners for friendship changes
+      const friendshipsChannel = supabase
+        .channel('friendships-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friendships',
+            filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
+          },
+          (payload) => {
+            console.log('Friendship change detected:', payload);
+            loadData();
+          }
+        )
+        .subscribe();
+        
+      return () => {
+        supabase.removeChannel(friendshipsChannel);
+      };
     }
   }, [user]);
 
@@ -344,7 +368,7 @@ export function useFriends() {
         // Check if already friends or request exists
         const { data: existingRelation } = await supabase
           .from('friendships')
-          .select('status')
+          .select('status, requester_id, receiver_id')
           .or(`and(requester_id.eq.${user.id},receiver_id.eq.${profile.id}),and(requester_id.eq.${profile.id},receiver_id.eq.${user.id})`)
           .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no relation exists
 
@@ -391,6 +415,10 @@ export function useFriends() {
           }
         }
 
+        const isFriend = existingRelation?.status === 'accepted';
+        const requestSent = existingRelation?.status === 'pending' && existingRelation?.requester_id === user.id;
+        const requestReceived = existingRelation?.status === 'pending' && existingRelation?.receiver_id === user.id;
+
         searchResults.push({
           id: profile.id,
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
@@ -400,8 +428,8 @@ export function useFriends() {
           territorySize,
           totalDistance,
           achievementCount: achievementCount || 0,
-          isFriend: existingRelation?.status === 'accepted',
-          requestSent: existingRelation?.status === 'pending',
+          isFriend,
+          requestSent,
           dogs: dogs,
         });
       }
@@ -471,8 +499,12 @@ export function useFriends() {
       }
 
       console.log('Friend request accepted');
-      // Refresh data
-      await loadData();
+      
+      // Update local state
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+      
+      // Refresh friends list to include the newly accepted friend
+      await fetchFriends();
       
       return true; // Return success indicator
     } catch (error) {
@@ -500,8 +532,9 @@ export function useFriends() {
       }
 
       console.log('Friend request declined');
-      // Refresh friend requests
-      await fetchFriendRequests();
+      
+      // Update local state
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
       
       return true; // Return success indicator
     } catch (error) {
