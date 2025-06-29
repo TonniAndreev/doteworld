@@ -398,7 +398,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.white,
+    backgroundColor: '#F8F8F8',
     borderRadius: 16,
     padding: 16,
     shadowColor: COLORS.black,
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    marginLeft: 4,
+    marginLeft: 9,
   },
   removeOwnerButton: {
     width: 24,

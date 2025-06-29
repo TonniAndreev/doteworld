@@ -131,42 +131,6 @@ export function useDogOwnership() {
         return { success: false, error: 'This dog already has the maximum number of owners (4)' };
       }
 
-      // Find the user by email
-      const { data: inviteeProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .ilike('email', inviteeEmail)
-        .single();
-
-      if (profileError || !inviteeProfile) {
-        return { success: false, error: 'User not found with that email address' };
-      }
-
-      // Check if user already has access to this dog
-      const { data: existingAccess } = await supabase
-        .from('profile_dogs')
-        .select('id')
-        .eq('dog_id', dogId)
-        .eq('profile_id', inviteeProfile.id)
-        .single();
-
-      if (existingAccess) {
-        return { success: false, error: 'User already has access to this dog' };
-      }
-
-      // Check if there's already a pending invite
-      const { data: existingInvite } = await supabase
-        .from('dog_ownership_invites')
-        .select('id')
-        .eq('dog_id', dogId)
-        .eq('invitee_id', inviteeProfile.id)
-        .eq('status', 'pending')
-        .single();
-
-      if (existingInvite) {
-        return { success: false, error: 'Invite already sent to this user' };
-      }
-
       // Set permissions based on role
       const permissions = role === 'co-owner' 
         ? { edit: true, delete: false, share: true }
@@ -178,7 +142,7 @@ export function useDogOwnership() {
         .insert({
           dog_id: dogId,
           inviter_id: user.id,
-          invitee_id: inviteeProfile.id,
+          invitee_email: inviteeEmail.trim(),
           role,
           permissions,
           message,
