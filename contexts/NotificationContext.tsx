@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/utils/supabase';
 
@@ -36,12 +36,27 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const { user } = useAuth();
+  
+  // Use refs to track subscription status
+  const friendshipSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const dogInviteSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const achievementSubscriptionRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (user) {
+      // Clean up any existing subscriptions before creating new ones
+      cleanupSubscriptions();
+      
+      // Create unique channel names that include the user ID and timestamp to avoid conflicts
+      const friendshipsChannelName = `friendships-${user.id}-${Date.now()}`;
+      const dogInvitesChannelName = `dog-invites-${user.id}-${Date.now()}`;
+      const achievementsChannelName = `achievements-${user.id}-${Date.now()}`;
+      
+      console.log(`Creating channels: ${friendshipsChannelName}, ${dogInvitesChannelName}, ${achievementsChannelName}`);
+      
       // Set up real-time listener for friend requests
-      const friendshipSubscription = supabase
-        .channel('friendships')
+      friendshipSubscriptionRef.current = supabase
+        .channel(friendshipsChannelName)
         .on(
           'postgres_changes',
           {
@@ -70,11 +85,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`Subscription status for ${friendshipsChannelName}:`, status);
+        });
 
       // Set up listener for dog ownership invites
-      const dogInviteSubscription = supabase
-        .channel('dog_invites')
+      dogInviteSubscriptionRef.current = supabase
+        .channel(dogInvitesChannelName)
         .on(
           'postgres_changes',
           {
@@ -88,11 +105,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             await handleDogInviteNotification(payload.new);
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`Subscription status for ${dogInvitesChannelName}:`, status);
+        });
 
       // Set up listener for achievements
-      const achievementSubscription = supabase
-        .channel('achievements')
+      achievementSubscriptionRef.current = supabase
+        .channel(achievementsChannelName)
         .on(
           'postgres_changes',
           {
@@ -106,18 +125,38 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             await handleAchievementNotification(payload.new);
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`Subscription status for ${achievementsChannelName}:`, status);
+        });
 
       // Load existing notifications
       loadNotifications();
 
       return () => {
-        supabase.removeChannel(friendshipSubscription);
-        supabase.removeChannel(dogInviteSubscription);
-        supabase.removeChannel(achievementSubscription);
+        // Clean up subscriptions when component unmounts
+        cleanupSubscriptions();
       };
     }
-  }, [user]);
+  }, [user?.id]); // Only re-run if user ID changes
+  
+  const cleanupSubscriptions = () => {
+    // Clean up any existing subscriptions
+    if (friendshipSubscriptionRef.current) {
+      console.log('Removing friendship subscription channel');
+      supabase.removeChannel(friendshipSubscriptionRef.current);
+      friendshipSubscriptionRef.current = null;
+    }
+    if (dogInviteSubscriptionRef.current) {
+      console.log('Removing dog invite subscription channel');
+      supabase.removeChannel(dogInviteSubscriptionRef.current);
+      dogInviteSubscriptionRef.current = null;
+    }
+    if (achievementSubscriptionRef.current) {
+      console.log('Removing achievement subscription channel');
+      supabase.removeChannel(achievementSubscriptionRef.current);
+      achievementSubscriptionRef.current = null;
+    }
+  };
 
   const loadNotifications = async () => {
     if (!user) return;

@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { UserCheck } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
@@ -36,6 +36,14 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
   const hasDogs = user.dogs && user.dogs.length > 0;
   const dogCount = user.dogs?.length || 0;
   
+  // Format dog names as comma-separated list
+  const getDogNames = () => {
+    if (!hasDogs) return user.dogName || 'No dog';
+    
+    const names = user.dogs.map(dog => dog.name);
+    return names.join(', ');
+  };
+  
   return (
     <TouchableOpacity style={styles.container} onPress={handlePress}>
       <View style={styles.avatarContainer}>
@@ -52,12 +60,12 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
           <View style={styles.dogAvatarsContainer}>
             {/* First dog avatar - always shown if there's at least one dog */}
             {dogCount >= 1 && (
-              <View style={[styles.dogAvatarWrapper, styles.firstDogAvatar]}>
+              <View style={styles.dogAvatarWrapper}>
                 <UserAvatar
                   userId={`dog-${user.dogs[0].id}`}
                   photoURL={user.dogs[0].photo_url}
                   userName={user.dogs[0].name}
-                  size={34}
+                  size={23}
                   isDogAvatar={true}
                   dogBreed={user.dogs[0].breed}
                   style={styles.dogAvatar}
@@ -67,12 +75,12 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
             
             {/* Second dog avatar - shown if there are at least 2 dogs */}
             {dogCount >= 2 && (
-              <View style={[styles.dogAvatarWrapper, styles.secondDogAvatar]}>
+              <View style={styles.dogAvatarWrapper}>
                 <UserAvatar
                   userId={`dog-${user.dogs[1].id}`}
                   photoURL={user.dogs[1].photo_url}
                   userName={user.dogs[1].name}
-                  size={34}
+                  size={23}
                   isDogAvatar={true}
                   dogBreed={user.dogs[1].breed}
                   style={styles.dogAvatar}
@@ -82,8 +90,10 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
             
             {/* "+X" indicator for 3 or more dogs */}
             {dogCount > 2 && (
-              <View style={styles.moreDogsBadge}>
-                <Text style={styles.moreDogsBadgeText}>+{dogCount - 2}</Text>
+              <View style={styles.dogAvatarWrapper}>
+                <View style={styles.moreDogsBadge}>
+                  <Text style={styles.moreDogsBadgeText}>+{dogCount - 2}</Text>
+                </View>
               </View>
             )}
           </View>
@@ -96,8 +106,8 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
           {isFriend && <UserCheck size={16} color={COLORS.primary} style={styles.friendIcon} />}
         </View>
         
-        <Text style={styles.dogInfo}>
-          {hasDogs ? user.dogName : 'No dog'}{user.dogBreed ? ` • ${user.dogBreed}` : ''}
+        <Text style={styles.dogInfo} numberOfLines={1}>
+          {getDogNames()}
         </Text>
         
         <View style={styles.stats}>
@@ -131,7 +141,7 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 16, // Increased spacing between avatar and text
+    marginRight: 16,
     width: 50,
     height: 50,
   },
@@ -144,44 +154,29 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: -6,
     left: -6,
+    flexDirection: 'row',
   },
   dogAvatarWrapper: {
     borderWidth: 2,
     borderColor: COLORS.white,
-    borderRadius: 17, // Half of the dog avatar size
+    borderRadius: 11.5,
     overflow: 'hidden',
-    position: 'absolute',
-  },
-  firstDogAvatar: {
-    bottom: 0,
-    left: 0,
-    zIndex: 2,
-  },
-  secondDogAvatar: {
-    bottom: 10,
-    left: 10,
-    zIndex: 1,
+    marginRight: -10, // Negative margin for overlapping effect
   },
   dogAvatar: {
-    borderRadius: 17, // Half of the dog avatar size
+    borderRadius: 11.5,
   },
   moreDogsBadge: {
-    position: 'absolute',
-    bottom: 0,
-    left: 20,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 23,
+    height: 23,
+    borderRadius: 11.5,
     backgroundColor: COLORS.primary,
-    borderWidth: 2,
-    borderColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 3,
   },
   moreDogsBadgeText: {
     fontFamily: 'Inter-Bold',
-    fontSize: 12,
+    fontSize: 10,
     color: COLORS.white,
   },
   info: {

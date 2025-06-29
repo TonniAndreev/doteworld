@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft, UserPlus, UserCheck, UserX, Award, Map, Route, Share2 } from 'lucide-react-native';
+import { ChevronLeft, UserPlus, UserCheck, UserX, Award, Map, Route, Share2, UserMinus, X } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { supabase } from '@/utils/supabase';
 import UserAvatar from '@/components/common/UserAvatar';
@@ -71,15 +71,60 @@ export default function PublicUserProfileScreen() {
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending' | 'sent'>('none');
   const [isProcessingFriend, setIsProcessingFriend] = useState(false);
   
-  const { friends, sendFriendRequest, removeFriend } = useFriends();
+  const { friends, sendFriendRequest, removeFriend, cancelFriendRequest, refetch: refetchFriends } = useFriends();
   const { user: currentUser } = useAuth();
 
+  // Check friendship status first, then load user data
   useEffect(() => {
-    if (id) {
-      loadUserData();
-      checkFriendshipStatus();
+    if (id && currentUser) {
+      checkFriendshipStatus().then(() => {
+        loadUserData();
+      });
     }
-  }, [id, friends]);
+  }, [id, currentUser]);
+
+  const checkFriendshipStatus = async () => {
+    if (!id || !currentUser) return;
+
+    try {
+      // Check if already friends
+      const isFriend = friends.some(friend => friend.id === id);
+      if (isFriend) {
+        setFriendshipStatus('friend');
+        return;
+      }
+
+      // Check if there's a pending request
+      const { data: existingRequest, error } = await supabase
+        .from('friendships')
+        .select('status, requester_id, receiver_id')
+        .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${id}),and(requester_id.eq.${id},receiver_id.eq.${currentUser.id})`)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking friendship status:', error);
+        setFriendshipStatus('none');
+        return;
+      }
+
+      if (existingRequest) {
+        if (existingRequest.status === 'pending') {
+          if (existingRequest.requester_id === currentUser.id) {
+            setFriendshipStatus('sent');
+          } else {
+            setFriendshipStatus('pending');
+          }
+        } else {
+          setFriendshipStatus('none');
+        }
+      } else {
+        setFriendshipStatus('none');
+      }
+    } catch (error) {
+      console.error('Error checking friendship status:', error);
+      setFriendshipStatus('none');
+    }
+  };
 
   const loadUserData = async () => {
     if (!id) return;
@@ -210,49 +255,6 @@ export default function PublicUserProfileScreen() {
     }
   };
 
-  const checkFriendshipStatus = async () => {
-    if (!id || !currentUser) return;
-
-    // Check if already friends
-    const isFriend = friends.some(friend => friend.id === id);
-    if (isFriend) {
-      setFriendshipStatus('friend');
-      return;
-    }
-
-    // Check if there's a pending request
-    try {
-      const { data: existingRequest, error } = await supabase
-        .from('friendships')
-        .select('status, requester_id, receiver_id')
-        .or(`and(requester_id.eq.${currentUser.id},receiver_id.eq.${id}),and(requester_id.eq.${id},receiver_id.eq.${currentUser.id})`)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error checking friendship status:', error);
-        setFriendshipStatus('none');
-        return;
-      }
-
-      if (existingRequest) {
-        if (existingRequest.status === 'pending') {
-          if (existingRequest.requester_id === currentUser.id) {
-            setFriendshipStatus('sent');
-          } else {
-            setFriendshipStatus('pending');
-          }
-        } else {
-          setFriendshipStatus('none');
-        }
-      } else {
-        setFriendshipStatus('none');
-      }
-    } catch (error) {
-      console.error('Error checking friendship status:', error);
-      setFriendshipStatus('none');
-    }
-  };
-
   const handleFriendAction = async () => {
     if (!id || !currentUser) return;
     
@@ -268,21 +270,71 @@ export default function PublicUserProfileScreen() {
           'Unfriend User',
           `Are you sure you want to remove ${displayName} from your friends?`,
           [
-            { text: 'Cancel', style: 'cancel' },
+            { text: 'Cancel', style: 'cancel', onPress: () => setIsProcessingFriend(false) },
             {
               text: 'Unfriend',
               style: 'destructive',
               onPress: async () => {
-                const success = await removeFriend(id);
-                if (success) {
-                  setFriendshipStatus('none');
-                  Alert.alert('Success', `${displayName} has been removed from your friends.`);
-                } else {
-                  Alert.alert('Error', 'Failed to remove friend. Please try again.');
+                try {
+                  console.log('Removing friend with ID:', id);
+                  const success = await removeFriend(id);
+                  
+                  if (success) {
+                    console.log('Friend removed successfully');
+                    setFriendshipStatus('none');
+                    Alert.alert('Success', `${displayName} has been removed from your friends.`);
+                    // Refresh friends list
+                    await refetchFriends();
+                  } else {
+                    console.error('Failed to remove friend, no success returned');
+                    Alert.alert('Error', 'Failed to remove friend. Please try again.');
+                  }
+                } catch (error) {
+                  console.error('Error in unfriend action:', error);
+                  Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+                } finally {
+                  setIsProcessingFriend(false);
                 }
               },
             },
-          ]
+          ],
+          { cancelable: false }
+        );
+        return;
+      } else if (friendshipStatus === 'sent') {
+        Alert.alert(
+          'Cancel Request',
+          `Are you sure you want to cancel your friend request to ${displayName}?`,
+          [
+            { text: 'No', style: 'cancel', onPress: () => setIsProcessingFriend(false) },
+            {
+              text: 'Yes, Cancel',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  console.log('Canceling friend request to ID:', id);
+                  const success = await cancelFriendRequest(id);
+                  
+                  if (success) {
+                    console.log('Friend request canceled successfully');
+                    setFriendshipStatus('none');
+                    Alert.alert('Success', `Friend request to ${displayName} has been canceled.`);
+                    // Refresh friends list
+                    await refetchFriends();
+                  } else {
+                    console.error('Failed to cancel friend request');
+                    Alert.alert('Error', 'Failed to cancel friend request. Please try again.');
+                  }
+                } catch (error) {
+                  console.error('Error in cancel request action:', error);
+                  Alert.alert('Error', 'An unexpected error occurred. Please try again.');
+                } finally {
+                  setIsProcessingFriend(false);
+                }
+              },
+            },
+          ],
+          { cancelable: false }
         );
         return;
       }
@@ -414,7 +466,7 @@ export default function PublicUserProfileScreen() {
     switch (friendshipStatus) {
       case 'friend':
         return {
-          icon: <UserX size={20} color={COLORS.white} />,
+          icon: <UserMinus size={20} color={COLORS.white} />,
           text: 'Unfriend',
           style: [styles.actionButton, styles.unfriendButton],
           disabled: false,
@@ -428,10 +480,10 @@ export default function PublicUserProfileScreen() {
         };
       case 'sent':
         return {
-          icon: <UserCheck size={20} color={COLORS.neutralDark} />,
-          text: 'Request Sent',
-          style: [styles.actionButton, styles.pendingButton],
-          disabled: true,
+          icon: <X size={20} color={COLORS.neutralDark} />,
+          text: 'Cancel Request',
+          style: [styles.actionButton, styles.cancelButton],
+          disabled: false,
         };
       default:
         return {
@@ -529,7 +581,8 @@ export default function PublicUserProfileScreen() {
               )}
               <Text style={[
                 styles.actionButtonText,
-                friendButton.disabled && styles.disabledButtonText
+                friendButton.disabled && styles.disabledButtonText,
+                friendshipStatus === 'sent' && styles.cancelButtonText
               ]}>
                 {isProcessingFriend ? 'Processing...' : friendButton.text}
               </Text>
@@ -762,6 +815,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.neutralMedium,
   },
+  cancelButton: {
+    backgroundColor: COLORS.neutralLight,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
   actionButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 14,
@@ -770,6 +828,9 @@ const styles = StyleSheet.create({
   },
   disabledButtonText: {
     color: COLORS.neutralDark,
+  },
+  cancelButtonText: {
+    color: COLORS.error,
   },
   statsSection: {
     padding: 16,

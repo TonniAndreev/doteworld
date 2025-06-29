@@ -1,16 +1,28 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
+import * as turf from '@turf/turf';
+import { 
+  createConvexHull, 
+  coordinatesToTurfPolygon,
+  calculatePolygonArea
+} from '@/utils/locationUtils';
+import { getFriendTerritoryColor } from '@/utils/mapColors';
+
+interface Coordinate {
+  latitude: number;
+  longitude: number;
+}
 
 interface User {
   id: string;
   name: string;
   dogName: string;
-  dogBreed: string;
+  dogBreed?: string;
   photoURL?: string | null;
   territorySize: number;
-  achievementCount: number;
   totalDistance: number;
+  achievementCount: number;
   requestSent?: boolean;
   isFriend?: boolean;
   dogs?: Array<{
@@ -18,6 +30,17 @@ interface User {
     name: string;
     breed?: string;
     photo_url?: string | null;
+  }>;
+  // New fields for territory visualization
+  territoryPolygons?: Array<{
+    id: string;
+    coordinates: Coordinate[];
+    color: string;
+    dogId: string;
+    dogName: string;
+    dogPhotoURL?: string | null;
+    dogBreed?: string;
+    centroid?: Coordinate;
   }>;
 }
 
@@ -42,12 +65,55 @@ export function useFriends() {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
+  
+  // Use ref to track subscription status
+  const friendshipsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
     if (user) {
       loadData();
+      
+      // Clean up any existing subscription before creating a new one
+      if (friendshipsChannelRef.current) {
+        console.log('Removing existing friendships channel subscription');
+        supabase.removeChannel(friendshipsChannelRef.current);
+        friendshipsChannelRef.current = null;
+      }
+      
+      // Create a unique channel name that includes the user ID to avoid conflicts
+      const channelName = `friendships-changes-${user.id}-${Date.now()}`;
+      console.log(`Creating new channel: ${channelName}`);
+      
+      // Set up real-time listeners for friendship changes
+      friendshipsChannelRef.current = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friendships',
+            filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
+          },
+          (payload) => {
+            console.log('Friendship change detected:', payload);
+            loadData();
+          }
+        )
+        .subscribe((status) => {
+          console.log(`Subscription status for ${channelName}:`, status);
+        });
+         
+      return () => {
+        // Clean up subscription when component unmounts or user changes
+        if (friendshipsChannelRef.current) {
+          console.log('Cleaning up friendships channel subscription');
+          supabase.removeChannel(friendshipsChannelRef.current);
+          friendshipsChannelRef.current = null;
+        }
+      };
     }
-  }, [user]);
+  }, [user?.id]); // Only re-run if user ID changes
 
   const loadData = async () => {
     setIsLoading(true);
@@ -121,17 +187,87 @@ export function useFriends() {
         let territorySize = 0;
         let totalDistance = 0;
         
-        if (firstDog) {
+        // Array to store territory polygons for this friend
+        const territoryPolygons: User['territoryPolygons'] = [];
+        
+        // Process each dog's territory
+        for (const dog of dogs) {
+          if (!dog || !dog.id) continue;
+          
           const { data: walkPoints, error: walkError } = await supabase
             .from('walk_points')
             .select('latitude, longitude, walk_session_id, timestamp')
-            .eq('dog_id', firstDog.id)
+            .eq('dog_id', dog.id)
             .order('timestamp', { ascending: true });
 
-          if (!walkError && walkPoints && walkPoints.length > 0) {
-            // Calculate territory size using the same method as leaderboard
-            territorySize = calculateRealTerritoryFromWalkPoints(walkPoints);
-            totalDistance = calculateRealDistanceFromWalkPoints(walkPoints);
+          if (walkError) {
+            console.error(`Error fetching walk points for dog ${dog.id}:`, walkError);
+            continue;
+          }
+
+          if (!walkPoints || walkPoints.length < 3) {
+            console.log(`No valid walk points found for dog ${dog.id}`);
+            continue;
+          }
+
+          // Group points by walk session
+          const sessionGroups = walkPoints.reduce((groups, point) => {
+            if (!groups[point.walk_session_id]) {
+              groups[point.walk_session_id] = [];
+            }
+            groups[point.walk_session_id].push(point);
+            return groups;
+          }, {} as Record<string, any[]>);
+
+          // Process each walk session to create territory polygons
+          for (const [sessionId, sessionPoints] of Object.entries(sessionGroups)) {
+            if (sessionPoints.length < 3) continue;
+            
+            // Create coordinates array
+            const coordinates = sessionPoints.map(point => ({
+              latitude: point.latitude,
+              longitude: point.longitude
+            }));
+            
+            // Create convex hull
+            const hull = createConvexHull(coordinates);
+            if (!hull) continue;
+            
+            // Calculate area
+            const area = calculatePolygonArea(hull);
+            territorySize += area;
+            
+            // Calculate centroid
+            const turfPolygon = coordinatesToTurfPolygon(hull);
+            let centroid: Coordinate | undefined;
+            
+            if (turfPolygon) {
+              const turfCentroid = turf.centroid(turfPolygon);
+              centroid = {
+                latitude: turfCentroid.geometry.coordinates[1],
+                longitude: turfCentroid.geometry.coordinates[0]
+              };
+            }
+            
+            // Get color for this friend
+            const color = await getFriendTerritoryColor(friendId);
+            
+            // Add to territory polygons
+            territoryPolygons.push({
+              id: sessionId,
+              coordinates: hull,
+              color,
+              dogId: dog.id,
+              dogName: dog.name,
+              dogPhotoURL: dog.photo_url,
+              dogBreed: dog.breed,
+              centroid
+            });
+          }
+
+          // Calculate total distance (reusing existing code)
+          if (walkPoints.length > 1) {
+            totalDistance += calculateRealDistanceFromWalkPoints(walkPoints);
           }
         }
 
@@ -146,6 +282,7 @@ export function useFriends() {
           achievementCount: achievementCount || 0,
           isFriend: true,
           dogs: dogs,
+          territoryPolygons
         });
       }
 
@@ -252,7 +389,7 @@ export function useFriends() {
         // Check if already friends or request exists
         const { data: existingRelation } = await supabase
           .from('friendships')
-          .select('status')
+          .select('status, requester_id, receiver_id')
           .or(`and(requester_id.eq.${user.id},receiver_id.eq.${profile.id}),and(requester_id.eq.${profile.id},receiver_id.eq.${user.id})`)
           .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no relation exists
 
@@ -299,6 +436,10 @@ export function useFriends() {
           }
         }
 
+        const isFriend = existingRelation?.status === 'accepted';
+        const requestSent = existingRelation?.status === 'pending' && existingRelation?.requester_id === user.id;
+        const requestReceived = existingRelation?.status === 'pending' && existingRelation?.receiver_id === user.id;
+
         searchResults.push({
           id: profile.id,
           name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
@@ -308,8 +449,8 @@ export function useFriends() {
           territorySize,
           totalDistance,
           achievementCount: achievementCount || 0,
-          isFriend: existingRelation?.status === 'accepted',
-          requestSent: existingRelation?.status === 'pending',
+          isFriend,
+          requestSent,
           dogs: dogs,
         });
       }
@@ -379,8 +520,12 @@ export function useFriends() {
       }
 
       console.log('Friend request accepted');
-      // Refresh data
-      await loadData();
+      
+      // Update local state
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
+      
+      // Refresh friends list to include the newly accepted friend
+      await fetchFriends();
       
       return true; // Return success indicator
     } catch (error) {
@@ -408,8 +553,9 @@ export function useFriends() {
       }
 
       console.log('Friend request declined');
-      // Refresh friend requests
-      await fetchFriendRequests();
+      
+      // Update local state
+      setFriendRequests(prev => prev.filter(req => req.id !== requestId));
       
       return true; // Return success indicator
     } catch (error) {
@@ -419,13 +565,16 @@ export function useFriends() {
   };
 
   const removeFriend = async (friendId: string) => {
-    if (!user) return;
+    if (!user) return false;
 
     try {
+      console.log(`Removing friend with ID: ${friendId}`);
+      
+      // Delete the friendship record
       const { error } = await supabase
         .from('friendships')
         .delete()
-        .or(`and(requester_id.eq.${user.id},receiver_id.eq.${friendId}),and(requester_id.eq.${friendId},receiver_id.eq.${user.id})`)
+        .or(`and(requester_id.eq.${user.id},receiver_id.eq.${friendId}),and(requester_id.eq.${friendId},receiver_id.eq.${user.id})`);
 
       if (error) {
         console.error('Error removing friend:', error);
@@ -433,14 +582,44 @@ export function useFriends() {
       }
 
       console.log('Friend removed successfully');
-      // Refresh friends list
-      await fetchFriends();
       
-      // Also refresh friend requests in case there were any pending
-      await fetchFriendRequests();
+      // Update local state to remove the friend
+      setFriends(prevFriends => prevFriends.filter(friend => friend.id !== friendId));
+      
       return true;
     } catch (error) {
       console.error('Error removing friend:', error);
+      return false;
+    }
+  };
+
+  const cancelFriendRequest = async (userId: string) => {
+    if (!user) return false;
+
+    try {
+      console.log(`Canceling friend request to user ID: ${userId}`);
+      
+      // Delete the pending friendship record where current user is the requester
+      const { error } = await supabase
+        .from('friendships')
+        .delete()
+        .eq('requester_id', user.id)
+        .eq('receiver_id', userId)
+        .eq('status', 'pending');
+
+      if (error) {
+        console.error('Error canceling friend request:', error);
+        return false;
+      }
+
+      console.log('Friend request canceled successfully');
+      
+      // Refresh data to update UI
+      await loadData();
+      
+      return true;
+    } catch (error) {
+      console.error('Error canceling friend request:', error);
       return false;
     }
   };
@@ -560,6 +739,7 @@ export function useFriends() {
     acceptFriendRequest,
     declineFriendRequest,
     removeFriend,
+    cancelFriendRequest,
     refetch: loadData,
   };
 }

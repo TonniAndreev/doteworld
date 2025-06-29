@@ -49,6 +49,11 @@ export function getAvatarSource(userId: string, uploadedPhotoURL?: string | null
     return { uri: uploadedPhotoURL };
   }
   
+  // Special case for "Dungyov" user - always assign avatar #7
+  if (userId.includes('Dungyov') || userId.toLowerCase().includes('dungyov')) {
+    return AVATAR_IMAGES[7];
+  }
+  
   const avatarIndex = getAvatarIndex(userId);
   return AVATAR_IMAGES[avatarIndex as keyof typeof AVATAR_IMAGES];
 }
