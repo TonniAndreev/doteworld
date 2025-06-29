@@ -555,12 +555,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('Uploading to path:', filePath);
 
           // Prepare file for upload
-          const { data: fileData } = await prepareFileForUpload(dogPhoto);
+          const { data: fileData, contentType } = await prepareFileForUpload(dogPhoto);
 
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('dog-photos')
             .upload(filePath, fileData, {
+              contentType,
               upsert: true,
             });
 
@@ -639,12 +640,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.log('Uploading to path:', filePath);
           
           // Prepare file for upload
-          const { data: fileData } = await prepareFileForUpload(data.avatar_url);
+          const { data: fileData, contentType } = await prepareFileForUpload(data.avatar_url);
           
           // Upload to Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('avatars')
             .upload(filePath, fileData, {
+              contentType,
               upsert: true,
             });
           

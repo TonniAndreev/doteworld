@@ -101,12 +101,13 @@ export default function DogPhotoUploader({
       console.log('Uploading to path:', filePath);
       
       // Prepare file for upload
-      const { data: fileData } = await prepareFileForUpload(photoUri);
+      const { data: fileData, contentType } = await prepareFileForUpload(photoUri);
       
       // Upload to Supabase Storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('dog-photos')
         .upload(filePath, fileData, {
+          contentType,
           upsert: true,
         });
       
