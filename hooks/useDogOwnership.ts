@@ -306,6 +306,62 @@ export function useDogOwnership() {
     }
   };
 
+  // Function to update dog ownership permissions
+  const updateDogPermissions = async (
+    dogId: string, 
+    profileId: string, 
+    newPermissions: { edit?: boolean; share?: boolean; delete?: boolean }
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    try {
+      setIsLoading(true);
+
+      // First get current permissions
+      const { data: currentData, error: fetchError } = await supabase
+        .from('profile_dogs')
+        .select('permissions')
+        .eq('dog_id', dogId)
+        .eq('profile_id', profileId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching current permissions:', fetchError);
+        return { success: false, error: 'Failed to fetch current permissions' };
+      }
+
+      // Merge current permissions with new ones
+      const updatedPermissions = {
+        ...currentData.permissions,
+        ...newPermissions
+      };
+
+      // Update permissions
+      const { error: updateError } = await supabase
+        .from('profile_dogs')
+        .update({
+          permissions: updatedPermissions
+        })
+        .eq('dog_id', dogId)
+        .eq('profile_id', profileId);
+
+      if (updateError) {
+        console.error('Error updating permissions:', updateError);
+        return { success: false, error: 'Failed to update permissions' };
+      }
+
+      // Refresh user data to ensure consistency
+      await refreshUserData();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating dog permissions:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Function to handle deep link invites
   const handleDeepLinkInvite = async (inviteToken: string): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'Not authenticated' };
@@ -370,6 +426,7 @@ export function useDogOwnership() {
     declineInvite,
     removeCoOwner,
     updateDogData,
+    updateDogPermissions,
     handleDeepLinkInvite,
   };
 }

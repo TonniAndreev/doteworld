@@ -29,7 +29,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   const [showInviteModal, setShowInviteModal] = useState(false);
   
   const { user } = useAuth();
-  const { getDogOwners, removeCoOwner } = useDogOwnership();
+  const { getDogOwners, removeCoOwner, updateDogPermissions } = useDogOwnership();
 
   useEffect(() => {
     if (visible) {
@@ -42,6 +42,18 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     try {
       const ownersData = await getDogOwners(dogId);
       setOwners(ownersData);
+      
+      // Check if current user is the Alpha Owner and fix permissions if needed
+      if (user) {
+        const currentUserOwnership = ownersData.find(o => o.profile_id === user.id && o.role === 'owner');
+        if (currentUserOwnership && (!currentUserOwnership.permissions || currentUserOwnership.permissions.share === false)) {
+          console.log('Fixing Alpha Owner permissions for user:', user.id);
+          await updateDogPermissions(dogId, user.id, { share: true, edit: true, delete: true });
+          // Reload owners to reflect the updated permissions
+          const updatedOwnersData = await getDogOwners(dogId);
+          setOwners(updatedOwnersData);
+        }
+      }
     } catch (error) {
       console.error('Error loading owners:', error);
     } finally {
