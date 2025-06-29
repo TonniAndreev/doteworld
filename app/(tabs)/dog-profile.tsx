@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TextInput
+  TextInput,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
