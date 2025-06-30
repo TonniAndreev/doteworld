@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { Marker } from 'react-native-maps';
 import UserAvatar from '@/components/common/UserAvatar';
 import { COLORS } from '@/constants/theme';
@@ -65,6 +65,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 3,
     overflow: 'hidden',
+    backgroundColor: COLORS.white, // Explicitly set background color
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: COLORS.black,
@@ -72,7 +73,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
-    backgroundColor: COLORS.white, // Explicitly set background color
   },
   nameContainer: {
     paddingHorizontal: 12,
