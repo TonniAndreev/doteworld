@@ -43,13 +43,18 @@ export default function UserAvatar({
     style
   ];
 
+  // Determine background color for container
+  const bgColor = isDogAvatar && !photoURL 
+    ? COLORS.primaryLight // Use a distinct background for dog avatars without photos
+    : COLORS.neutralLight;
+
   const containerStyles = [
     {
       width: size,
       height: size,
       borderRadius: size / 2,
       overflow: 'hidden',
-      backgroundColor: COLORS.neutralLight,
+      backgroundColor: bgColor,
     },
     containerStyle
   ];
@@ -60,7 +65,7 @@ export default function UserAvatar({
       <View style={[
         containerStyles,
         {
-          backgroundColor: COLORS.primaryLight,
+          backgroundColor: isDogAvatar ? COLORS.secondaryLight : COLORS.primaryLight,
           justifyContent: 'center',
           alignItems: 'center',
         }
@@ -69,7 +74,7 @@ export default function UserAvatar({
           {
             fontFamily: 'Inter-Bold',
             fontSize: size * 0.4,
-            color: COLORS.primary,
+            color: isDogAvatar ? COLORS.secondary : COLORS.primary,
           },
           fallbackTextStyle
         ]}>
