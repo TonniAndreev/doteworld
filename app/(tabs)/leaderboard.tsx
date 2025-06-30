@@ -221,8 +221,7 @@ export default function LeaderboardScreen() {
   // Filter data based on search query
   const getFilteredData = () => {
     if (searchQuery.trim() === '') {
-      // No search - show top 10
-      return leaderboardData.slice(0, 10);
+      return leaderboardData;
     } else {
       // Search mode - show all matching results
       return leaderboardData.filter(item => 
@@ -238,11 +237,21 @@ export default function LeaderboardScreen() {
   const isCurrentUserVisible = filteredData.some(item => item.id === user?.id);
 
   const renderTopThree = () => {
-    if (!leaderboardData || leaderboardData.length < 3 || searchQuery.trim() !== '') return null;
+    if (!leaderboardData || leaderboardData.length === 0 || searchQuery.trim() !== '') return null;
 
-    const [first, second, third] = leaderboardData.slice(0, 3);
+    // Get top three users, or fewer if there aren't three
+    const topUsers = leaderboardData.slice(0, Math.min(3, leaderboardData.length));
+    
+    // If we have fewer than 3 users, pad the array with nulls to maintain layout
+    while (topUsers.length < 3) {
+      topUsers.push(null);
+    }
+    
+    const [first, second, third] = topUsers;
 
     const getValue = (user) => {
+      if (!user) return '';
+      
       switch (activeTab) {
         case 'territory':
           return formatArea(user.territorySize * 1000000);
@@ -260,129 +269,141 @@ export default function LeaderboardScreen() {
     return (
       <View style={styles.top3Container}>
         {/* Second Place - Left */}
-        <TouchableOpacity 
-          style={[
-            styles.topUser, 
-            styles.top2,
-            isCurrentUser(second.id) && styles.highlightedUser
-          ]}
-          onPress={() => handleUserPress(second)}
-        >
-          <View style={styles.crownContainer}>
-            {/* Empty space for alignment */}
-          </View>
-          <UserAvatar
-            userId={second.id}
-            photoURL={second.photoURL}
-            userName={second.name}
-            size={52}
+        {second ? (
+          <TouchableOpacity 
             style={[
-              styles.avatarImage,
-              isCurrentUser(second.id) && styles.highlightedAvatar
+              styles.topUser, 
+              styles.top2,
+              isCurrentUser(second.id) && styles.highlightedUser
             ]}
-          />
-          <View style={styles.nameAndDogContainer}>
+            onPress={() => handleUserPress(second)}
+          >
+            <View style={styles.crownContainer}>
+              {/* Empty space for alignment */}
+            </View>
+            <UserAvatar
+              userId={second.id}
+              photoURL={second.photoURL}
+              userName={second.name}
+              size={52}
+              style={[
+                styles.avatarImage,
+                isCurrentUser(second.id) && styles.highlightedAvatar
+              ]}
+            />
+            <View style={styles.nameAndDogContainer}>
+              <Text style={[
+                styles.topUserName,
+                isCurrentUser(second.id) && styles.highlightedText
+              ]} numberOfLines={1}>{second.name}</Text>
+              <Text style={[
+                styles.topDogName,
+                isCurrentUser(second.id) && styles.highlightedDogText
+              ]} numberOfLines={1}>{second.dogName}</Text>
+            </View>
             <Text style={[
-              styles.topUserName,
-              isCurrentUser(second.id) && styles.highlightedText
-            ]} numberOfLines={1}>{second.name}</Text>
-            <Text style={[
-              styles.topDogName,
-              isCurrentUser(second.id) && styles.highlightedDogText
-            ]} numberOfLines={1}>{second.dogName}</Text>
-          </View>
-          <Text style={[
-            styles.topUserScore,
-            isCurrentUser(second.id) && styles.highlightedScore
-          ]}>
-            {getValue(second)}
-          </Text>
-        </TouchableOpacity>
+              styles.topUserScore,
+              isCurrentUser(second.id) && styles.highlightedScore
+            ]}>
+              {getValue(second)}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.topUser, styles.top2, styles.emptyTopUser]} />
+        )}
 
         {/* First Place - Center */}
-        <TouchableOpacity 
-          style={[
-            styles.topUser, 
-            styles.top1, 
-            styles.highlightedTop1,
-            isCurrentUser(first.id) && styles.highlightedUser
-          ]}
-          onPress={() => handleUserPress(first)}
-        >
-          <View style={styles.crownContainer}>
-            <Crown size={28} color={COLORS.accentDark} />
-          </View>
-          <UserAvatar
-            userId={first.id}
-            photoURL={first.photoURL}
-            userName={first.name}
-            size={64}
+        {first ? (
+          <TouchableOpacity 
             style={[
-              styles.avatarImage, 
-              styles.highlightedAvatar1,
-              isCurrentUser(first.id) && styles.highlightedAvatar
+              styles.topUser, 
+              styles.top1, 
+              styles.highlightedTop1,
+              isCurrentUser(first.id) && styles.highlightedUser
             ]}
-          />
-          <View style={styles.nameAndDogContainer}>
+            onPress={() => handleUserPress(first)}
+          >
+            <View style={styles.crownContainer}>
+              <Crown size={28} color={COLORS.accentDark} />
+            </View>
+            <UserAvatar
+              userId={first.id}
+              photoURL={first.photoURL}
+              userName={first.name}
+              size={64}
+              style={[
+                styles.avatarImage, 
+                styles.highlightedAvatar1,
+                isCurrentUser(first.id) && styles.highlightedAvatar
+              ]}
+            />
+            <View style={styles.nameAndDogContainer}>
+              <Text style={[
+                styles.topUserName, 
+                styles.firstPlaceName,
+                isCurrentUser(first.id) && styles.highlightedText
+              ]} numberOfLines={1}>{first.name}</Text>
+              <Text style={[
+                styles.topDogName, 
+                styles.firstPlaceDogName,
+                isCurrentUser(first.id) && styles.highlightedDogText
+              ]} numberOfLines={1}>{first.dogName}</Text>
+            </View>
             <Text style={[
-              styles.topUserName, 
-              styles.firstPlaceName,
-              isCurrentUser(first.id) && styles.highlightedText
-            ]} numberOfLines={1}>{first.name}</Text>
-            <Text style={[
-              styles.topDogName, 
-              styles.firstPlaceDogName,
-              isCurrentUser(first.id) && styles.highlightedDogText
-            ]} numberOfLines={1}>{first.dogName}</Text>
-          </View>
-          <Text style={[
-            styles.topUserScore, 
-            styles.firstPlaceScore,
-            isCurrentUser(first.id) && styles.highlightedScore
-          ]}>
-            {getValue(first)}
-          </Text>
-        </TouchableOpacity>
+              styles.topUserScore, 
+              styles.firstPlaceScore,
+              isCurrentUser(first.id) && styles.highlightedScore
+            ]}>
+              {getValue(first)}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.topUser, styles.top1, styles.emptyTopUser]} />
+        )}
 
         {/* Third Place - Right */}
-        <TouchableOpacity 
-          style={[
-            styles.topUser, 
-            styles.top3,
-            isCurrentUser(third.id) && styles.highlightedUser
-          ]}
-          onPress={() => handleUserPress(third)}
-        >
-          <View style={styles.crownContainer}>
-            {/* Empty space for alignment */}
-          </View>
-          <UserAvatar
-            userId={third.id}
-            photoURL={third.photoURL}
-            userName={third.name}
-            size={44}
+        {third ? (
+          <TouchableOpacity 
             style={[
-              styles.avatarImage,
-              isCurrentUser(third.id) && styles.highlightedAvatar
+              styles.topUser, 
+              styles.top3,
+              isCurrentUser(third.id) && styles.highlightedUser
             ]}
-          />
-          <View style={styles.nameAndDogContainer}>
+            onPress={() => handleUserPress(third)}
+          >
+            <View style={styles.crownContainer}>
+              {/* Empty space for alignment */}
+            </View>
+            <UserAvatar
+              userId={third.id}
+              photoURL={third.photoURL}
+              userName={third.name}
+              size={44}
+              style={[
+                styles.avatarImage,
+                isCurrentUser(third.id) && styles.highlightedAvatar
+              ]}
+            />
+            <View style={styles.nameAndDogContainer}>
+              <Text style={[
+                styles.topUserName,
+                isCurrentUser(third.id) && styles.highlightedText
+              ]} numberOfLines={1}>{third.name}</Text>
+              <Text style={[
+                styles.topDogName,
+                isCurrentUser(third.id) && styles.highlightedDogText
+              ]} numberOfLines={1}>{third.dogName}</Text>
+            </View>
             <Text style={[
-              styles.topUserName,
-              isCurrentUser(third.id) && styles.highlightedText
-            ]} numberOfLines={1}>{third.name}</Text>
-            <Text style={[
-              styles.topDogName,
-              isCurrentUser(third.id) && styles.highlightedDogText
-            ]} numberOfLines={1}>{third.dogName}</Text>
-          </View>
-          <Text style={[
-            styles.topUserScore,
-            isCurrentUser(third.id) && styles.highlightedScore
-          ]}>
-            {getValue(third)}
-          </Text>
-        </TouchableOpacity>
+              styles.topUserScore,
+              isCurrentUser(third.id) && styles.highlightedScore
+            ]}>
+              {getValue(third)}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.topUser, styles.top3, styles.emptyTopUser]} />
+        )}
       </View>
     );
   };
@@ -470,10 +491,20 @@ export default function LeaderboardScreen() {
       ) : (
         <>
           <FlatList
-            data={searchQuery.trim() === '' ? filteredData.slice(3) : filteredData}
+            data={searchQuery.trim() === '' ? 
+              // If not searching, show users after the top 3 (or all if fewer than 3)
+              leaderboardData.length > 3 ? leaderboardData.slice(3) : [] 
+              : 
+              // If searching, show all matching results
+              filteredData
+            }
             keyExtractor={(item) => item.id}
             renderItem={({ item, index }) => {
-              const rank = searchQuery.trim() === '' ? index + 4 : leaderboardData.findIndex(u => u.id === item.id) + 1;
+              // Calculate rank based on whether we're searching and whether we're showing top 3
+              const rank = searchQuery.trim() === '' ? 
+                (leaderboardData.length > 3 ? index + 4 : index + 1) : // If not searching, start at 4 if we have top 3
+                leaderboardData.findIndex(u => u.id === item.id) + 1;   // If searching, show actual rank
+              
               return (
                 <LeaderboardItem 
                   rank={rank}
@@ -488,13 +519,28 @@ export default function LeaderboardScreen() {
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
             ListEmptyComponent={
-              !isLoading && leaderboardData.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>
-                    {searchQuery.trim() !== '' ? 'No results found' : selectedCity ? `No leaderboard data for ${selectedCity.name}` : 'No leaderboard data'}
-                  </Text>
-                </View>
-              ) : null
+              !isLoading && (
+                searchQuery.trim() !== '' ? (
+                  // No search results
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>No results found</Text>
+                  </View>
+                ) : leaderboardData.length === 0 ? (
+                  // No leaderboard data at all
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>
+                      {selectedCity ? `No leaderboard data for ${selectedCity.name}` : 'No leaderboard data'}
+                    </Text>
+                  </View>
+                ) : leaderboardData.length <= 3 ? (
+                  // Only top 3 users, already shown in top section
+                  <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyText}>
+                      Only top {leaderboardData.length} {leaderboardData.length === 1 ? 'user' : 'users'} available
+                    </Text>
+                  </View>
+                ) : null
+              )
             }
             ListFooterComponent={renderCurrentUserPosition}
           />
@@ -588,6 +634,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginHorizontal: 4,
     width: 100,
+  },
+  emptyTopUser: {
+    backgroundColor: 'transparent',
   },
   top1: {
     height: 180,
