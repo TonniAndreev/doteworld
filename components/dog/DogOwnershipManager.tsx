@@ -100,7 +100,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         photoURL={owner.avatar_url}
         userName={`${owner.first_name} ${owner.last_name}`}
         size={48}
-        containerStyle={styles.ownerAvatarContainer}
+        style={styles.ownerAvatar}
       />
       
       <View style={styles.ownerInfo}>
@@ -144,21 +144,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
             </View>
 
             <View style={styles.content}>
-              {/* Diagnostic information */}
-              <View style={styles.diagnosticContainer}>
-                <Text style={styles.diagnosticText}>
-                  Owners count: {owners.length}
-                </Text>
-                <Text style={styles.diagnosticText}>
-                  Loading state: {isLoadingOwners ? 'Loading...' : 'Not loading'}
-                </Text>
-                {owners.length > 0 && (
-                  <Text style={styles.diagnosticText}>
-                    First owner: {owners[0]?.first_name} {owners[0]?.last_name} (Role: {owners[0]?.role})
-                  </Text>
-                )}
-              </View>
-
               {isAlphaOwner() && (
                 <TouchableOpacity 
                   style={styles.inviteButton}
@@ -244,20 +229,6 @@ const styles = StyleSheet.create({
   content: {
     padding: 20,
   },
-  diagnosticContainer: {
-    backgroundColor: '#FFE8E0',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-  diagnosticText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-    marginBottom: 4,
-  },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -304,12 +275,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.neutralLight,
   },
-  ownerAvatarContainer: {
-    backgroundColor: '#F0F0F0',
+  ownerAvatar: {
+    marginRight: 16,
   },
   ownerInfo: {
     flex: 1,
-    marginLeft: 16,
   },
   ownerName: {
     fontFamily: 'Inter-Bold',

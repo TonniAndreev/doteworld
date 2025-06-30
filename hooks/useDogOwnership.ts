@@ -44,9 +44,22 @@ export function useDogOwnership() {
     if (!user) return [];
 
     try {
+      // Instead of using the dog_owners_view which has recursion issues,
+      // directly query the profile_dogs table and join with profiles
       const { data, error } = await supabase
-        .from('dog_owners_view')
-        .select('*')
+        .from('profile_dogs')
+        .select(`
+          profile_id,
+          role,
+          permissions,
+          created_at as ownership_since,
+          invited_by,
+          profiles:profile_id (
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
         .eq('dog_id', dogId)
         .order('role', { ascending: true });  // 'owner' comes before 'co-owner' alphabetically
 
@@ -55,7 +68,17 @@ export function useDogOwnership() {
         return [];
       }
 
-      return data || [];
+      // Transform the data to match the DogOwner interface
+      return (data || []).map(item => ({
+        profile_id: item.profile_id,
+        role: item.role,
+        permissions: item.permissions,
+        ownership_since: item.ownership_since,
+        invited_by: item.invited_by,
+        first_name: item.profiles?.first_name || '',
+        last_name: item.profiles?.last_name || '',
+        avatar_url: item.profiles?.avatar_url
+      }));
     } catch (error) {
       console.error('Error fetching dog owners:', error);
       return [];
