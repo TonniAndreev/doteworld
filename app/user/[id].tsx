@@ -78,11 +78,17 @@ export default function PublicUserProfileScreen() {
   // Check friendship status first, then load user data
   useEffect(() => {
     if (id && currentUser) {
-      checkFriendshipStatus().then(() => {
-        loadUserData();
-      });
+      checkFriendshipStatus();
+      loadUserData();
     }
   }, [id, currentUser]);
+
+  // Re-check friendship status when friends list changes
+  useEffect(() => {
+    if (id && currentUser && friends) {
+      checkFriendshipStatus();
+    }
+  }, [friends]);
 
   const checkFriendshipStatus = async () => {
     if (!id || !currentUser) return;
@@ -266,6 +272,7 @@ export default function PublicUserProfileScreen() {
         await sendFriendRequest(id);
         setFriendshipStatus('sent');
         Alert.alert('Success', 'Friend request sent!');
+        setIsProcessingFriend(false);
       } else if (friendshipStatus === 'friend') {
         Alert.alert(
           'Unfriend User',
@@ -342,7 +349,6 @@ export default function PublicUserProfileScreen() {
     } catch (error) {
       console.error('Error handling friend action:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
-    } finally {
       setIsProcessingFriend(false);
     }
   };
