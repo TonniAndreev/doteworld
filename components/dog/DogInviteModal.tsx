@@ -9,7 +9,6 @@ import {
   Alert,
   ActivityIndicator,
   Share,
-  Platform,
 } from 'react-native';
 import { X, Mail, Send, Share2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';

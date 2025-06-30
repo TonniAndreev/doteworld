@@ -72,6 +72,12 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     );
   };
 
+  const isAlphaOwner = () => {
+    if (!user) return false;
+    const currentUserOwnership = owners.find(o => o.profile_id === user.id);
+    return currentUserOwnership?.role === 'owner';
+  };
+
   const canRemoveOwner = (owner: any) => {
     if (!user) return false;
     
@@ -82,14 +88,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     if (owner.role === 'owner') return false;
     
     // Check if current user is the alpha owner
-    const currentUserOwnership = owners.find(o => o.profile_id === user.id);
-    return currentUserOwnership?.role === 'owner';
-  };
-
-  const isAlphaOwner = () => {
-    if (!user) return false;
-    const currentUserOwnership = owners.find(o => o.profile_id === user.id);
-    return currentUserOwnership?.role === 'owner';
+    return isAlphaOwner();
   };
 
   const renderOwner = ({ item: owner }: { item: any }) => (
@@ -276,9 +275,6 @@ const styles = StyleSheet.create({
   ownerAvatarContainer: {
     backgroundColor: '#F0F0F0',
   },
-  ownerAvatar: {
-    marginRight: 16,
-  },
   ownerInfo: {
     flex: 1,
     marginLeft: 16,
@@ -296,7 +292,7 @@ const styles = StyleSheet.create({
   },
   roleText: {
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: 12,
     color: COLORS.accent,
   },
   removeButton: {
