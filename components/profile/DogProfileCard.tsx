@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
-import { Calendar, Heart, Scale, Info, Users, Crown, Shield, Eye, UserPlus, UserX, MoveHorizontal as MoreHorizontal, Pencil } from 'lucide-react-native';
+import { Calendar, Heart, Scale, Info, Users, Crown, Shield, Eye, UserPlus, UserX, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
@@ -72,8 +72,8 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
   const handleRemoveOwner = async (profileId: string, ownerName: string) => {
     Alert.alert(
-      'Remove Owner',
-      `Are you sure you want to remove ${ownerName} as an owner of ${dog.name}?`,
+      'Remove Co-Owner',
+      `Are you sure you want to remove ${ownerName} as a co-owner of ${dog.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -82,10 +82,10 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
           onPress: async () => {
             const result = await removeCoOwner(dog.id, profileId);
             if (result.success) {
-              Alert.alert('Success', 'Owner removed successfully');
+              Alert.alert('Success', 'Co-owner removed successfully');
               loadOwners();
             } else {
-              Alert.alert('Error', result.error || 'Failed to remove owner');
+              Alert.alert('Error', result.error || 'Failed to remove co-owner');
             }
           },
         },
@@ -136,19 +136,6 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
         return COLORS.secondary;
       default:
         return COLORS.neutralMedium;
-    }
-  };
-
-  const getRoleDisplayName = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return 'Alpha Owner';
-      case 'co-owner':
-        return 'Owner';
-      case 'caretaker':
-        return 'Caretaker';
-      default:
-        return role.charAt(0).toUpperCase() + role.slice(1);
     }
   };
 
@@ -275,12 +262,12 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 <View style={styles.ownersHeaderLeft}>
                   <Users size={16} color={COLORS.neutralDark} />
                   <Text style={styles.ownersTitle}>
-                    Owners ({owners.length}/4)
+                    Owners ({owners.length})
                   </Text>
                 </View>
                 
                 <View style={styles.ownersActions}>
-                  {canInviteOwners() && owners.length < 4 && (
+                  {canInviteOwners() && (
                     <TouchableOpacity
                       style={styles.addOwnerButton}
                       onPress={() => setShowInviteModal(true)}
@@ -306,17 +293,13 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 <View style={styles.ownersList}>
                   {displayedOwners.map((owner) => (
                     <View key={owner.profile_id} style={styles.ownerItem}>
-                      <View style={styles.ownerAvatarContainer}>
-                        <UserAvatar
-                          userId={owner.profile_id}
-                          photoURL={owner.avatar_url}
-                          userName={`${owner.first_name} ${owner.last_name}`}
-                          size={32}
-                          style={styles.ownerAvatar}
-                          containerStyle={styles.ownerAvatarInner}
-                        />
-                        {getRoleIcon(owner.role)}
-                      </View>
+                      <UserAvatar
+                        userId={owner.profile_id}
+                        photoURL={owner.avatar_url}
+                        userName={`${owner.first_name} ${owner.last_name}`}
+                        size={32}
+                        style={styles.ownerAvatar}
+                      />
                       
                       <View style={styles.ownerInfo}>
                         <Text style={styles.ownerName} numberOfLines={1}>
@@ -324,8 +307,9 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                         </Text>
                         
                         <View style={styles.ownerRole}>
+                          {getRoleIcon(owner.role)}
                           <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-                            {getRoleDisplayName(owner.role)}
+                            {owner.role.charAt(0).toUpperCase() + owner.role.slice(1)}
                           </Text>
                         </View>
                       </View>
@@ -401,13 +385,13 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: COLORS.white,
     borderRadius: 16,
     padding: 16,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
+    shadowRadius: 4,
     elevation: 2,
     marginBottom: 16,
   },
@@ -582,15 +566,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  ownerAvatarContainer: {
-    position: 'relative',
-    marginRight: 12,
-  },
-  ownerAvatarInner: {
-    backgroundColor: '#F0F0F0',
-  },
   ownerAvatar: {
-    marginRight: 0,
+    marginRight: 12,
   },
   ownerInfo: {
     flex: 1,
@@ -604,12 +581,11 @@ const styles = StyleSheet.create({
   ownerRole: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 9,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    marginLeft: 9,
+    marginLeft: 4,
   },
   removeOwnerButton: {
     width: 24,

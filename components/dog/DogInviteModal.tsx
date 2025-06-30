@@ -10,7 +10,7 @@ import {
   ActivityIndicator,
   Share,
 } from 'react-native';
-import { X, Mail, Send } from 'lucide-react-native';
+import { X, Mail, Send, Shield, Eye } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 
@@ -23,8 +23,10 @@ interface DogInviteModalProps {
 
 export default function DogInviteModal({ visible, onClose, dogId, dogName }: DogInviteModalProps) {
   const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<'co-owner' | 'caretaker'>('co-owner');
   const [inviteMessage, setInviteMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
 
   const { inviteCoOwner } = useDogOwnership();
 
@@ -32,7 +34,8 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
     // Create a deep link that includes the dog ID and invite token
     const inviteToken = `${dogId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const baseUrl = 'https://dote.app'; // Replace with your actual domain
-    const link = `${baseUrl}/invite/${inviteToken}?dogId=${dogId}&dogName=${encodeURIComponent(dogName)}&role=co-owner`;
+    const link = `${baseUrl}/invite/${inviteToken}?dogId=${dogId}&dogName=${encodeURIComponent(dogName)}&role=${inviteRole}`;
+    setInviteLink(link);
     return link;
   };
 
@@ -44,7 +47,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
     setIsLoading(true);
     try {
-      const result = await inviteCoOwner(dogId, inviteEmail.trim(), 'co-owner', inviteMessage.trim());
+      const result = await inviteCoOwner(dogId, inviteEmail.trim(), inviteRole, inviteMessage.trim());
       
       if (result.success) {
         Alert.alert('Success', 'Invitation sent successfully!');
@@ -63,13 +66,13 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
   const handleShareLink = async () => {
     const link = generateInviteLink();
-    const message = `Hi! I'd like to invite you to be an owner of my dog ${dogName} on Dote. Download the app and click this link to join: ${link}`;
+    const message = `Hi! I'd like to invite you to be a ${inviteRole} of my dog ${dogName} on Dote. Click this link to join: ${link}`;
     
     try {
       await Share.share({
         message,
         url: link,
-        title: `Invite to own ${dogName}`,
+        title: `Invite to co-own ${dogName}`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -78,7 +81,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
   return (
     <Modal
-      animationType="fade"
+      animationType="slide"
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
@@ -86,7 +89,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Add New Owner</Text>
+            <Text style={styles.modalTitle}>Invite Co-Owner</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color={COLORS.neutralDark} />
             </TouchableOpacity>
@@ -96,7 +99,33 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
             Invite someone to help care for {dogName}
           </Text>
 
+          {/* Role Selection */}
           <View style={styles.content}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Role</Text>
+              <View style={styles.roleSelector}>
+                <TouchableOpacity
+                  style={[styles.roleOption, inviteRole === 'co-owner' && styles.selectedRoleOption]}
+                  onPress={() => setInviteRole('co-owner')}
+                >
+                  <Shield size={20} color={inviteRole === 'co-owner' ? COLORS.white : COLORS.primary} />
+                  <Text style={[styles.roleOptionText, inviteRole === 'co-owner' && styles.selectedRoleOptionText]}>
+                    Co-Owner
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.roleOption, inviteRole === 'caretaker' && styles.selectedRoleOption]}
+                  onPress={() => setInviteRole('caretaker')}
+                >
+                  <Eye size={20} color={inviteRole === 'caretaker' ? COLORS.white : COLORS.secondary} />
+                  <Text style={[styles.roleOptionText, inviteRole === 'caretaker' && styles.selectedRoleOptionText]}>
+                    Caretaker
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* Email Invite Section */}
             <View style={styles.inviteSection}>
               <Text style={styles.sectionTitle}>Email Invite</Text>
@@ -140,15 +169,44 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
               </TouchableOpacity>
             </View>
 
-            {/* Explanation */}
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Share Link Section */}
+            <View style={styles.inviteSection}>
+              <Text style={styles.sectionTitle}>Share Invite Link</Text>
+              <Text style={styles.linkDescription}>
+                Share a link directly with someone to invite them as a {inviteRole}.
+              </Text>
+              
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={handleShareLink}
+              >
+                <Send size={20} color={COLORS.primary} />
+                <Text style={styles.shareButtonText}>Share Link</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Role Explanation */}
             <View style={styles.roleExplanation}>
-              <Text style={styles.explanationTitle}>Owner Permissions:</Text>
-              <Text style={styles.explanationText}>
-                Owners can view and edit dog information, track walks, and manage the dog's profile.
-              </Text>
-              <Text style={styles.explanationText}>
-                After downloading the app, they'll be automatically added as an owner when they click the invite link.
-              </Text>
+              <Text style={styles.explanationTitle}>Role Permissions:</Text>
+              <View style={styles.explanationItem}>
+                <Shield size={16} color={COLORS.primary} />
+                <Text style={styles.explanationText}>
+                  <Text style={styles.boldText}>Co-Owner:</Text> Can edit dog info and invite others
+                </Text>
+              </View>
+              <View style={styles.explanationItem}>
+                <Eye size={16} color={COLORS.secondary} />
+                <Text style={styles.explanationText}>
+                  <Text style={styles.boldText}>Caretaker:</Text> Can view dog info only
+                </Text>
+              </View>
             </View>
           </View>
         </View>
@@ -161,15 +219,12 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    width: '100%',
-    maxWidth: 500,
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '90%',
   },
   modalHeader: {
@@ -199,8 +254,41 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    maxHeight: '70%',
-    overflow: 'scroll',
+  },
+  inputGroup: {
+    marginBottom: 24,
+  },
+  inputLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 8,
+  },
+  roleSelector: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  roleOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: COLORS.neutralLight,
+    gap: 8,
+  },
+  selectedRoleOption: {
+    backgroundColor: COLORS.primary,
+  },
+  roleOptionText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+  },
+  selectedRoleOptionText: {
+    color: COLORS.white,
   },
   inviteSection: {
     marginBottom: 24,
@@ -250,6 +338,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.white,
   },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.neutralLight,
+  },
+  dividerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginHorizontal: 12,
+  },
   linkDescription: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
@@ -267,7 +371,7 @@ const styles = StyleSheet.create({
   },
   shareButtonText: {
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
+    fontSize: 16,
     color: COLORS.primary,
   },
   roleExplanation: {
@@ -282,10 +386,20 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 12,
   },
+  explanationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 8,
+  },
   explanationText: {
     fontFamily: 'Inter-Regular',
     fontSize: 14,
     color: COLORS.neutralMedium,
-    marginBottom: 8,
+    flex: 1,
+  },
+  boldText: {
+    fontFamily: 'Inter-Bold',
+    color: COLORS.neutralDark,
   },
 });
