@@ -19,7 +19,12 @@
         "googleMaps": {
           "apiKey": "${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
         }
-      }
+      },
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.dungyov.doteapp"
     },
     "plugins": [
       "expo-router",
@@ -30,17 +35,16 @@
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
       ],
-      [
-        "react-native-google-mobile-ads",
-        {
-          "androidAppId": "${process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID}",
-          "iosAppId": "${process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID}",
-          "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
-        }
-      ]
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7ebc011e-e3d1-4ff9-b2f6-1b6f3d409234"
+      }
     }
   }
 }
