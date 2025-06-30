@@ -14,6 +14,7 @@ type LeaderboardItemProps = {
     territorySize?: number;
     totalDistance?: number;
     achievementCount?: number;
+    badgeCount?: number;
   };
   category: 'territory' | 'distance' | 'achievements';
   isCurrentUser?: boolean;
@@ -30,19 +31,23 @@ export default function LeaderboardItem({
   const getValue = () => {
     switch (category) {
       case 'territory':
-        return formatArea(user.territorySize * 1000000);
+        return formatArea((user.territorySize || 0) * 1000000);
       case 'distance':
-        return formatDistance(user.totalDistance * 1000);
+        return formatDistance((user.totalDistance || 0) * 1000);
       case 'achievements':
-        return user.achievementCount?.toString() || '0';
+        return user.badgeCount || user.achievementCount || 0;
       default:
         return '';
     }
   };
 
   const handlePress = () => {
-    // Navigate directly to the public profile page
-    router.push(`/user/${user.id}`);
+    if (onPress) {
+      onPress();
+    } else {
+      // Navigate directly to the public profile page
+      router.push(`/user/${user.id}`);
+    }
   };
 
   return (

@@ -16,8 +16,9 @@ import {
 import { COLORS } from '@/constants/theme';
 import { MapPin, ChevronDown, Check, Search, X, Plus, Globe, Navigation } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import { reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
+import { reverseGeocodeToCity, getOrCreateCityInSupabase, updateUserCity } from '@/utils/geocoding';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatCityName } from '@/utils/formatUtils';
 
 interface City {
   id: string;
@@ -77,11 +78,8 @@ export default function CitySelector({
     closeModal();
   };
 
-  const formatCityName = (city: City) => {
-    if (city.state && city.state !== city.name) {
-      return `${city.name}, ${city.country}`;
-    }
-    return `${city.name}, ${city.country}`;
+  const formatCityDisplay = (city: City) => {
+    return formatCityName(city.name, city.country);
   };
 
   const formatTerritorySize = (size?: number) => {
@@ -206,6 +204,7 @@ export default function CitySelector({
 
   const renderCityItem = ({ item }: { item: City }) => {
     const isCurrentUserCity = user?.current_city_id === item.id;
+    const formattedCityName = formatCityDisplay(item);
     
     return (
       <TouchableOpacity
@@ -218,11 +217,8 @@ export default function CitySelector({
       >
         <View style={styles.cityInfo}>
           <Text style={styles.cityName}>
-            {item.name}
+            {formattedCityName}
             {isCurrentUserCity && <Text style={styles.currentCityBadge}> (Current)</Text>}
-          </Text>
-          <Text style={styles.cityRegion}>
-            {item.country}
           </Text>
         </View>
         
@@ -255,7 +251,7 @@ export default function CitySelector({
         ) : (
           <>
             <Text style={styles.cityText} numberOfLines={1}>
-              {selectedCity ? formatCityName(selectedCity) : 'Select City'}
+              {selectedCity ? formatCityDisplay(selectedCity) : 'Select City'}
             </Text>
             <ChevronDown size={20} color={COLORS.neutralDark} />
           </>
@@ -345,9 +341,9 @@ export default function CitySelector({
                         style={styles.specialOption}
                         onPress={() => handleSelectCity({
                           id: user.current_city_id!,
-                          name: user.current_city_name!,
+                          name: user.current_city_name!.split(',')[0].trim(),
                           state: null,
-                          country: 'Current Location'
+                          country: user.current_city_name!.split(',')[1]?.trim() || 'Unknown'
                         })}
                       >
                         <MapPin size={20} color={COLORS.primary} />

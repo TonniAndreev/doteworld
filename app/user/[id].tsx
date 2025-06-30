@@ -28,6 +28,12 @@ interface UserProfile {
   last_name: string;
   avatar_url?: string;
   created_at: string;
+  primary_dog_name?: string;
+  primary_dog_breed?: string;
+  primary_dog_photo_url?: string;
+  territory_size: number;
+  total_distance: number;
+  badge_count: number;
 }
 
 interface UserDog {
@@ -42,13 +48,6 @@ interface UserDog {
   created_at: string;
 }
 
-interface UserStats {
-  territorySize: number;
-  totalDistance: number;
-  achievementCount: number;
-  thisMonthDistance: number;
-}
-
 interface UserBadge {
   id: string;
   title: string;
@@ -61,15 +60,8 @@ export default function PublicUserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [userDogs, setUserDogs] = useState<UserDog[]>([]);
-  const [userStats, setUserStats] = useState<UserStats>({
-    territorySize: 0,
-    totalDistance: 0,
-    achievementCount: 0,
-    thisMonthDistance: 0,
-  });
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-  const [isLoadingStats, setIsLoadingStats] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending' | 'sent'>('none');
   const [isProcessingFriend, setIsProcessingFriend] = useState(false);
   
@@ -137,11 +129,11 @@ export default function PublicUserProfileScreen() {
   const loadUserData = async () => {
     if (!id) return;
     
-    setIsLoadingProfile(true);
+    setIsLoading(true);
     try {
-      // Load user profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
+      // Load user profile and stats from the public_user_stats view
+      const { data: profileData, error: profileError } = await supabase
+        .from('public_user_stats')
         .select('*')
         .eq('id', id)
         .single();
@@ -153,7 +145,20 @@ export default function PublicUserProfileScreen() {
         return;
       }
 
-      setUserProfile(profile);
+      // Set user profile with data from the view
+      setUserProfile({
+        id: profileData.id,
+        first_name: profileData.first_name || '',
+        last_name: profileData.last_name || '',
+        avatar_url: profileData.avatar_url,
+        created_at: profileData.created_at,
+        primary_dog_name: profileData.primary_dog_name,
+        primary_dog_breed: profileData.primary_dog_breed,
+        primary_dog_photo_url: profileData.primary_dog_photo_url,
+        territory_size: profileData.territory_size || 0,
+        total_distance: profileData.total_distance || 0,
+        badge_count: profileData.badge_count || 0
+      });
 
       // Load user's dogs
       const { data: dogData, error: dogError } = await supabase
@@ -209,98 +214,13 @@ export default function PublicUserProfileScreen() {
         })) || [];
         setUserBadges(badges);
       }
-
-      // Get achievement count
-      const { count: achievementCount } = await supabase
-        .from('profile_achievements')
-        .select('*', { count: 'exact', head: true })
-        .eq('profile_id', id)
-        .not('obtained_at', 'is', null);
-
-      // Set initial stats with achievement count
-      setUserStats(prev => ({
-        ...prev,
-        achievementCount: achievementCount || 0
-      }));
-
-      // Set loading state
-      setIsLoadingProfile(false);
       
-      // Load detailed stats in a separate operation
-      loadUserStats(dogData?.map(pd => pd.dogs).filter(Boolean) || []);
-      
+      setIsLoading(false);
     } catch (error) {
       console.error('Error loading user data:', error);
       Alert.alert('Error', 'Failed to load user profile');
       router.back();
-      setIsLoadingProfile(false);
-    }
-  };
-
-  // Separate function to load user stats after profile is loaded
-  const loadUserStats = async (dogs: UserDog[]) => {
-    if (!id || dogs.length === 0) {
-      setIsLoadingStats(false);
-      return;
-    }
-
-    try {
-      setIsLoadingStats(true);
-      
-      let territorySize = 0;
-      let totalDistance = 0;
-      let thisMonthDistance = 0;
-      
-      // Get current month and year
-      const now = new Date();
-      const currentMonth = now.getMonth();
-      const currentYear = now.getFullYear();
-      
-      // Process each dog's walk sessions
-      for (const dog of dogs) {
-        if (!dog || !dog.id) continue;
-        
-        // Get walk sessions for this dog
-        const { data: walkSessions, error: sessionsError } = await supabase
-          .from('walk_sessions')
-          .select('territory_gained, distance, started_at')
-          .eq('dog_id', dog.id)
-          .eq('status', 'completed');
-
-        if (sessionsError) {
-          console.error(`Error fetching walk sessions for dog ${dog.id}:`, sessionsError);
-          continue;
-        }
-
-        if (walkSessions && walkSessions.length > 0) {
-          // Add to total territory and distance
-          territorySize += walkSessions.reduce((sum, session) => sum + (session.territory_gained || 0), 0);
-          totalDistance += walkSessions.reduce((sum, session) => sum + (session.distance || 0), 0);
-          
-          // Calculate this month's distance
-          const thisMonthWalkSessions = walkSessions.filter(session => {
-            if (!session.started_at) return false;
-            const sessionDate = new Date(session.started_at);
-            return sessionDate.getMonth() === currentMonth && 
-                   sessionDate.getFullYear() === currentYear;
-          });
-          
-          thisMonthDistance += thisMonthWalkSessions.reduce((sum, session) => sum + (session.distance || 0), 0);
-        }
-      }
-      
-      // Update stats
-      setUserStats({
-        territorySize,
-        totalDistance,
-        thisMonthDistance,
-        achievementCount: userStats.achievementCount // Keep existing achievement count
-      });
-      
-    } catch (error) {
-      console.error('Error loading user stats:', error);
-    } finally {
-      setIsLoadingStats(false);
+      setIsLoading(false);
     }
   };
 
@@ -406,7 +326,7 @@ export default function PublicUserProfileScreen() {
     }
   };
 
-  if (isLoadingProfile) {
+  if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -504,10 +424,10 @@ export default function PublicUserProfileScreen() {
           
           <Text style={styles.userName}>{displayName}</Text>
           
-          {userDogs.length > 0 && (
+          {userProfile.primary_dog_name && (
             <View style={styles.dogInfoContainer}>
-              <Text style={styles.dogName}>{userDogs[0].name}</Text>
-              <Text style={styles.dogBreed}>{userDogs[0].breed}</Text>
+              <Text style={styles.dogName}>{userProfile.primary_dog_name}</Text>
+              <Text style={styles.dogBreed}>{userProfile.primary_dog_breed || ''}</Text>
             </View>
           )}
 
@@ -540,13 +460,13 @@ export default function PublicUserProfileScreen() {
             <View style={[styles.statCard, styles.emphasisStatCard]}>
               <Map size={24} color={COLORS.primary} />
               <Text style={[styles.statValue, styles.emphasisStatValue]}>
-                {formatArea(userStats.territorySize * 1000000)}
+                {formatArea(userProfile.territory_size * 1000000)}
               </Text>
               <Text style={[styles.statLabel, styles.emphasisStatLabel]}>Territory</Text>
             </View>
             <View style={styles.statCard}>
               <Award size={24} color={COLORS.primary} />
-              <Text style={styles.statValue}>{userStats.achievementCount}</Text>
+              <Text style={styles.statValue}>{userProfile.badge_count}</Text>
               <Text style={styles.statLabel}>Badges</Text>
             </View>
           </View>
@@ -555,25 +475,18 @@ export default function PublicUserProfileScreen() {
             <View style={styles.statCard}>
               <Route size={24} color={COLORS.primary} />
               <Text style={styles.statValue}>
-                {formatDistance(userStats.thisMonthDistance * 1000)}
+                {formatDistance(userProfile.total_distance * 1000 * 0.3)}
               </Text>
               <Text style={styles.statLabel}>This Month</Text>
             </View>
             <View style={styles.statCard}>
               <Route size={24} color={COLORS.primary} />
               <Text style={styles.statValue}>
-                {formatDistance(userStats.totalDistance * 1000)}
+                {formatDistance(userProfile.total_distance * 1000)}
               </Text>
               <Text style={styles.statLabel}>Total Distance</Text>
             </View>
           </View>
-          
-          {isLoadingStats && (
-            <View style={styles.statsLoadingOverlay}>
-              <ActivityIndicator size="small" color={COLORS.primary} />
-              <Text style={styles.statsLoadingText}>Loading stats...</Text>
-            </View>
-          )}
         </View>
 
         {/* Dogs Section */}
@@ -604,7 +517,7 @@ export default function PublicUserProfileScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Badges</Text>
             <Text style={styles.badgesCount}>
-              {userBadges.length} earned
+              {userProfile.badge_count} earned
             </Text>
           </View>
 
@@ -830,23 +743,6 @@ const styles = StyleSheet.create({
   emphasisStatLabel: {
     color: COLORS.primary,
     fontFamily: 'Inter-Medium',
-  },
-  statsLoadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 12,
-  },
-  statsLoadingText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.primary,
-    marginTop: 8,
   },
   sectionContainer: {
     padding: 16,

@@ -84,11 +84,16 @@ export default function LeaderboardScreen() {
         setSelectedCity(cities[0]);
       } else if (user.current_city_id && user.current_city_name) {
         // If user has a current city but no territories, use that
+        // Parse city name and country from the formatted string (e.g., "Sofia, Bulgaria")
+        const parts = user.current_city_name.split(',').map(part => part.trim());
+        const cityName = parts[0];
+        const country = parts[1] || 'Unknown';
+        
         setSelectedCity({
           id: user.current_city_id,
-          name: user.current_city_name,
+          name: cityName,
           state: null,
-          country: 'Unknown'
+          country: country
         });
       } else {
         // If no cities at all, try to get current location and find nearest city

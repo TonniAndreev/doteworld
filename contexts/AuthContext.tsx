@@ -229,6 +229,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('*', { count: 'exact', head: true })
           .eq('profile_id', userId);
 
+        // Format city name with country if available
+        let formattedCityName = null;
+        if (profile.cities) {
+          // Fix: Only use name and country from cities table, omit state
+          formattedCityName = `${profile.cities.name}, ${profile.cities.country}`;
+        } else if (profile.current_city_name) {
+          // If we already have a formatted name, use it
+          formattedCityName = profile.current_city_name;
+        }
+
         // Create full user object
         const fullUser: DoteUser = {
           id: supaUser.id,
@@ -240,7 +250,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           badgeCount: badgeCount || 0,
           uid: supaUser.id,
           current_city_id: profile.current_city_id || null,
-          current_city_name: profile.cities ? profile.cities.name : null,
+          current_city_name: formattedCityName,
           last_reset_month: profile.last_reset_month || null,
         };
 
@@ -744,30 +754,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setIsLoading(true);
+      console.log(`Updating user city to: ${cityName} (${cityId})`);
 
-      // Update profile in database
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({
-          current_city_id: cityId,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+      // Use the RPC function to update the user's city
+      const { data, error } = await supabase.rpc('update_profile_city', {
+        city_id: cityId,
+        city_name: cityName
+      });
 
-      if (updateError) {
-        console.error('Error updating user city:', updateError);
+      if (error) {
+        console.error('Error updating user city:', error);
         return false;
       }
 
-      // Update local user state
-      const updatedUser = {
-        ...user,
-        current_city_id: cityId,
-        current_city_name: cityName,
-      };
-
-      setUser(updatedUser);
-      await AsyncStorage.setItem('doteUser', JSON.stringify(updatedUser));
+      // Refresh user data to get the updated city information
+      await refreshUserData();
       
       return true;
     } catch (error) {

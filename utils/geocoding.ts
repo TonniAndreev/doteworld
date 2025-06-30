@@ -144,15 +144,39 @@ export async function findNearestCity(
 /**
  * Update the current user's city
  * @param cityId City ID to set as current
+ * @param cityName City name (optional)
  * @returns Promise resolving to success status
  */
-export async function updateUserCity(cityId: string): Promise<boolean> {
+export async function updateUserCity(cityId: string, cityName?: string): Promise<boolean> {
   try {
-    console.log('Updating user city to:', cityId);
+    // Get city details to format the city name properly
+    const { data: cityData, error: cityError } = await supabase
+      .from('cities')
+      .select('name, country')
+      .eq('id', cityId)
+      .single();
     
-    // Call the RPC function to update the user's city
-    const { data, error } = await supabase.rpc('update_profile_city', {
-      city_id: cityId
+    if (cityError || !cityData) {
+      console.error('Error fetching city details:', cityError);
+      // Fall back to provided city name if available
+      if (cityName) {
+        console.log('Using provided city name:', cityName);
+      } else {
+        return false;
+      }
+    }
+    
+    // Format city name as "City, Country"
+    const formattedCityName = cityData 
+      ? `${cityData.name}, ${cityData.country}` 
+      : (cityName || 'Unknown Location');
+    
+    console.log('Updating user city to:', formattedCityName, `(${cityId})`);
+    
+    // Call the RPC function to update the user's city with formatted name
+    const { data, error } = await supabase.rpc('update_profile_city_with_name', {
+      p_city_id: cityId,
+      p_city_name: formattedCityName
     });
     
     if (error) {

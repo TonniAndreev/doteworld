@@ -128,7 +128,7 @@ export default function ProfileScreen() {
             />
             <StatsCard
               icon={<Award size={24} color={COLORS.primary} />}
-              value={(user.achievementCount || 0).toString()}
+              value={(user.badgeCount || 0).toString()}
               label="Badges"
             />
           </View>

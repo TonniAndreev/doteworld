@@ -40,6 +40,57 @@ export async function fetchLeaderboard(
   try {
     console.log('Fetching leaderboard for category:', category, 'in city:', cityId);
     
+    // If we have a city ID, try to use the city leaderboard view
+    if (cityId) {
+      try {
+        console.log('Fetching city leaderboard:', cityId);
+        
+        // Query the view directly instead of using RPC
+        const { data: cityLeaderboard, error: cityLeaderboardError } = await supabase
+          .from('city_leaderboard')
+          .select('*')
+          .eq('city_id', cityId);
+        
+        if (!cityLeaderboardError && cityLeaderboard) {
+          console.log('City leaderboard data received:', cityLeaderboard.length);
+          
+          // Format the data
+          const formattedData = cityLeaderboard.map(item => ({
+            id: item.profile_id,
+            name: `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'User',
+            dogName: item.dog_name || 'No dog',
+            photoURL: item.avatar_url,
+            territorySize: item.territory_size || 0,
+            totalDistance: item.total_distance || 0,
+            badgeCount: item.badge_count || 0,
+          }));
+          
+          // Sort based on category
+          return formattedData.sort((a, b) => {
+            switch (category) {
+              case 'territory':
+                return b.territorySize - a.territorySize;
+              case 'distance':
+                return b.totalDistance - a.totalDistance;
+              case 'achievements':
+                return b.badgeCount - a.badgeCount;
+              default:
+                return 0;
+            }
+          });
+        } else {
+          console.error('Error fetching city leaderboard:', cityLeaderboardError);
+          console.log('Falling back to old leaderboard method');
+        }
+      } catch (cityError) {
+        console.error('Error fetching city leaderboard:', cityError);
+        console.log('Falling back to old leaderboard method');
+      }
+    }
+    
+    // Fallback to the original method if city leaderboard fails or no city ID
+    console.log('Fetching global leaderboard for category:', category);
+    
     // Fetch profiles
     const { data: profiles, error } = await supabase
       .from('profiles')
@@ -82,7 +133,8 @@ export async function fetchLeaderboard(
             dogs (
               id,
               name,
-              breed
+              breed,
+              photo_url
             )
           `)
           .eq('profile_id', profile.id)
