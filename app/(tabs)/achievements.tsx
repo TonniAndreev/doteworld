@@ -8,7 +8,8 @@ import {
   Modal, 
   Share, 
   Image,
-  TextInput
+  TextInput,
+  Platform
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Search, X, Share2, Award, Star } from 'lucide-react-native';
@@ -89,7 +90,7 @@ export default function BadgesScreen() {
       return `${formatDistance(currentValue)} / ${formatDistance(targetValue)}`;
     }
     
-    // For count-based badges (friends, walks, etc.)
+    // For count-based badges (friends, dogs, cities, walks, etc.)
     if (['friends', 'dogs', 'cities', 'walks', 'days'].includes(badge.unit)) {
       return `${Math.floor(badge.currentValue)} / ${badge.targetValue} ${badge.unit}`;
     }
