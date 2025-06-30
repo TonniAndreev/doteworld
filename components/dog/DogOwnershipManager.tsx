@@ -9,14 +9,12 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
-  ScrollView,
 } from 'react-native';
 import { X, Crown, UserX, UserPlus, Mail, Send, Search, Check, ArrowRight, Shield } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
-import DogInviteModal from '@/components/dog/DogInviteModal';
 
 interface DogOwnershipManagerProps {
   dogId: string;
@@ -28,13 +26,11 @@ interface DogOwnershipManagerProps {
 export default function DogOwnershipManager({ dogId, dogName, visible, onClose }: DogOwnershipManagerProps) {
   const [owners, setOwners] = useState<any[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteMessage, setInviteMessage] = useState('');
   const [isInviting, setIsInviting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showInviteForm, setShowInviteForm] = useState(false);
-  const [showSearchUsers, setShowSearchUsers] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -57,7 +53,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
       loadOwners();
       // Reset all state when modal opens
       setShowInviteForm(false);
-      setShowSearchUsers(false);
       setSearchQuery('');
       setUserSearchQuery('');
       setSearchResults([]);
@@ -128,7 +123,20 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     }
   };
 
-  const handleSearchUsers = useCallback(async (query: string) => {
+  // Search for users as you type
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      if (userSearchQuery.trim() && userSearchQuery.length >= 2) {
+        handleSearchUsers(userSearchQuery);
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(delaySearch);
+  }, [userSearchQuery]);
+
+  const handleSearchUsers = async (query: string) => {
     if (!query.trim() || query.length < 2) {
       setSearchResults([]);
       return;
@@ -144,17 +152,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     } finally {
       setIsSearching(false);
     }
-  }, [dogId, searchUsersForDogOwnership]);
-
-  useEffect(() => {
-    const delaySearch = setTimeout(() => {
-      if (userSearchQuery.trim() && userSearchQuery.length >= 2) {
-        handleSearchUsers(userSearchQuery);
-      }
-    }, 500);
-
-    return () => clearTimeout(delaySearch);
-  }, [userSearchQuery, handleSearchUsers]);
+  };
 
   const handleAddExistingUser = async (userId: string, userName: string) => {
     try {
@@ -164,7 +162,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         Alert.alert('Success', `${userName} has been added as an owner of ${dogName}`);
         setUserSearchQuery('');
         setSearchResults([]);
-        setShowSearchUsers(false);
         loadOwners();
       } else {
         Alert.alert('Error', result.error || 'Failed to add user as owner');
@@ -347,12 +344,39 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                 <Search size={20} color={COLORS.neutralMedium} style={styles.searchIcon} />
                 <TextInput
                   style={styles.searchInput}
-                  placeholder="Search owners..."
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
+                  placeholder="Search users by name or email..."
+                  value={userSearchQuery}
+                  onChangeText={setUserSearchQuery}
                   placeholderTextColor={COLORS.neutralMedium}
+                  autoCapitalize="none"
                 />
               </View>
+
+              {/* Search Results */}
+              {userSearchQuery.length >= 2 && (
+                <View style={styles.searchResultsContainer}>
+                  {isSearching ? (
+                    <View style={styles.searchingContainer}>
+                      <ActivityIndicator size="small" color={COLORS.primary} />
+                      <Text style={styles.searchingText}>Searching...</Text>
+                    </View>
+                  ) : searchResults.length > 0 ? (
+                    <FlatList
+                      data={searchResults}
+                      renderItem={renderSearchResult}
+                      keyExtractor={(item) => item.id}
+                      style={styles.searchResultsList}
+                      contentContainerStyle={styles.searchResultsContent}
+                    />
+                  ) : (
+                    <View style={styles.noResultsContainer}>
+                      <Text style={styles.noResultsText}>
+                        No users found matching "{userSearchQuery}"
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
               {/* Action Buttons */}
               {isAlphaOwner() && (
@@ -364,7 +388,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                     ]}
                     onPress={() => {
                       setShowInviteForm(!showInviteForm);
-                      setShowSearchUsers(false);
                     }}
                   >
                     <Mail size={20} color={showInviteForm ? COLORS.white : COLORS.primary} />
@@ -432,11 +455,21 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
               <View style={styles.ownersListContainer}>
                 <View style={styles.sectionHeader}>
                   <Text style={styles.sectionTitle}>Current Owners</Text>
-                  {isAlphaOwner() && (
-                    <View style={styles.ownerCountBadge}>
-                      <Text style={styles.ownerCountText}>{owners.length}</Text>
-                    </View>
-                  )}
+                  <View style={styles.ownerCountBadge}>
+                    <Text style={styles.ownerCountText}>{owners.length}</Text>
+                  </View>
+                </View>
+                
+                {/* Filter Owners */}
+                <View style={styles.filterContainer}>
+                  <Search size={16} color={COLORS.neutralMedium} style={styles.filterIcon} />
+                  <TextInput
+                    style={styles.filterInput}
+                    placeholder="Filter owners..."
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                    placeholderTextColor={COLORS.neutralMedium}
+                  />
                 </View>
                 
                 {isLoadingOwners ? (
@@ -537,13 +570,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
           </View>
         </View>
       </Modal>
-
-      <DogInviteModal
-        visible={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        dogId={dogId}
-        dogName={dogName}
-      />
     </>
   );
 }
@@ -603,120 +629,14 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     paddingVertical: 12,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primaryLight,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-  },
-  activeActionButton: {
-    backgroundColor: COLORS.primary,
-  },
-  actionButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.primary,
-  },
-  activeActionButtonText: {
-    color: COLORS.white,
-  },
-  inviteButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-    marginBottom: 16,
-  },
-  inviteButtonText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.white,
-  },
-  inviteForm: {
+  searchResultsContainer: {
     backgroundColor: COLORS.white,
     borderRadius: 12,
-    padding: 16,
+    padding: 12,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: COLORS.primaryLight,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-    marginBottom: 8,
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  textInput: {
-    flex: 1,
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    marginLeft: 12,
-  },
-  messageInput: {
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    height: 100,
-    textAlignVertical: 'top',
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-  },
-  sendButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  sendButtonText: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.white,
-  },
-  userSearchContainer: {
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: COLORS.primaryLight,
-  },
-  userSearchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    marginBottom: 16,
+    maxHeight: 200,
   },
   searchingContainer: {
     flexDirection: 'row',
@@ -797,6 +717,90 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.white,
   },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  activeActionButton: {
+    backgroundColor: COLORS.primary,
+  },
+  actionButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+  },
+  activeActionButtonText: {
+    color: COLORS.white,
+  },
+  inviteForm: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 8,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  textInput: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    marginLeft: 12,
+  },
+  messageInput: {
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    height: 100,
+    textAlignVertical: 'top',
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+  },
+  sendButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  sendButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -818,6 +822,24 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 12,
     color: COLORS.primary,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+  },
+  filterIcon: {
+    marginRight: 6,
+  },
+  filterInput: {
+    flex: 1,
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    paddingVertical: 8,
   },
   ownersListContainer: {
     flex: 1,
