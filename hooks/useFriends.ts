@@ -99,10 +99,10 @@ export function useFriends() {
           continue;
         }
         
+        console.log(`Processing ${walkPoints.length} walk points for dog ${dog.id}`);
+        
         // Get color for this friend
         const color = await getFriendTerritoryColor(friend.id);
-        
-        console.log(`Processing ${walkPoints.length} walk points for dog ${dog.id}`);
         
         // Process each walk point to create territory polygons
         for (const point of walkPoints) {
