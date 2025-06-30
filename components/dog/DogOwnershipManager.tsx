@@ -51,8 +51,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
 
   const handleRemoveOwner = async (profileId: string, ownerName: string) => {
     Alert.alert(
-      'Remove Owner',
-      `Are you sure you want to remove ${ownerName} as an owner of ${dogName}?`,
+      'Remove Co-Owner',
+      `Are you sure you want to remove ${ownerName} as a co-owner of ${dogName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -61,10 +61,10 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
           onPress: async () => {
             const result = await removeCoOwner(dogId, profileId);
             if (result.success) {
-              Alert.alert('Success', 'Owner removed successfully');
+              Alert.alert('Success', 'Co-owner removed successfully');
               loadOwners();
             } else {
-              Alert.alert('Error', result.error || 'Failed to remove owner');
+              Alert.alert('Error', result.error || 'Failed to remove co-owner');
             }
           },
         },
@@ -75,7 +75,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
-        return <Crown size={16} color="#FFD700" />;
+        return <Crown size={16} color={COLORS.accent} />;
       case 'co-owner':
         return <Shield size={16} color={COLORS.primary} />;
       case 'caretaker':
@@ -88,7 +88,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return '#FFD700';
+        return COLORS.accent;
       case 'co-owner':
         return COLORS.primary;
       case 'caretaker':
@@ -120,27 +120,28 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
 
   const renderOwner = ({ item: owner }: { item: any }) => (
     <View style={styles.ownerItem}>
-      <View style={styles.ownerAvatarWrapper}>
-        <UserAvatar
-          userId={owner.profile_id}
-          photoURL={owner.avatar_url}
-          userName={`${owner.first_name} ${owner.last_name}`}
-          size={50}
-          containerStyle={styles.ownerAvatarContainer}
-        />
-        <View style={styles.roleIconContainer}>
-          {getRoleIcon(owner.role)}
-        </View>
-      </View>
+      <UserAvatar
+        userId={owner.profile_id}
+        photoURL={owner.avatar_url}
+        userName={`${owner.first_name} ${owner.last_name}`}
+        size={48}
+        style={styles.ownerAvatar}
+      />
       
       <View style={styles.ownerInfo}>
         <Text style={styles.ownerName}>
           {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
         </Text>
         
-        <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-          {owner.role === 'owner' ? 'Owner' : 
-           owner.role === 'co-owner' ? 'Owner' : 'Caretaker'}
+        <View style={styles.ownerRole}>
+          {getRoleIcon(owner.role)}
+          <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
+            {owner.role.charAt(0).toUpperCase() + owner.role.slice(1)}
+          </Text>
+        </View>
+        
+        <Text style={styles.ownershipDate}>
+          Since {new Date(owner.ownership_since).toLocaleDateString()}
         </Text>
       </View>
       
@@ -158,7 +159,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   return (
     <>
       <Modal
-        animationType="fade"
+        animationType="slide"
         transparent={true}
         visible={visible}
         onRequestClose={onClose}
@@ -173,19 +174,21 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
             </View>
 
             <View style={styles.content}>
-              {canInviteOwners() && (
-                <TouchableOpacity 
-                  style={styles.inviteButton}
-                  onPress={() => {
-                    onClose();
-                    // Short delay to avoid modal animation conflicts
-                    setTimeout(() => setShowInviteModal(true), 300);
-                  }}
-                >
-                  <UserPlus size={20} color={COLORS.white} />
-                  <Text style={styles.inviteButtonText}>Invite Owner</Text>
-                </TouchableOpacity>
-              )}
+              <View style={styles.headerActions}>
+                {canInviteOwners() && (
+                  <TouchableOpacity 
+                    style={styles.inviteButton}
+                    onPress={() => {
+                      onClose();
+                      // Short delay to avoid modal animation conflicts
+                      setTimeout(() => setShowInviteModal(true), 300);
+                    }}
+                  >
+                    <UserPlus size={20} color={COLORS.white} />
+                    <Text style={styles.inviteButtonText}>Invite Co-Owner</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
 
               {isLoadingOwners ? (
                 <View style={styles.loadingContainer}>
@@ -226,13 +229,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
+    alignItems: 'center',
     padding: 20,
   },
   modalContainer: {
     backgroundColor: COLORS.white,
     borderRadius: 20,
-    maxHeight: '80%',
     width: '100%',
+    maxHeight: '80%',
     overflow: 'hidden',
   },
   modalHeader: {
@@ -253,16 +257,19 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+    maxHeight: '80%',
+  },
+  headerActions: {
+    marginBottom: 20,
   },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderRadius: 12,
     gap: 8,
-    marginBottom: 20,
   },
   inviteButtonText: {
     fontFamily: 'Inter-Bold',
@@ -293,26 +300,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
   },
-  ownerAvatarWrapper: {
-    position: 'relative',
+  ownerAvatar: {
     marginRight: 16,
-  },
-  ownerAvatarContainer: {
-    backgroundColor: '#F0F0F0',
-  },
-  roleIconContainer: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: COLORS.white,
-    borderRadius: 10,
-    padding: 2,
-    borderWidth: 1,
-    borderColor: COLORS.white,
   },
   ownerInfo: {
     flex: 1,
@@ -323,9 +316,20 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
+  ownerRole: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 6,
+  },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
+  },
+  ownershipDate: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: COLORS.neutralMedium,
   },
   removeButton: {
     width: 36,

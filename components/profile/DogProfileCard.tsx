@@ -72,8 +72,8 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
   const handleRemoveOwner = async (profileId: string, ownerName: string) => {
     Alert.alert(
-      'Remove Owner',
-      `Are you sure you want to remove ${ownerName} as an owner of ${dog.name}?`,
+      'Remove Co-Owner',
+      `Are you sure you want to remove ${ownerName} as a co-owner of ${dog.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -82,10 +82,10 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
           onPress: async () => {
             const result = await removeCoOwner(dog.id, profileId);
             if (result.success) {
-              Alert.alert('Success', 'Owner removed successfully');
+              Alert.alert('Success', 'Co-owner removed successfully');
               loadOwners();
             } else {
-              Alert.alert('Error', result.error || 'Failed to remove owner');
+              Alert.alert('Error', result.error || 'Failed to remove co-owner');
             }
           },
         },
@@ -116,11 +116,11 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
-        return <Crown size={16} color="#FFD700" />;
+        return <Crown size={14} color={COLORS.accent} />;
       case 'co-owner':
-        return <Shield size={16} color={COLORS.primary} />;
+        return <Shield size={14} color={COLORS.primary} />;
       case 'caretaker':
-        return <Eye size={16} color={COLORS.secondary} />;
+        return <Eye size={14} color={COLORS.secondary} />;
       default:
         return null;
     }
@@ -129,7 +129,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return '#FFD700';
+        return COLORS.accent;
       case 'co-owner':
         return COLORS.primary;
       case 'caretaker':
@@ -293,27 +293,25 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 <View style={styles.ownersList}>
                   {displayedOwners.map((owner) => (
                     <View key={owner.profile_id} style={styles.ownerItem}>
-                      <View style={styles.ownerAvatarWrapper}>
-                        <UserAvatar
-                          userId={owner.profile_id}
-                          photoURL={owner.avatar_url}
-                          userName={`${owner.first_name} ${owner.last_name}`}
-                          size={40}
-                          containerStyle={styles.ownerAvatarContainer}
-                        />
-                        <View style={styles.ownerRoleIcon}>
-                          {getRoleIcon(owner.role)}
-                        </View>
-                      </View>
+                      <UserAvatar
+                        userId={owner.profile_id}
+                        photoURL={owner.avatar_url}
+                        userName={`${owner.first_name} ${owner.last_name}`}
+                        size={40}
+                        style={styles.ownerAvatar}
+                      />
                       
                       <View style={styles.ownerInfo}>
                         <Text style={styles.ownerName} numberOfLines={1}>
-                          {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
+                          {`${owner.first_name} ${owner.last_name}`.trim()}
                         </Text>
                         
-                        <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-                          {owner.role === 'owner' || owner.role === 'co-owner' ? 'Owner' : 'Caretaker'}
-                        </Text>
+                        <View style={styles.ownerRole}>
+                          {getRoleIcon(owner.role)}
+                          <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
+                            {owner.role.charAt(0).toUpperCase() + owner.role.slice(1)}
+                          </Text>
+                        </View>
                       </View>
                       
                       {canRemoveOwner(owner) && (
@@ -392,9 +390,9 @@ const styles = StyleSheet.create({
     padding: 16,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
     marginBottom: 16,
   },
   fullDetailsContainer: {
@@ -406,9 +404,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dogPhoto: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     borderWidth: 3,
     borderColor: COLORS.primaryLight,
   },
@@ -502,7 +500,7 @@ const styles = StyleSheet.create({
   
   // Owners Section Styles
   ownersSection: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: COLORS.neutralExtraLight,
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
@@ -568,20 +566,8 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  ownerAvatarWrapper: {
-    position: 'relative',
+  ownerAvatar: {
     marginRight: 12,
-  },
-  ownerAvatarContainer: {
-    backgroundColor: '#F0F0F0',
-  },
-  ownerRoleIcon: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    backgroundColor: COLORS.white,
-    borderRadius: 8,
-    padding: 2,
   },
   ownerInfo: {
     flex: 1,
@@ -591,6 +577,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.neutralDark,
     marginBottom: 2,
+  },
+  ownerRole: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
