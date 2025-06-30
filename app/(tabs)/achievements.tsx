@@ -15,6 +15,7 @@ import { Search, X, Share2, Award, Star } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAchievements } from '@/hooks/useAchievements';
+import { formatArea, formatDistance } from '@/utils/formatUtils';
 
 export default function BadgesScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -70,30 +71,57 @@ export default function BadgesScreen() {
   const completedCount = badges.filter(b => b.completed).length;
   const totalCount = badges.length;
 
-  const renderBadgeItem = ({ item }: { item: any }) => {
-    const isInProgress = item.currentValue > 0 && !item.completed;
-    const isNotStarted = item.currentValue === 0 && !item.completed;
+  // Helper function to get progress display text
+  const getProgressText = (badge: any) => {
+    if (badge.completed) return 'Earned!';
+    
+    // For territory badges, show actual values
+    if (badge.unit === 'km²') {
+      const currentValue = badge.currentValue * 1000000; // Convert to m²
+      const targetValue = badge.targetValue * 1000000; // Convert to m²
+      return `${formatArea(currentValue)} / ${formatArea(targetValue)}`;
+    }
+    
+    // For distance badges
+    if (badge.unit === 'km') {
+      const currentValue = badge.currentValue * 1000; // Convert to m
+      const targetValue = badge.targetValue * 1000; // Convert to m
+      return `${formatDistance(currentValue)} / ${formatDistance(targetValue)}`;
+    }
+    
+    // For count-based badges (friends, walks, etc.)
+    if (['friends', 'dogs', 'cities', 'walks', 'days'].includes(badge.unit)) {
+      return `${Math.floor(badge.currentValue)} / ${badge.targetValue} ${badge.unit}`;
+    }
+    
+    // Default percentage display
+    return `${Math.round((badge.currentValue / badge.targetValue) * 100)}%`;
+  };
+
+  const renderBadgeItem = ({ item: badge }: { item: any }) => {
+    const isInProgress = badge.currentValue > 0 && !badge.completed;
+    const isNotStarted = badge.currentValue === 0 && !badge.completed;
     
     return (
       <TouchableOpacity 
         style={[
           styles.badgeCard,
-          item.completed && styles.completedBadgeCard,
+          badge.completed && styles.completedBadgeCard,
           isInProgress && styles.inProgressBadgeCard,
           isNotStarted && styles.notStartedBadgeCard
         ]} 
-        onPress={() => handleBadgePress(item)}
+        onPress={() => handleBadgePress(badge)}
         activeOpacity={0.8}
       >
         <View style={styles.badgeImageContainer}>
           <Image 
-            source={{ uri: item.icon_url }} 
+            source={{ uri: badge.icon_url }} 
             style={[
               styles.badgeImage,
               isNotStarted && styles.grayscaleImage
             ]} 
           />
-          {item.completed && (
+          {badge.completed && (
             <View style={styles.completedBadge}>
               <Star size={16} color={COLORS.accent} fill={COLORS.accent} />
             </View>
@@ -108,7 +136,7 @@ export default function BadgesScreen() {
             ]} 
             numberOfLines={2}
           >
-            {item.title}
+            {badge.title}
           </Text>
           
           <View style={styles.progressContainer}>
@@ -121,8 +149,9 @@ export default function BadgesScreen() {
               <View 
                 style={[
                   styles.progressFill, 
-                  { width: `${Math.min(100, (item.currentValue / item.targetValue) * 100)}%` },
-                  isNotStarted && styles.incompleteProgressFill
+                  { width: `${Math.min(100, (badge.currentValue / badge.targetValue) * 100)}%` },
+                  isNotStarted && styles.incompleteProgressFill,
+                  isInProgress && styles.inProgressFill
                 ]} 
               />
             </View>
@@ -130,9 +159,10 @@ export default function BadgesScreen() {
           
           <Text style={[
             styles.progressText,
-            isNotStarted && styles.incompleteText
+            isNotStarted && styles.incompleteText,
+            isInProgress && styles.inProgressText
           ]}>
-            {item.completed ? 'Earned!' : `${Math.round((item.currentValue / item.targetValue) * 100)}%`}
+            {getProgressText(badge)}
           </Text>
         </View>
       </TouchableOpacity>
@@ -227,7 +257,8 @@ export default function BadgesScreen() {
                 <View 
                   style={[
                     styles.modalProgressBar,
-                    selectedBadge.currentValue === 0 && !selectedBadge.completed && styles.incompleteProgressBar
+                    selectedBadge.currentValue === 0 && !selectedBadge.completed && styles.incompleteProgressBar,
+                    selectedBadge.currentValue > 0 && !selectedBadge.completed && styles.inProgressModalBar
                   ]}
                 >
                   <View 
@@ -236,16 +267,20 @@ export default function BadgesScreen() {
                       { 
                         width: `${Math.min(100, (selectedBadge.currentValue / selectedBadge.targetValue) * 100)}%` 
                       },
-                      selectedBadge.currentValue === 0 && !selectedBadge.completed && styles.incompleteProgressFill
+                      selectedBadge.currentValue === 0 && !selectedBadge.completed && styles.incompleteProgressFill,
+                      selectedBadge.currentValue > 0 && !selectedBadge.completed && styles.inProgressFill
                     ]} 
                   />
                 </View>
               </View>
               
-              <Text style={styles.modalProgressText}>
+              <Text style={[
+                styles.modalProgressText,
+                selectedBadge.currentValue > 0 && !selectedBadge.completed && styles.inProgressModalText
+              ]}>
                 {selectedBadge.completed 
                   ? 'Badge Earned!' 
-                  : `${Math.round((selectedBadge.currentValue / selectedBadge.targetValue) * 100)}% Complete`}
+                  : getProgressText(selectedBadge)}
               </Text>
               
               {selectedBadge.completed && (
@@ -256,8 +291,14 @@ export default function BadgesScreen() {
               )}
 
               {!selectedBadge.completed && (
-                <View style={styles.incompleteNotice}>
-                  <Text style={styles.incompleteNoticeText}>
+                <View style={[
+                  styles.incompleteNotice,
+                  selectedBadge.currentValue > 0 && styles.inProgressNotice
+                ]}>
+                  <Text style={[
+                    styles.incompleteNoticeText,
+                    selectedBadge.currentValue > 0 && styles.inProgressNoticeText
+                  ]}>
                     Keep walking and conquering to earn this badge!
                   </Text>
                 </View>
@@ -344,7 +385,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
     borderWidth: 2,
-    borderColor: COLORS.primaryLight,
+    borderColor: COLORS.neutralLight,
   },
   completedBadgeCard: {
     borderColor: COLORS.accent,
@@ -363,6 +404,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
     borderColor: COLORS.neutralLight,
     shadowOpacity: 0.06,
+    elevation: 0,
   },
   badgeImageContainer: {
     position: 'relative',
@@ -376,6 +418,10 @@ const styles = StyleSheet.create({
   },
   grayscaleImage: {
     opacity: 0.7,
+    // Add grayscale filter for web
+    ...(Platform.OS === 'web' ? {
+      filter: 'grayscale(1)'
+    } : {})
   },
   completedBadge: {
     position: 'absolute',
@@ -404,6 +450,10 @@ const styles = StyleSheet.create({
   incompleteText: {
     color: COLORS.neutralMedium,
   },
+  inProgressText: {
+    color: COLORS.primary,
+    fontFamily: 'Inter-Medium',
+  },
   progressContainer: {
     width: '100%',
     marginBottom: 6,
@@ -422,6 +472,9 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: COLORS.primary,
     borderRadius: 3,
+  },
+  inProgressFill: {
+    backgroundColor: COLORS.primary,
   },
   incompleteProgressFill: {
     backgroundColor: COLORS.neutralMedium,
@@ -520,6 +573,9 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     overflow: 'hidden',
   },
+  inProgressModalBar: {
+    backgroundColor: COLORS.primaryLight,
+  },
   modalProgressFill: {
     height: '100%',
     backgroundColor: COLORS.primary,
@@ -530,6 +586,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.neutralDark,
     marginBottom: 20,
+  },
+  inProgressModalText: {
+    color: COLORS.primary,
   },
   shareButton: {
     flexDirection: 'row',
@@ -559,10 +618,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.neutralLight,
   },
+  inProgressNotice: {
+    backgroundColor: COLORS.primaryExtraLight,
+    borderColor: COLORS.primaryLight,
+  },
   incompleteNoticeText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralMedium,
     textAlign: 'center',
+  },
+  inProgressNoticeText: {
+    color: COLORS.primary,
   },
 });
