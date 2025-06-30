@@ -24,7 +24,7 @@ export function formatDistance(meters: number): string {
 }
 
 /**
- * Format an area value with appropriate units (m² or km²)
+ * Format an area value with appropriate units (m², k m², or km²)
  * @param squareMeters Area in square meters
  * @returns Formatted string with appropriate unit
  */
@@ -33,8 +33,12 @@ export function formatArea(squareMeters: number): string {
     return '0 m²';
   }
   
-  if (squareMeters < 1000000) {
-    // Under 1000m², show in square meters with no decimal places
+  // For values between 100,000 and 1,000,000 m², show as k m²
+  if (squareMeters >= 100000 && squareMeters < 1000000) {
+    const kSquareMeters = squareMeters / 1000;
+    return `${formatNumber(Math.round(kSquareMeters))}k m²`;
+  } else if (squareMeters < 100000) {
+    // Under 100k m², show in square meters with no decimal places
     return `${formatNumber(Math.round(squareMeters))} m²`;
   } else {
     // Convert to square kilometers (1 km² = 1,000,000 m²)
