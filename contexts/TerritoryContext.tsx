@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import { usePaws } from './PawsContext';
 import { supabase } from '@/utils/supabase';
+import * as Location from 'expo-location';
 import { 
   calculatePolygonArea, 
   isValidPolygon, 
@@ -11,7 +12,7 @@ import {
   mergePolygons,
   extractPolygonCoordinates
 } from '@/utils/locationUtils';
-import { addTerritoryToCity } from '@/utils/geocoding';
+import { addTerritoryToCity, reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
 import * as turf from '@turf/turf';
 import { fetchLeaderboard } from '@/services/leaderboardService';
 
@@ -37,7 +38,7 @@ interface TerritoryContextType {
   currentWalkDistance: number;
   showMonthlyResetDialog: boolean;
   closeMonthlyResetDialog: () => void;
-  startWalk: (cityId?: string) => void;
+  startWalk: (cityId?: string) => Promise<boolean>;
   addWalkPoint: (coordinates: Coordinate) => void;
   endWalk: () => Promise<ConquestSummary | undefined>;
 }
@@ -54,8 +55,9 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
   const [currentWalkDistance, setCurrentWalkDistance] = useState(0);
   const [showMonthlyResetDialog, setShowMonthlyResetDialog] = useState(false);
   const [currentWalkCityId, setCurrentWalkCityId] = useState<string | null>(null);
+  const [isDetectingCity, setIsDetectingCity] = useState(false);
   
-  const { user, updateUserLastResetMonthInDb } = useAuth();
+  const { user, updateUserLastResetMonthInDb, updateUserCity } = useAuth();
   const { addPaws } = usePaws();
 
   // Check if we need to reset territories at the beginning of a new month
@@ -195,14 +197,81 @@ export function TerritoryProvider({ children }: { children: ReactNode }) {
     loadTerritoryData();
   }, [user]);
 
-  const startWalk = (cityId?: string) => {
-    setCurrentWalkPoints([]);
-    setCurrentPolygon(null);
-    setCurrentWalkDistance(0);
-    // Store the city ID for this walk
-    setCurrentWalkCityId(cityId || null);
-    // Generate a unique session ID for this walk
-    setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const startWalk = async (cityId?: string): Promise<boolean> => {
+    try {
+      setIsDetectingCity(true);
+      
+      // Reset walk state
+      setCurrentWalkPoints([]);
+      setCurrentPolygon(null);
+      setCurrentWalkDistance(0);
+      
+      // If no city ID provided and user doesn't have a current city, try to detect it
+      if (!cityId && (!user?.current_city_id || !user?.current_city_name)) {
+        console.log('No city ID provided and user has no current city, attempting to detect location');
+        
+        try {
+          // Get current location
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') {
+            console.log('Location permission denied');
+            setIsDetectingCity(false);
+            return false;
+          }
+          
+          const location = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced
+          });
+          
+          // Get city from coordinates
+          const cityDetails = await reverseGeocodeToCity(
+            location.coords.latitude,
+            location.coords.longitude
+          );
+          
+          if (cityDetails) {
+            console.log('Detected city:', cityDetails.name, cityDetails.country);
+            
+            // Get or create city in database
+            const cityId = await getOrCreateCityInSupabase(cityDetails);
+            if (cityId) {
+              console.log('City ID:', cityId);
+              
+              // Update user's current city
+              await updateUserCity(cityId, cityDetails.name);
+              
+              // Use this city ID for the walk
+              setCurrentWalkCityId(cityId);
+            } else {
+              console.log('Failed to get or create city in database');
+              setIsDetectingCity(false);
+              return false;
+            }
+          } else {
+            console.log('Could not determine city from coordinates');
+            setIsDetectingCity(false);
+            return false;
+          }
+        } catch (error) {
+          console.error('Error detecting city:', error);
+          setIsDetectingCity(false);
+          return false;
+        }
+      } else {
+        // Use provided city ID or user's current city ID
+        setCurrentWalkCityId(cityId || user?.current_city_id || null);
+      }
+      
+      // Generate a unique session ID for this walk
+      setCurrentWalkSessionId(`walk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      
+      setIsDetectingCity(false);
+      return true;
+    } catch (error) {
+      console.error('Error starting walk:', error);
+      setIsDetectingCity(false);
+      return false;
+    }
   };
 
   const addWalkPoint = async (coordinates: Coordinate) => {

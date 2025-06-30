@@ -42,6 +42,7 @@ export default function MapScreen() {
     distanceWalked: number;
     localRanking: number | null;
   } | null>(null);
+  const [isStartingWalk, setIsStartingWalk] = useState(false);
   
   const mapRef = useRef<MapView>(null);
   const locationSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
@@ -275,19 +276,34 @@ export default function MapScreen() {
 
       console.log('Starting conquest...');
       setWalkDistance(0);
-      setIsWalking(true);
+      setIsStartingWalk(true);
       
-      // Start walk with current city ID if available
-      startWalk(user?.current_city_id || undefined);
-      
-      // Add initial point if we have a location
-      if (location) {
-        console.log('Adding initial walk point');
-        addWalkPoint({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude
-        });
-        lastLocationRef.current = location;
+      try {
+        // Start walk with current city ID if available
+        const walkStarted = await startWalk(user?.current_city_id || undefined);
+        
+        if (!walkStarted) {
+          console.log('Failed to start walk');
+          setIsStartingWalk(false);
+          return;
+        }
+        
+        setIsWalking(true);
+        
+        // Add initial point if we have a location
+        if (location) {
+          console.log('Adding initial walk point');
+          addWalkPoint({
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude
+          });
+          lastLocationRef.current = location;
+        }
+      } catch (error) {
+        console.error('Error starting walk:', error);
+        setIsStartingWalk(false);
+      } finally {
+        setIsStartingWalk(false);
       }
     } else {
       console.log('Ending conquest...');
@@ -327,12 +343,14 @@ export default function MapScreen() {
 
   const getButtonText = () => {
     if (isWalking) return 'Finish Conquest';
+    if (isStartingWalk) return 'Detecting Location...';
     if (!canStartConquest && !isSubscribed) return 'Need Paws to Conquer';
     return 'Conquer Territory';
   };
 
   const getButtonStyle = () => {
     if (isWalking) return [styles.startWalkButton, styles.activeButton];
+    if (isStartingWalk) return [styles.startWalkButton, styles.loadingButton];
     if (!canStartConquest && !isSubscribed) return [styles.startWalkButton, styles.disabledButton];
     return styles.startWalkButton;
   };
@@ -487,10 +505,12 @@ export default function MapScreen() {
                 <TouchableOpacity 
                   style={getButtonStyle()}
                   onPress={toggleWalking}
-                  disabled={!isWalking && !canStartConquest && !isSubscribed}
+                  disabled={(!isWalking && !canStartConquest && !isSubscribed) || isStartingWalk}
                 >
                   {isWalking ? (
                     <Pause size={24} color={COLORS.white} />
+                  ) : isStartingWalk ? (
+                    <ActivityIndicator size="small" color={COLORS.white} />
                   ) : (
                     <Play size={24} color={COLORS.white} />
                   )}
@@ -671,6 +691,10 @@ const styles = StyleSheet.create({
   },
   activeButton: {
     backgroundColor: COLORS.error,
+  },
+  loadingButton: {
+    backgroundColor: COLORS.primary,
+    opacity: 0.8,
   },
   disabledButton: {
     backgroundColor: COLORS.neutralMedium,
