@@ -208,9 +208,9 @@ export const adMobService = new AdMobService();
 // Configuration constants with real production IDs
 export const ADMOB_CONFIG: AdMobConfig = {
   appId: Platform.select({
-    ios: 'ca-app-pub-2380886531830921~9974124526', // Real iOS app ID
-    android: 'ca-app-pub-2380886531830921~8661042855', // Real Android app ID
-    default: 'ca-app-pub-2380886531830921~8661042855'
+    ios: process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID || 'ca-app-pub-2380886531830921~9974124526', // Real iOS app ID
+    android: process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID || 'ca-app-pub-2380886531830921~8661042855', // Real Android app ID
+    default: process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID || 'ca-app-pub-2380886531830921~8661042855'
   }),
   rewardedAdUnitId: Platform.select({
     ios: 'ca-app-pub-2380886531830921/5954988462', // Real iOS rewarded ad unit ID
