@@ -23,6 +23,7 @@ interface User {
   territorySize: number;
   totalDistance: number;
   achievementCount: number;
+  badgeCount?: number;
   requestSent?: boolean;
   isFriend?: boolean;
   dogs?: Array<{
@@ -140,167 +141,129 @@ export function useFriends() {
       }
 
       console.log(`Found ${friendships?.length || 0} friendships`);
-      const friendsData: User[] = [];
-
-      for (const friendship of friendships || []) {
-        // Get the friend's ID (the other person in the friendship)
-        const friendId = friendship.requester_id === user.id 
-          ? friendship.receiver_id 
-          : friendship.requester_id;
-
-        // Get friend's profile
-        const { data: friendProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', friendId)
-          .single();
-
-        if (profileError || !friendProfile) {
-          console.error('Error fetching friend profile:', profileError);
-          continue;
-        }
-
-        // Get friend's dogs
-        const { data: dogData, error: dogError } = await supabase
-          .from('profile_dogs')
-          .select(`
-            dogs (
-              id,
-              name,
-              breed,
-              photo_url
-            )
-          `)
-          .eq('profile_id', friendId);
-
-        if (dogError) {
-          console.error('Error fetching friend dogs:', dogError);
-        }
-
-        const dogs = dogData?.map(item => item.dogs) || [];
-        const firstDog = dogs[0] || null;
-
-        // Get friend's achievement count
-        const { count: achievementCount } = await supabase
-          .from('profile_achievements')
-          .select('*', { count: 'exact', head: true })
-          .eq('profile_id', friendId);
-
-        // Add friend to the list with basic info
+      
+      if (!friendships || friendships.length === 0) {
+        setFriends([]);
+        return;
+      }
+      
+      // Extract friend IDs
+      const friendIds = friendships.map(friendship => 
+        friendship.requester_id === user.id ? friendship.receiver_id : friendship.requester_id
+      );
+      
+      // Fetch all friend data in a single query using the public_user_stats view
+      const { data: friendsData, error: friendsError } = await supabase
+        .from('public_user_stats')
+        .select('*')
+        .in('id', friendIds);
+        
+      if (friendsError) {
+        console.error('Error fetching friends data:', friendsError);
+        return;
+      }
+      
+      console.log(`Fetched data for ${friendsData?.length || 0} friends`);
+      
+      // Process friend data
+      const processedFriends = await Promise.all((friendsData || []).map(async (friend) => {
+        // Format friend data
         const friendData: User = {
-          id: friendId,
-          name: `${friendProfile.first_name || ''} ${friendProfile.last_name || ''}`.trim() || 'User',
-          dogName: firstDog?.name || 'No dog',
-          dogBreed: firstDog?.breed || '',
-          photoURL: friendProfile.avatar_url,
-          territorySize: 0,
-          totalDistance: 0,
-          achievementCount: achievementCount || 0,
+          id: friend.id,
+          name: `${friend.first_name || ''} ${friend.last_name || ''}`.trim() || 'User',
+          dogName: friend.primary_dog_name || 'No dog',
+          dogBreed: friend.primary_dog_breed || '',
+          photoURL: friend.avatar_url,
+          territorySize: friend.territory_size || 0,
+          totalDistance: friend.total_distance || 0,
+          achievementCount: friend.badge_count || 0,
+          badgeCount: friend.badge_count || 0,
           isFriend: true,
-          dogs: dogs,
+          dogs: friend.primary_dog_id ? [{
+            id: friend.primary_dog_id,
+            name: friend.primary_dog_name || 'Unknown',
+            breed: friend.primary_dog_breed || '',
+            photo_url: friend.primary_dog_photo_url
+          }] : [],
           territoryPolygons: []
         };
         
-        friendsData.push(friendData);
-        
-        // Load territory data in the background
-        loadFriendTerritoryData(friendData, dogs).then(updatedFriend => {
-          // Update the friend in the list with territory data
-          setFriends(prev => 
-            prev.map(f => f.id === updatedFriend.id ? updatedFriend : f)
-          );
-        });
-      }
-
-      // Set friends with basic data immediately
-      setFriends(friendsData);
+        // Load territory visualization data
+        const friendWithTerritories = await loadFriendTerritoryData(friendData);
+        return friendWithTerritories;
+      }));
       
+      setFriends(processedFriends);
     } catch (error) {
       console.error('Error fetching friends:', error);
     }
   };
   
-  // Separate function to load territory data for a friend
-  const loadFriendTerritoryData = async (friend: User, dogs: any[]): Promise<User> => {
+  // Load territory visualization data for a friend
+  const loadFriendTerritoryData = async (friend: User): Promise<User> => {
     try {
-      let territorySize = 0;
-      let totalDistance = 0;
+      // Skip if friend has no dogs
+      if (!friend.dogs || friend.dogs.length === 0) {
+        return friend;
+      }
+      
       const territoryPolygons: User['territoryPolygons'] = [];
       
       // Process each dog's territory
-      for (const dog of dogs) {
+      for (const dog of friend.dogs) {
         if (!dog || !dog.id) continue;
         
-        // Get walk sessions for this dog
-        const { data: walkSessions, error: sessionsError } = await supabase
-          .from('walk_sessions')
-          .select(`
-            id,
-            territory_gained,
-            distance,
-            walk_points!walk_points_walk_session_id_fkey (
-              id,
-              path_coordinates
-            )
-          `)
-          .eq('dog_id', dog.id)
-          .eq('status', 'completed');
-
-        if (sessionsError) {
-          console.error(`Error fetching walk sessions for dog ${dog.id}:`, sessionsError);
-          continue;
-        }
-
-        if (!walkSessions || walkSessions.length === 0) {
-          console.log(`No walk sessions found for dog ${dog.id}`);
-          continue;
-        }
-
-        // Process each walk session
-        for (const session of walkSessions) {
-          // Add to totals
-          territorySize += session.territory_gained || 0;
-          totalDistance += session.distance || 0;
+        // Get walk points for this dog
+        const { data: walkPoints, error: pointsError } = await supabase
+          .from('walk_points')
+          .select('id, path_coordinates')
+          .eq('dog_id', dog.id);
           
-          // Process walk points to create territory polygons
-          if (session.walk_points && session.walk_points.length > 0) {
-            for (const point of session.walk_points) {
-              if (point.path_coordinates && point.path_coordinates.length >= 3) {
-                // Get coordinates from path_coordinates JSON
-                const coordinates = point.path_coordinates as Coordinate[];
-                
-                // Create convex hull
-                const hull = createConvexHull(coordinates);
-                if (!hull) continue;
-                
-                // Calculate centroid
-                const turfPolygon = coordinatesToTurfPolygon(hull);
-                let centroid: Coordinate | undefined;
-                
-                if (turfPolygon) {
-                  const turfCentroid = turf.centroid(turfPolygon);
-                  centroid = {
-                    latitude: turfCentroid.geometry.coordinates[1],
-                    longitude: turfCentroid.geometry.coordinates[0]
-                  };
-                }
-                
-                // Get color for this friend
-                const color = await getFriendTerritoryColor(friend.id);
-                
-                // Add to territory polygons
-                territoryPolygons.push({
-                  id: point.id,
-                  coordinates: hull,
-                  color,
-                  dogId: dog.id,
-                  dogName: dog.name,
-                  dogPhotoURL: dog.photo_url,
-                  dogBreed: dog.breed,
-                  centroid
-                });
-              }
+        if (pointsError) {
+          console.error(`Error fetching walk points for dog ${dog.id}:`, pointsError);
+          continue;
+        }
+        
+        if (!walkPoints || walkPoints.length === 0) {
+          continue;
+        }
+        
+        // Get color for this friend
+        const color = await getFriendTerritoryColor(friend.id);
+        
+        // Process each walk point to create territory polygons
+        for (const point of walkPoints) {
+          if (point.path_coordinates && point.path_coordinates.length >= 3) {
+            // Get coordinates from path_coordinates JSON
+            const coordinates = point.path_coordinates as Coordinate[];
+            
+            // Create convex hull
+            const hull = createConvexHull(coordinates);
+            if (!hull) continue;
+            
+            // Calculate centroid
+            const turfPolygon = coordinatesToTurfPolygon(hull);
+            let centroid: Coordinate | undefined;
+            
+            if (turfPolygon) {
+              const turfCentroid = turf.centroid(turfPolygon);
+              centroid = {
+                latitude: turfCentroid.geometry.coordinates[1],
+                longitude: turfCentroid.geometry.coordinates[0]
+              };
             }
+            
+            // Add to territory polygons
+            territoryPolygons.push({
+              id: point.id,
+              coordinates: hull,
+              color,
+              dogId: dog.id,
+              dogName: dog.name,
+              dogPhotoURL: dog.photo_url,
+              dogBreed: dog.breed,
+              centroid
+            });
           }
         }
       }
@@ -308,8 +271,6 @@ export function useFriends() {
       // Return updated friend with territory data
       return {
         ...friend,
-        territorySize,
-        totalDistance,
         territoryPolygons
       };
     } catch (error) {
@@ -333,53 +294,57 @@ export function useFriends() {
         console.error('Error fetching friend requests:', requestsError);
         return;
       }
-
-      const requestsData: FriendRequest[] = [];
-
-      for (const request of requests || []) {
-        // Get requester's profile
-        const { data: requesterProfile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', request.requester_id)
-          .single();
-
-        if (profileError || !requesterProfile) {
-          console.error('Error fetching requester profile:', profileError);
-          continue;
+      
+      if (!requests || requests.length === 0) {
+        setFriendRequests([]);
+        return;
+      }
+      
+      // Extract requester IDs
+      const requesterIds = requests.map(request => request.requester_id);
+      
+      // Fetch all requesters' data in a single query
+      const { data: requestersData, error: requestersError } = await supabase
+        .from('public_user_stats')
+        .select('*')
+        .in('id', requesterIds);
+        
+      if (requestersError) {
+        console.error('Error fetching requesters data:', requestersError);
+        return;
+      }
+      
+      // Map requests to FriendRequest objects
+      const requestsData: FriendRequest[] = requests.map(request => {
+        const requesterProfile = requestersData?.find(profile => profile.id === request.requester_id);
+        
+        if (!requesterProfile) {
+          return {
+            id: request.id,
+            senderId: request.requester_id,
+            senderName: 'Unknown User',
+            senderDogName: 'Unknown Dog',
+            timestamp: request.created_at,
+            status: request.status
+          };
         }
-
-        // Get requester's dogs
-        const { data: dogData, error: dogError } = await supabase
-          .from('profile_dogs')
-          .select(`
-            dogs (
-              id,
-              name,
-              breed,
-              photo_url
-            )
-          `)
-          .eq('profile_id', request.requester_id);
-
-        if (dogError) {
-          console.error('Error fetching requester dogs:', dogError);
-        }
-
-        const dogs = dogData?.map(item => item.dogs) || [];
-        const firstDog = dogs[0] || null;
-
-        requestsData.push({
+        
+        return {
           id: request.id,
           senderId: request.requester_id,
           senderName: `${requesterProfile.first_name || ''} ${requesterProfile.last_name || ''}`.trim() || 'User',
-          senderDogName: firstDog?.name || 'No dog',
+          senderDogName: requesterProfile.primary_dog_name || 'No dog',
           senderPhotoURL: requesterProfile.avatar_url,
           timestamp: request.created_at,
           status: request.status,
-          senderDogs: dogs,
-        });
-      }
+          senderDogs: requesterProfile.primary_dog_id ? [{
+            id: requesterProfile.primary_dog_id,
+            name: requesterProfile.primary_dog_name || 'Unknown',
+            breed: requesterProfile.primary_dog_breed || '',
+            photo_url: requesterProfile.primary_dog_photo_url
+          }] : []
+        };
+      });
 
       setFriendRequests(requestsData);
     } catch (error) {
@@ -396,11 +361,11 @@ export function useFriends() {
     if (!user || !query.trim()) return [];
 
     try {
-      // Search profiles by name
-      const { data: profiles, error } = await supabase
-        .from('profiles')
+      // Search profiles using the public_user_stats view
+      const { data: searchResults, error } = await supabase
+        .from('public_user_stats')
         .select('*')
-        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
+        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,primary_dog_name.ilike.%${query}%`)
         .neq('id', user.id)
         .limit(20);
 
@@ -408,81 +373,47 @@ export function useFriends() {
         console.error('Error searching users:', error);
         return [];
       }
-
-      const searchResults: User[] = [];
-
-      for (const profile of profiles || []) {
-        // Check if already friends or request exists
-        const { data: existingRelation } = await supabase
-          .from('friendships')
-          .select('status, requester_id, receiver_id')
-          .or(`and(requester_id.eq.${user.id},receiver_id.eq.${profile.id}),and(requester_id.eq.${profile.id},receiver_id.eq.${user.id})`)
-          .maybeSingle(); // Use maybeSingle instead of single to avoid errors when no relation exists
-
-        // Get user's dogs
-        const { data: dogData } = await supabase
-          .from('profile_dogs')
-          .select(`
-            dogs (
-              id,
-              name,
-              breed,
-              photo_url
-            )
-          `)
-          .eq('profile_id', profile.id);
-
-        if (dogData) {
-          console.log(`Found ${dogData.length} dogs for user ${profile.id}`);
-        }
-
-        const dogs = dogData?.map(item => item.dogs) || [];
-        const firstDog = dogs[0] || null;
-
-        // Get achievement count
-        const { count: achievementCount } = await supabase
-          .from('profile_achievements')
-          .select('*', { count: 'exact', head: true })
-          .eq('profile_id', profile.id);
-
-        // Calculate territory and distance from walk sessions
-        let territorySize = 0;
-        let totalDistance = 0;
-        
-        if (firstDog) {
-          const { data: walkSessions, error: sessionsError } = await supabase
-            .from('walk_sessions')
-            .select('territory_gained, distance')
-            .eq('dog_id', firstDog.id)
-            .eq('status', 'completed');
-
-          if (!sessionsError && walkSessions && walkSessions.length > 0) {
-            // Sum up territory and distance from all sessions
-            territorySize = walkSessions.reduce((sum, session) => sum + (session.territory_gained || 0), 0);
-            totalDistance = walkSessions.reduce((sum, session) => sum + (session.distance || 0), 0);
-          }
-        }
-
-        const isFriend = existingRelation?.status === 'accepted';
-        const requestSent = existingRelation?.status === 'pending' && existingRelation?.requester_id === user.id;
-        const requestReceived = existingRelation?.status === 'pending' && existingRelation?.receiver_id === user.id;
-
-        searchResults.push({
-          id: profile.id,
-          name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
-          dogName: firstDog?.name || 'No dog',
-          dogBreed: firstDog?.breed || '',
-          photoURL: profile.avatar_url,
-          territorySize,
-          totalDistance,
-          achievementCount: achievementCount || 0,
-          isFriend,
-          requestSent,
-          dogs: dogs,
-        });
+      
+      if (!searchResults || searchResults.length === 0) {
+        return [];
       }
+      
+      // Check friendship status for each result
+      const friendshipChecks = await Promise.all(
+        searchResults.map(async (profile) => {
+          // Check if already friends or request exists
+          const { data: existingRelation } = await supabase
+            .from('friendships')
+            .select('status, requester_id, receiver_id')
+            .or(`and(requester_id.eq.${user.id},receiver_id.eq.${profile.id}),and(requester_id.eq.${profile.id},receiver_id.eq.${user.id})`)
+            .maybeSingle();
+            
+          const isFriend = existingRelation?.status === 'accepted';
+          const requestSent = existingRelation?.status === 'pending' && existingRelation?.requester_id === user.id;
+          
+          return {
+            id: profile.id,
+            name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User',
+            dogName: profile.primary_dog_name || 'No dog',
+            dogBreed: profile.primary_dog_breed || '',
+            photoURL: profile.avatar_url,
+            territorySize: profile.territory_size || 0,
+            totalDistance: profile.total_distance || 0,
+            achievementCount: profile.badge_count || 0,
+            badgeCount: profile.badge_count || 0,
+            isFriend,
+            requestSent,
+            dogs: profile.primary_dog_id ? [{
+              id: profile.primary_dog_id,
+              name: profile.primary_dog_name || 'Unknown',
+              breed: profile.primary_dog_breed || '',
+              photo_url: profile.primary_dog_photo_url
+            }] : []
+          };
+        })
+      );
 
-      return searchResults;
+      return friendshipChecks;
     } catch (error) {
       console.error('Error searching users:', error);
       return [];
