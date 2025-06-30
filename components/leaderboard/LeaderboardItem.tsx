@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import UserAvatar from '@/components/common/UserAvatar';
-import { formatArea, formatDistance } from '@/utils/formatUtils';
+import { formatTerritorySize, formatDistance } from '@/utils/formatUtils';
 
 type LeaderboardItemProps = {
   rank: number;
@@ -30,19 +30,23 @@ export default function LeaderboardItem({
   const getValue = () => {
     switch (category) {
       case 'territory':
-        return formatArea(user.territorySize * 1000000);
+        return formatTerritorySize(user.territorySize || 0);
       case 'distance':
-        return formatDistance(user.totalDistance * 1000);
+        return formatDistance(user.totalDistance || 0);
       case 'achievements':
-        return user.achievementCount?.toString() || '0';
+        return user.achievementCount || 0;
       default:
         return '';
     }
   };
 
   const handlePress = () => {
-    // Navigate directly to the public profile page
-    router.push(`/user/${user.id}`);
+    if (onPress) {
+      onPress();
+    } else {
+      // Navigate directly to the public profile page
+      router.push(`/user/${user.id}`);
+    }
   };
 
   return (

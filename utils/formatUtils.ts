@@ -1,72 +1,51 @@
 /**
- * Utility functions for formatting numbers, distances, and areas
+ * Format a territory size value with appropriate units
+ * @param size Territory size in square kilometers
+ * @returns Formatted string with appropriate units (m² or km²)
  */
-
-/**
- * Format a distance value with appropriate units (m or km)
- * @param meters Distance in meters
- * @returns Formatted string with appropriate unit
- */
-export function formatDistance(meters: number): string {
-  if (!meters || meters <= 0) {
-    return '0 m';
+export function formatTerritorySize(size: number): string {
+  if (size === 0) return '0 m²';
+  
+  // Convert to square meters for display
+  const sizeInSquareMeters = size * 1000000;
+  
+  // If less than 1 square kilometer, show in square meters
+  if (sizeInSquareMeters < 1000000) {
+    return `${Math.round(sizeInSquareMeters)} m²`;
   }
   
-  if (meters < 1000) {
-    // Under 1km, show in meters with no decimal places
-    return `${Math.round(meters)} m`;
-  } else {
-    // Over 1km, show in kilometers with 1 decimal place
-    const km = meters / 1000;
-    // Format with thousand separator and decimal point
-    return `${formatNumber(km, 1)} km`;
-  }
+  // Otherwise show in square kilometers with 2 decimal places
+  return `${size.toFixed(2)} km²`;
 }
 
 /**
- * Format an area value with appropriate units (m², k m², or km²)
- * @param squareMeters Area in square meters
- * @returns Formatted string with appropriate unit
+ * Format a distance value with appropriate units
+ * @param distance Distance in kilometers
+ * @returns Formatted string with appropriate units (m or km)
  */
-export function formatArea(squareMeters: number): string {
-  if (!squareMeters || squareMeters <= 0) {
-    return '0 m²';
+export function formatDistance(distance: number): string {
+  if (distance === 0) return '0 m';
+  
+  // Convert to meters for display
+  const distanceInMeters = distance * 1000;
+  
+  // If less than 1 kilometer, show in meters
+  if (distanceInMeters < 1000) {
+    return `${Math.round(distanceInMeters)} m`;
   }
   
-  // For values between 10,000 and 1,000,000 m², show as k m²
-  if (squareMeters >= 10000 && squareMeters < 1000000) {
-    const kSquareMeters = squareMeters / 1000;
-    return `${formatNumber(Math.round(kSquareMeters))}k m²`;
-  } else if (squareMeters < 10000) {
-    // Under 10k m², show in square meters with no decimal places
-    return `${formatNumber(Math.round(squareMeters))} m²`;
-  } else {
-    // Convert to square kilometers (1 km² = 1,000,000 m²)
-    const squareKm = squareMeters / 1000000;
-    
-    // For values that would display as 0.00 km², show in m² instead
-    if (squareKm < 0.01) {
-      return `${formatNumber(Math.round(squareMeters))} m²`;
-    }
-    
-    // Otherwise show in square kilometers with 2 decimal places
-    return `${formatNumber(squareKm, 2)} km²`;
-  }
+  // Otherwise show in kilometers with 2 decimal places
+  return `${distance.toFixed(2)} km`;
 }
 
 /**
- * Format a number with thousand separators and specified decimal places
- * @param value Number to format
- * @param decimalPlaces Number of decimal places (default: 0)
- * @returns Formatted number string
+ * Format a city name with country
+ * @param name City name
+ * @param country Country name
+ * @returns Formatted city name with country
  */
-export function formatNumber(value: number, decimalPlaces: number = 0): string {
-  // Format with thousand separator (space) and decimal point (.)
-  return new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: decimalPlaces,
-    maximumFractionDigits: decimalPlaces,
-    useGrouping: true,
-  })
-    .format(value)
-    .replace(/,/g, ' '); // Replace commas with spaces for thousand separator
+export function formatCityName(name: string | null, country: string | null): string {
+  if (!name) return 'Unknown Location';
+  if (!country) return name;
+  return `${name}, ${country}`;
 }

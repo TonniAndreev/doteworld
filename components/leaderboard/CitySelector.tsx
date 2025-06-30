@@ -16,9 +16,9 @@ import {
 import { COLORS } from '@/constants/theme';
 import { MapPin, ChevronDown, Check, Search, X, Plus, Globe, Navigation } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import { reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
+import { reverseGeocodeToCity, getOrCreateCityInSupabase, updateUserCity } from '@/utils/geocoding';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/utils/supabase';
+import { formatCityName } from '@/utils/formatUtils';
 
 interface City {
   id: string;
@@ -26,7 +26,6 @@ interface City {
   state: string | null;
   country: string;
   territorySize?: number;
-  similarity?: number;
 }
 
 interface CitySelectorProps {
@@ -49,8 +48,6 @@ export default function CitySelector({
   const [newCityCountry, setNewCityCountry] = useState('');
   const [isAddingCity, setIsAddingCity] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
-  const [similarCities, setSimilarCities] = useState<City[]>([]);
-  const [isSearchingCities, setIsSearchingCities] = useState(false);
   
   const { user } = useAuth();
 
@@ -63,47 +60,6 @@ export default function CitySelector({
       city.country.toLowerCase().includes(query)
     );
   });
-
-  // Search for similar cities when query changes
-  useEffect(() => {
-    const searchSimilarCities = async () => {
-      if (searchQuery.length < 2) {
-        setSimilarCities([]);
-        return;
-      }
-      
-      setIsSearchingCities(true);
-      try {
-        // Use the new find_similar_cities RPC function
-        const { data, error } = await supabase.rpc('find_similar_cities', {
-          p_city_name: searchQuery,
-          p_country: 'any', // Search in any country
-          p_limit: 10
-        });
-        
-        if (error) {
-          console.error('Error searching similar cities:', error);
-          setSimilarCities([]);
-        } else if (data && data.length > 0) {
-          console.log('Found similar cities:', data.length);
-          setSimilarCities(data);
-        } else {
-          setSimilarCities([]);
-        }
-      } catch (error) {
-        console.error('Error searching cities:', error);
-        setSimilarCities([]);
-      } finally {
-        setIsSearchingCities(false);
-      }
-    };
-    
-    if (searchQuery.trim().length >= 2) {
-      searchSimilarCities();
-    } else {
-      setSimilarCities([]);
-    }
-  }, [searchQuery]);
 
   const openModal = () => {
     setModalVisible(true);
@@ -122,11 +78,8 @@ export default function CitySelector({
     closeModal();
   };
 
-  const formatCityName = (city: City) => {
-    if (city.state && city.state !== city.name) {
-      return `${city.name}, ${city.country}`;
-    }
-    return `${city.name}, ${city.country}`;
+  const formatCityDisplay = (city: City) => {
+    return formatCityName(city.name, city.country);
   };
 
   const formatTerritorySize = (size?: number) => {
@@ -251,37 +204,28 @@ export default function CitySelector({
 
   const renderCityItem = ({ item }: { item: City }) => {
     const isCurrentUserCity = user?.current_city_id === item.id;
-    const hasSimilarity = item.similarity !== undefined;
+    const formattedCityName = formatCityDisplay(item);
     
     return (
       <TouchableOpacity
         style={[
           styles.cityItem,
           selectedCity?.id === item.id && styles.selectedCityItem,
-          isCurrentUserCity && styles.currentUserCityItem,
-          hasSimilarity && styles.similarCityItem
+          isCurrentUserCity && styles.currentUserCityItem
         ]}
         onPress={() => handleSelectCity(item)}
       >
         <View style={styles.cityInfo}>
           <Text style={styles.cityName}>
-            {item.name}
+            {formattedCityName}
             {isCurrentUserCity && <Text style={styles.currentCityBadge}> (Current)</Text>}
-          </Text>
-          <Text style={styles.cityRegion}>
-            {item.country}
-            {hasSimilarity && item.similarity && item.similarity > 0.8 && (
-              <Text style={styles.similarityBadge}> (Very similar)</Text>
-            )}
           </Text>
         </View>
         
         <View style={styles.cityStats}>
-          {item.territorySize && item.territorySize > 0 && (
-            <Text style={styles.territorySize}>
-              {formatTerritorySize(item.territorySize)}
-            </Text>
-          )}
+          <Text style={styles.territorySize}>
+            {formatTerritorySize(item.territorySize)}
+          </Text>
           {selectedCity?.id === item.id && (
             <Check size={20} color={COLORS.primary} />
           )}
@@ -307,7 +251,7 @@ export default function CitySelector({
         ) : (
           <>
             <Text style={styles.cityText} numberOfLines={1}>
-              {selectedCity ? formatCityName(selectedCity) : 'Select City'}
+              {selectedCity ? formatCityDisplay(selectedCity) : 'Select City'}
             </Text>
             <ChevronDown size={20} color={COLORS.neutralDark} />
           </>
@@ -397,9 +341,9 @@ export default function CitySelector({
                         style={styles.specialOption}
                         onPress={() => handleSelectCity({
                           id: user.current_city_id!,
-                          name: user.current_city_name!,
+                          name: user.current_city_name!.split(',')[0].trim(),
                           state: null,
-                          country: 'Current Location'
+                          country: user.current_city_name!.split(',')[1]?.trim() || 'Unknown'
                         })}
                       >
                         <MapPin size={20} color={COLORS.primary} />
@@ -416,90 +360,52 @@ export default function CitySelector({
                     </TouchableOpacity>
                   </View>
 
-                  {/* Similar Cities Section */}
-                  {searchQuery.trim().length >= 2 && (
-                    <View style={styles.similarCitiesContainer}>
-                      <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>Similar Cities</Text>
-                        {isSearchingCities && (
-                          <ActivityIndicator size="small" color={COLORS.primary} />
-                        )}
-                      </View>
-                      
-                      {similarCities.length > 0 ? (
-                        <FlatList
-                          data={similarCities}
-                          keyExtractor={(item) => item.id}
-                          renderItem={renderCityItem}
-                          contentContainerStyle={styles.cityList}
-                          showsVerticalScrollIndicator={false}
-                          ListEmptyComponent={null}
-                        />
-                      ) : (
-                        <View style={styles.noResultsContainer}>
-                          <Text style={styles.noResultsText}>
-                            {isSearchingCities 
-                              ? 'Searching cities...' 
-                              : 'No similar cities found'}
-                          </Text>
-                        </View>
-                      )}
+                  {cities.length === 0 ? (
+                    <View style={styles.emptyContainer}>
+                      <Globe size={32} color={COLORS.neutralMedium} />
+                      <Text style={styles.emptyText}>
+                        No cities found. Start conquering territories to see cities here!
+                      </Text>
                     </View>
-                  )}
-
-                  {/* Your Cities Section */}
-                  <View style={styles.yourCitiesContainer}>
-                    <View style={styles.sectionHeader}>
-                      <Text style={styles.sectionTitle}>Your Cities</Text>
-                    </View>
-                    
-                    {cities.length === 0 ? (
-                      <View style={styles.emptyContainer}>
-                        <Globe size={32} color={COLORS.neutralMedium} />
-                        <Text style={styles.emptyText}>
-                          No cities found. Start conquering territories to see cities here!
+                  ) : (
+                    <>
+                      <View style={styles.resultsHeader}>
+                        <Text style={styles.resultsCount}>
+                          {filteredCities.length} {filteredCities.length === 1 ? 'city' : 'cities'} found
                         </Text>
                       </View>
-                    ) : (
-                      <>
-                        <View style={styles.resultsHeader}>
-                          <Text style={styles.resultsCount}>
-                            {filteredCities.length} {filteredCities.length === 1 ? 'city' : 'cities'} found
-                          </Text>
-                        </View>
-                        
-                        <FlatList
-                          data={filteredCities}
-                          keyExtractor={(item) => item.id}
-                          renderItem={renderCityItem}
-                          contentContainerStyle={styles.cityList}
-                          showsVerticalScrollIndicator={false}
-                          ListEmptyComponent={
-                            searchQuery.length > 0 ? (
-                              <View style={styles.noResultsContainer}>
-                                <Text style={styles.noResultsText}>
-                                  No cities match "{searchQuery}"
+                      
+                      <FlatList
+                        data={filteredCities}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderCityItem}
+                        contentContainerStyle={styles.cityList}
+                        showsVerticalScrollIndicator={false}
+                        ListEmptyComponent={
+                          searchQuery.length > 0 ? (
+                            <View style={styles.noResultsContainer}>
+                              <Text style={styles.noResultsText}>
+                                No cities match "{searchQuery}"
+                              </Text>
+                              <TouchableOpacity 
+                                style={styles.addNewFromSearchButton}
+                                onPress={() => {
+                                  setNewCityName(searchQuery);
+                                  setNewCityCountry('');
+                                  setShowAddCity(true);
+                                }}
+                              >
+                                <Plus size={16} color={COLORS.primary} />
+                                <Text style={styles.addNewFromSearchText}>
+                                  Add "{searchQuery}" as a new city
                                 </Text>
-                                <TouchableOpacity 
-                                  style={styles.addNewFromSearchButton}
-                                  onPress={() => {
-                                    setNewCityName(searchQuery);
-                                    setNewCityCountry('');
-                                    setShowAddCity(true);
-                                  }}
-                                >
-                                  <Plus size={16} color={COLORS.primary} />
-                                  <Text style={styles.addNewFromSearchText}>
-                                    Add "{searchQuery}" as a new city
-                                  </Text>
-                                </TouchableOpacity>
-                              </View>
-                            ) : null
-                          }
-                        />
-                      </>
-                    )}
-                  </View>
+                              </TouchableOpacity>
+                            </View>
+                          ) : null
+                        }
+                      />
+                    </>
+                  )}
                 </>
               )}
             </View>
@@ -639,30 +545,6 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginLeft: 8,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  sectionTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-  },
-  similarCitiesContainer: {
-    marginBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.neutralLight,
-    paddingTop: 8,
-  },
-  yourCitiesContainer: {
-    flex: 1,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.neutralLight,
-    paddingTop: 8,
-  },
   resultsHeader: {
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -694,11 +576,6 @@ const styles = StyleSheet.create({
     borderLeftColor: COLORS.primary,
     paddingLeft: 8,
   },
-  similarCityItem: {
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.secondary,
-    paddingLeft: 8,
-  },
   cityInfo: {
     flex: 1,
     marginRight: 8,
@@ -713,11 +590,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
-  },
-  similarityBadge: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    color: COLORS.secondary,
   },
   cityRegion: {
     fontFamily: 'Inter-Regular',

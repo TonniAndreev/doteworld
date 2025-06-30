@@ -144,17 +144,17 @@ export async function findNearestCity(
 /**
  * Update the current user's city
  * @param cityId City ID to set as current
- * @param cityName City name to display (optional)
+ * @param cityName City name (optional)
  * @returns Promise resolving to success status
  */
 export async function updateUserCity(cityId: string, cityName?: string): Promise<boolean> {
   try {
-    console.log('Updating user city to:', cityId, cityName || '');
+    console.log('Updating user city to:', cityId, cityName);
     
-    // Call the RPC function to update the user's city
-    const { data, error } = await supabase.rpc('update_profile_city', {
-      city_id: cityId,
-      city_name: cityName
+    // Call the RPC function to update the user's city with name
+    const { data, error } = await supabase.rpc('update_profile_city_with_name', {
+      p_city_id: cityId,
+      p_city_name: cityName
     });
     
     if (error) {
