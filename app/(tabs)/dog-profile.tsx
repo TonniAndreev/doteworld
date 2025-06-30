@@ -13,6 +13,7 @@ import {
   Image,
   Modal,
 } from 'react-native';
+import { Dog } from '@/src/types/dog';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -109,17 +110,6 @@ const DOG_BREEDS = [
   'Other',
 ].sort(); // Sort alphabetically
 
-interface Dog {
-  id: string;
-  name: string;
-  breed: string;
-  photo_url?: string | null;
-  birthday?: string;
-  bio?: string;
-  weight?: number;
-  gender?: 'male' | 'female';
-  created_at: string;
-}
 
 export default function DogProfileScreen() {
   const [dogs, setDogs] = useState<Dog[]>([]);
@@ -180,7 +170,7 @@ export default function DogProfileScreen() {
       }
 
       const dogsData = userDogs?.map(ud => ud.dogs).filter(Boolean) || [];
-      setDogs(dogsData as Dog[]);
+      setDogs(dogsData as unknown as Dog[]);
     } catch (error) {
       console.error('Error fetching dogs:', error);
     } finally {
@@ -328,6 +318,8 @@ export default function DogProfileScreen() {
     }
   };
 
+
+  
   const handleSaveDog = async () => {
     if (!selectedDog || !editForm.name.trim()) {
       Alert.alert('Error', 'Dog name is required');
@@ -347,6 +339,8 @@ export default function DogProfileScreen() {
         breed: editForm.breed.trim(),
         bio: editForm.bio.trim(),
         gender: editForm.gender || null,
+        birthday: (editForm as any).birthday,
+        weight: editForm.weight ? parseFloat((editForm as any).weight) : undefined,
       };
 
       // Add birthday if provided

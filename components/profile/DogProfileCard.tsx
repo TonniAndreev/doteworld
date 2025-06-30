@@ -7,18 +7,8 @@ import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
 import DogOwnershipManager from '@/components/dog/DogOwnershipManager';
+import { Dog } from '@/src/types/dog';
 
-interface Dog {
-  id: string;
-  name: string;
-  breed: string;
-  photo_url?: string;
-  birthday?: string;
-  bio?: string;
-  weight?: number;
-  gender?: 'male' | 'female';
-  created_at: string;
-}
 
 interface DogOwner {
   profile_id: string;

@@ -76,10 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isFirstLogin, setIsFirstLogin] = useState(false);
 
-  // Create redirect URI for OAuth - Use custom scheme for mobile
- const redirectTo = AuthSession.makeRedirectUri({
-    useProxy: false,
-  });
+  const redirectTo = AuthSession.makeRedirectUri();
 
   useEffect(() => {
     // Get initial session
@@ -737,7 +734,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Refresh user data
-      await refreshUserData();
+      await fetchUserProfile(user.id);
       
     } catch (error: any) {
       console.error('Error updating user profile:', error);
@@ -768,7 +765,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Refresh user data to get the updated city information
-      await refreshUserData();
+      await fetchUserProfile(user.id);
       
       return true;
     } catch (error) {
