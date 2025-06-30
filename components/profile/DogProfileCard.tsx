@@ -227,13 +227,12 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                       <View style={styles.ownerInfo}>
                         <Text style={styles.ownerName} numberOfLines={1}>
                           {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
-                          {owner.role === 'owner' && " (Alpha)"}
                         </Text>
                         
                         <View style={styles.ownerRole}>
                           <Crown size={16} color={COLORS.accent} />
                           <Text style={styles.roleText}>
-                            Owner
+                            {owner.role === 'owner' ? '(Alpha) Owner' : 'Owner'}
                           </Text>
                         </View>
                       </View>
