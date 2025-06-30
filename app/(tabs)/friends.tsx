@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -29,7 +29,6 @@ import { useFriends } from '@/hooks/useFriends';
 import UserCard from '@/components/friends/UserCard';
 import FriendRequestItem from '@/components/friends/FriendRequestItem';
 import NotificationsButton from '@/components/common/NotificationsButton';
-import { useCallback } from 'react';
 
 export default function FriendsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,7 +48,7 @@ export default function FriendsScreen() {
     isLoading
   } = useFriends();
 
-  // Refresh data when the screen comes into focus
+  // Refresh data when the screen comes into focus, but only once per focus
   useFocusEffect(
     useCallback(() => {
       console.log('Friends screen focused, refreshing data');
@@ -78,7 +77,7 @@ export default function FriendsScreen() {
     }, 500); // 500ms debounce
 
     return () => clearTimeout(searchTimeout);
-  }, [searchQuery]);
+  }, [searchQuery, searchUsersAsync]);
 
   const handleUserPress = (user) => {
     console.log('Friend card pressed, user data:', user);

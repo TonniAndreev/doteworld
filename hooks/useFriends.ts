@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
 import * as turf from '@turf/turf';
@@ -70,137 +70,8 @@ export function useFriends() {
   // Use ref to track subscription status
   const friendshipsChannelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadData();
-      
-      // Clean up any existing subscription before creating a new one
-      if (friendshipsChannelRef.current) {
-        console.log('Removing existing friendships channel subscription');
-        supabase.removeChannel(friendshipsChannelRef.current);
-        friendshipsChannelRef.current = null;
-      }
-      
-      // Create a unique channel name that includes the user ID to avoid conflicts
-      const channelName = `friendships-changes-${user.id}-${Date.now()}`;
-      console.log(`Creating new channel: ${channelName}`);
-      
-      // Set up real-time listeners for friendship changes
-      friendshipsChannelRef.current = supabase
-        .channel(channelName)
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'friendships',
-            filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
-          },
-          (payload) => {
-            console.log('Friendship change detected:', payload);
-            loadData();
-          }
-        )
-        .subscribe((status) => {
-          console.log(`Subscription status for ${channelName}:`, status);
-        });
-         
-      return () => {
-        // Clean up subscription when component unmounts or user changes
-        if (friendshipsChannelRef.current) {
-          console.log('Cleaning up friendships channel subscription');
-          supabase.removeChannel(friendshipsChannelRef.current);
-          friendshipsChannelRef.current = null;
-        }
-      };
-    }
-  }, [user?.id]); // Only re-run if user ID changes
-
-  const loadData = async () => {
-    setIsLoading(true);
-    await Promise.all([fetchFriendRequests(), fetchFriends()]);
-    setIsLoading(false);
-  };
-
-  const fetchFriends = async () => {
-    if (!user) return;
-
-    try {
-      console.log('Fetching friends for user:', user.id);
-      
-      // Get accepted friendships where current user is either requester or receiver
-      const { data: friendships, error: friendshipsError } = await supabase
-        .from('friendships')
-        .select('*')
-        .eq('status', 'accepted')
-        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
-
-      if (friendshipsError) {
-        console.error('Error fetching friendships:', friendshipsError);
-        return;
-      }
-
-      console.log(`Found ${friendships?.length || 0} friendships`);
-      
-      if (!friendships || friendships.length === 0) {
-        setFriends([]);
-        return;
-      }
-      
-      // Extract friend IDs
-      const friendIds = friendships.map(friendship => 
-        friendship.requester_id === user.id ? friendship.receiver_id : friendship.requester_id
-      );
-      
-      // Fetch all friend data in a single query using the public_user_stats view
-      const { data: friendsData, error: friendsError } = await supabase
-        .from('public_user_stats')
-        .select('*')
-        .in('id', friendIds);
-        
-      if (friendsError) {
-        console.error('Error fetching friends data:', friendsError);
-        return;
-      }
-      
-      console.log(`Fetched data for ${friendsData?.length || 0} friends`);
-      
-      // Process friend data
-      const processedFriends = await Promise.all((friendsData || []).map(async (friend) => {
-        // Format friend data
-        const friendData: User = {
-          id: friend.id,
-          name: `${friend.first_name || ''} ${friend.last_name || ''}`.trim() || 'User',
-          dogName: friend.primary_dog_name || 'No dog',
-          dogBreed: friend.primary_dog_breed || '',
-          photoURL: friend.avatar_url,
-          territorySize: friend.territory_size || 0,
-          totalDistance: friend.total_distance || 0,
-          achievementCount: friend.badge_count || 0,
-          badgeCount: friend.badge_count || 0,
-          isFriend: true,
-          dogs: friend.primary_dog_id ? [{
-            id: friend.primary_dog_id,
-            name: friend.primary_dog_name || 'Unknown',
-            breed: friend.primary_dog_breed || '',
-            photo_url: friend.primary_dog_photo_url
-          }] : [],
-          territoryPolygons: []
-        };
-        
-        // Load territory visualization data
-        const friendWithTerritories = await loadFriendTerritoryData(friendData);
-        return friendWithTerritories;
-      }));
-      
-      setFriends(processedFriends);
-    } catch (error) {
-      console.error('Error fetching friends:', error);
-    }
-  };
-  
-  // Load territory visualization data for a friend
-  const loadFriendTerritoryData = async (friend: User): Promise<User> => {
+  // Load territory visualization data for a friend - memoized with useCallback
+  const loadFriendTerritoryData = useCallback(async (friend: User): Promise<User> => {
     try {
       // Skip if friend has no dogs
       if (!friend.dogs || friend.dogs.length === 0) {
@@ -277,9 +148,10 @@ export function useFriends() {
       console.error(`Error loading territory data for friend ${friend.id}:`, error);
       return friend;
     }
-  };
+  }, []);
 
-  const fetchFriendRequests = async () => {
+  // Fetch friend requests - memoized with useCallback
+  const fetchFriendRequests = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -350,14 +222,145 @@ export function useFriends() {
     } catch (error) {
       console.error('Error fetching friend requests:', error);
     }
-  };
+  }, [user]);
+
+  // Fetch friends - memoized with useCallback
+  const fetchFriends = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      console.log('Fetching friends for user:', user.id);
+      
+      // Get accepted friendships where current user is either requester or receiver
+      const { data: friendships, error: friendshipsError } = await supabase
+        .from('friendships')
+        .select('*')
+        .eq('status', 'accepted')
+        .or(`requester_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+      if (friendshipsError) {
+        console.error('Error fetching friendships:', friendshipsError);
+        return;
+      }
+
+      console.log(`Found ${friendships?.length || 0} friendships`);
+      
+      if (!friendships || friendships.length === 0) {
+        setFriends([]);
+        return;
+      }
+      
+      // Extract friend IDs
+      const friendIds = friendships.map(friendship => 
+        friendship.requester_id === user.id ? friendship.receiver_id : friendship.requester_id
+      );
+      
+      // Fetch all friend data in a single query using the public_user_stats view
+      const { data: friendsData, error: friendsError } = await supabase
+        .from('public_user_stats')
+        .select('*')
+        .in('id', friendIds);
+        
+      if (friendsError) {
+        console.error('Error fetching friends data:', friendsError);
+        return;
+      }
+      
+      console.log(`Fetched data for ${friendsData?.length || 0} friends`);
+      
+      // Process friend data
+      const processedFriends = await Promise.all((friendsData || []).map(async (friend) => {
+        // Format friend data
+        const friendData: User = {
+          id: friend.id,
+          name: `${friend.first_name || ''} ${friend.last_name || ''}`.trim() || 'User',
+          dogName: friend.primary_dog_name || 'No dog',
+          dogBreed: friend.primary_dog_breed || '',
+          photoURL: friend.avatar_url,
+          territorySize: friend.territory_size || 0,
+          totalDistance: friend.total_distance || 0,
+          achievementCount: friend.badge_count || 0,
+          badgeCount: friend.badge_count || 0,
+          isFriend: true,
+          dogs: friend.primary_dog_id ? [{
+            id: friend.primary_dog_id,
+            name: friend.primary_dog_name || 'Unknown',
+            breed: friend.primary_dog_breed || '',
+            photo_url: friend.primary_dog_photo_url
+          }] : [],
+          territoryPolygons: []
+        };
+        
+        // Load territory visualization data
+        const friendWithTerritories = await loadFriendTerritoryData(friendData);
+        return friendWithTerritories;
+      }));
+      
+      setFriends(processedFriends);
+    } catch (error) {
+      console.error('Error fetching friends:', error);
+    }
+  }, [user, loadFriendTerritoryData]);
+
+  // Load data - memoized with useCallback
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    await Promise.all([fetchFriendRequests(), fetchFriends()]);
+    setIsLoading(false);
+  }, [fetchFriendRequests, fetchFriends]);
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+      
+      // Clean up any existing subscription before creating a new one
+      if (friendshipsChannelRef.current) {
+        console.log('Removing existing friendships channel subscription');
+        supabase.removeChannel(friendshipsChannelRef.current);
+        friendshipsChannelRef.current = null;
+      }
+      
+      // Create a unique channel name that includes the user ID to avoid conflicts
+      const channelName = `friendships-changes-${user.id}-${Date.now()}`;
+      console.log(`Creating new channel: ${channelName}`);
+      
+      // Set up real-time listeners for friendship changes
+      friendshipsChannelRef.current = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'friendships',
+            filter: `or(requester_id.eq.${user.id},receiver_id.eq.${user.id})`,
+          },
+          (payload) => {
+            console.log('Friendship change detected:', payload);
+            loadData();
+          }
+        )
+        .subscribe((status) => {
+          console.log(`Subscription status for ${channelName}:`, status);
+        });
+         
+      return () => {
+        // Clean up subscription when component unmounts or user changes
+        if (friendshipsChannelRef.current) {
+          console.log('Cleaning up friendships channel subscription');
+          supabase.removeChannel(friendshipsChannelRef.current);
+          friendshipsChannelRef.current = null;
+        }
+      };
+    }
+  }, [user?.id, loadData]); // Only re-run if user ID changes
 
   const searchUsers = (query: string): User[] => {
     // Kept for backward compatibility - returns empty array
     return [];
   };
 
-  const searchUsersAsync = async (query: string): Promise<User[]> => {
+  const searchUsersAsync = useCallback(async (query: string): Promise<User[]> => {
     if (!user || !query.trim()) return [];
 
     try {
@@ -418,9 +421,9 @@ export function useFriends() {
       console.error('Error searching users:', error);
       return [];
     }
-  };
+  }, [user]);
 
-  const sendFriendRequest = async (userId: string) => {
+  const sendFriendRequest = useCallback(async (userId: string) => {
     if (!user) return;
 
     try {
@@ -457,10 +460,10 @@ export function useFriends() {
     } catch (error) {
       console.error('Error sending friend request:', error);
     }
-  };
+  }, [user, loadData]);
 
-  const acceptFriendRequest = async (requestId: string) => {
-    if (!user) return;
+  const acceptFriendRequest = useCallback(async (requestId: string) => {
+    if (!user) return false;
 
     try {
       const { error } = await supabase
@@ -474,7 +477,7 @@ export function useFriends() {
 
       if (error) {
         console.error('Error accepting friend request:', error);
-        return;
+        return false;
       }
 
       console.log('Friend request accepted');
@@ -490,10 +493,10 @@ export function useFriends() {
       console.error('Error accepting friend request:', error);
       return false;
     }
-  };
+  }, [user, fetchFriends]);
 
-  const declineFriendRequest = async (requestId: string) => {
-    if (!user) return;
+  const declineFriendRequest = useCallback(async (requestId: string) => {
+    if (!user) return false;
 
     try {
       const { error } = await supabase
@@ -507,7 +510,7 @@ export function useFriends() {
 
       if (error) {
         console.error('Error declining friend request:', error);
-        return;
+        return false;
       }
 
       console.log('Friend request declined');
@@ -520,9 +523,9 @@ export function useFriends() {
       console.error('Error declining friend request:', error);
       return false;
     }
-  };
+  }, [user]);
 
-  const removeFriend = async (friendId: string) => {
+  const removeFriend = useCallback(async (friendId: string) => {
     if (!user) return false;
 
     try {
@@ -549,9 +552,9 @@ export function useFriends() {
       console.error('Error removing friend:', error);
       return false;
     }
-  };
+  }, [user]);
 
-  const cancelFriendRequest = async (userId: string) => {
+  const cancelFriendRequest = useCallback(async (userId: string) => {
     if (!user) return false;
 
     try {
@@ -580,7 +583,7 @@ export function useFriends() {
       console.error('Error canceling friend request:', error);
       return false;
     }
-  };
+  }, [user, loadData]);
 
   return {
     friends,
