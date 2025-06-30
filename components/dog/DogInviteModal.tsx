@@ -8,10 +8,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
-  Share,
-  Clipboard,
 } from 'react-native';
-import { X, Mail, Link, Copy, Send, Shield, Eye } from 'lucide-react-native';
+import { X, Mail, Send, UserPlus } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 
@@ -24,21 +22,10 @@ interface DogInviteModalProps {
 
 export default function DogInviteModal({ visible, onClose, dogId, dogName }: DogInviteModalProps) {
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'co-owner' | 'caretaker'>('co-owner');
   const [inviteMessage, setInviteMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [inviteLink, setInviteLink] = useState('');
-
+  
   const { inviteCoOwner } = useDogOwnership();
-
-  const generateInviteLink = () => {
-    // Create a deep link that includes the dog ID and invite token
-    const inviteToken = `${dogId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const baseUrl = 'https://dote.app'; // Replace with your actual domain
-    const link = `${baseUrl}/invite/${inviteToken}?dogId=${dogId}&dogName=${encodeURIComponent(dogName)}&role=${inviteRole}`;
-    setInviteLink(link);
-    return link;
-  };
 
   const handleEmailInvite = async () => {
     if (!inviteEmail.trim()) {
@@ -48,7 +35,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
     setIsLoading(true);
     try {
-      const result = await inviteCoOwner(dogId, inviteEmail.trim(), inviteRole, inviteMessage.trim());
+      const result = await inviteCoOwner(dogId, inviteEmail.trim(), 'co-owner', inviteMessage.trim());
       
       if (result.success) {
         Alert.alert('Success', 'Invitation sent successfully!');
@@ -65,34 +52,9 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
     }
   };
 
-  const handleCopyLink = async () => {
-    const link = generateInviteLink();
-    try {
-      await Clipboard.setString(link);
-      Alert.alert('Success', 'Invite link copied to clipboard!');
-    } catch (error) {
-      Alert.alert('Error', 'Failed to copy link');
-    }
-  };
-
-  const handleShareLink = async () => {
-    const link = generateInviteLink();
-    const message = `Hi! I'd like to invite you to be a ${inviteRole} of my dog ${dogName} on Dote. Click this link to join: ${link}`;
-    
-    try {
-      await Share.share({
-        message,
-        url: link,
-        title: `Invite to co-own ${dogName}`,
-      });
-    } catch (error) {
-      console.error('Error sharing:', error);
-    }
-  };
-
   return (
     <Modal
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
@@ -100,46 +62,19 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Invite Co-Owner</Text>
+            <Text style={styles.modalTitle}>Invite Owner</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color={COLORS.neutralDark} />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.subtitle}>
-            Invite someone to help care for {dogName}
-          </Text>
-
-          {/* Role Selection */}
           <View style={styles.content}>
+            <Text style={styles.subtitle}>
+              Invite someone to help care for {dogName}
+            </Text>
+            
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>Role</Text>
-              <View style={styles.roleSelector}>
-                <TouchableOpacity
-                  style={[styles.roleOption, inviteRole === 'co-owner' && styles.selectedRoleOption]}
-                  onPress={() => setInviteRole('co-owner')}
-                >
-                  <Shield size={20} color={inviteRole === 'co-owner' ? COLORS.white : COLORS.primary} />
-                  <Text style={[styles.roleOptionText, inviteRole === 'co-owner' && styles.selectedRoleOptionText]}>
-                    Co-Owner
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.roleOption, inviteRole === 'caretaker' && styles.selectedRoleOption]}
-                  onPress={() => setInviteRole('caretaker')}
-                >
-                  <Eye size={20} color={inviteRole === 'caretaker' ? COLORS.white : COLORS.secondary} />
-                  <Text style={[styles.roleOptionText, inviteRole === 'caretaker' && styles.selectedRoleOptionText]}>
-                    Caretaker
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Email Invite Section */}
-            <View style={styles.inviteSection}>
-              <Text style={styles.sectionTitle}>Email Invite</Text>
+              <Text style={styles.inputLabel}>Email Address</Text>
               <View style={styles.inputWithIcon}>
                 <Mail size={20} color={COLORS.neutralMedium} />
                 <TextInput
@@ -152,83 +87,36 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
                   autoCapitalize="none"
                 />
               </View>
-              
+            </View>
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Message (Optional)</Text>
               <TextInput
-                style={[styles.textInput, styles.messageInput]}
+                style={styles.messageInput}
                 value={inviteMessage}
                 onChangeText={setInviteMessage}
-                placeholder="Add a personal message... (optional)"
+                placeholder="Add a personal message..."
                 placeholderTextColor={COLORS.neutralMedium}
                 multiline
                 numberOfLines={3}
                 textAlignVertical="top"
               />
-              
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={handleEmailInvite}
-                disabled={isLoading || !inviteEmail.trim()}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color={COLORS.white} />
-                ) : (
-                  <>
-                    <Send size={20} color={COLORS.white} />
-                    <Text style={styles.actionButtonText}>Send Email Invitation</Text>
-                  </>
-                )}
-              </TouchableOpacity>
             </View>
 
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>OR</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Share Link Section */}
-            <View style={styles.inviteSection}>
-              <Text style={styles.sectionTitle}>Share Invite Link</Text>
-              <Text style={styles.linkDescription}>
-                Share a link directly with someone to invite them as a {inviteRole}.
-              </Text>
-              
-              <View style={styles.linkActions}>
-                <TouchableOpacity
-                  style={styles.linkButton}
-                  onPress={handleCopyLink}
-                >
-                  <Copy size={20} color={COLORS.primary} />
-                  <Text style={styles.linkButtonText}>Copy Link</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.linkButton}
-                  onPress={handleShareLink}
-                >
-                  <Send size={20} color={COLORS.primary} />
-                  <Text style={styles.linkButtonText}>Share Link</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Role Explanation */}
-            <View style={styles.roleExplanation}>
-              <Text style={styles.explanationTitle}>Role Permissions:</Text>
-              <View style={styles.explanationItem}>
-                <Shield size={16} color={COLORS.primary} />
-                <Text style={styles.explanationText}>
-                  <Text style={styles.boldText}>Co-Owner:</Text> Can edit dog info and invite others
-                </Text>
-              </View>
-              <View style={styles.explanationItem}>
-                <Eye size={16} color={COLORS.secondary} />
-                <Text style={styles.explanationText}>
-                  <Text style={styles.boldText}>Caretaker:</Text> Can view dog info only
-                </Text>
-              </View>
-            </View>
+            <TouchableOpacity
+              style={styles.sendButton}
+              onPress={handleEmailInvite}
+              disabled={isLoading || !inviteEmail.trim()}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={COLORS.white} />
+              ) : (
+                <>
+                  <Send size={20} color={COLORS.white} />
+                  <Text style={styles.sendButtonText}>Send Invitation</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
       </View>
@@ -245,10 +133,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: COLORS.white,
+    backgroundColor: '#F8F8F8',
     borderRadius: 20,
     width: '100%',
-    maxHeight: '90%',
+    maxHeight: '80%',
     overflow: 'hidden',
   },
   modalHeader: {
@@ -258,6 +146,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.neutralLight,
+    backgroundColor: COLORS.white,
   },
   modalTitle: {
     fontFamily: 'Inter-Bold',
@@ -267,20 +156,18 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 4,
   },
+  content: {
+    padding: 20,
+  },
   subtitle: {
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
+    marginBottom: 20,
     textAlign: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 20,
-  },
-  content: {
-    padding: 20,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 16,
   },
   inputLabel: {
     fontFamily: 'Inter-Medium',
@@ -288,49 +175,15 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 8,
   },
-  roleSelector: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  roleOption: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: COLORS.neutralLight,
-    gap: 8,
-  },
-  selectedRoleOption: {
-    backgroundColor: COLORS.primary,
-  },
-  roleOptionText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-  },
-  selectedRoleOptionText: {
-    color: COLORS.white,
-  },
-  inviteSection: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    marginBottom: 12,
-  },
   inputWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
+    backgroundColor: COLORS.white,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
   },
   textInput: {
     fontFamily: 'Inter-Regular',
@@ -340,95 +193,31 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   messageInput: {
-    backgroundColor: COLORS.neutralLight,
+    backgroundColor: COLORS.white,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    height: 80,
+    height: 100,
     textAlignVertical: 'top',
-    marginBottom: 12,
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
   },
-  actionButton: {
+  sendButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 16,
+    marginTop: 16,
     gap: 8,
   },
-  actionButtonText: {
+  sendButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
-  },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 16,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.neutralLight,
-  },
-  dividerText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    marginHorizontal: 12,
-  },
-  linkDescription: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    marginBottom: 16,
-  },
-  linkActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  linkButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: COLORS.primaryLight,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  linkButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.primary,
-  },
-  roleExplanation: {
-    backgroundColor: COLORS.neutralExtraLight,
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 8,
-  },
-  explanationTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 14,
-    color: COLORS.neutralDark,
-    marginBottom: 12,
-  },
-  explanationItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  explanationText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    flex: 1,
-  },
-  boldText: {
-    fontFamily: 'Inter-Bold',
-    color: COLORS.neutralDark,
   },
 });

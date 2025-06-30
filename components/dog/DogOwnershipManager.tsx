@@ -15,6 +15,7 @@ import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
+import DogInviteModal from '@/components/dog/DogInviteModal';
 
 interface DogOwnershipManagerProps {
   dogId: string;
@@ -26,11 +27,10 @@ interface DogOwnershipManagerProps {
 export default function DogOwnershipManager({ dogId, dogName, visible, onClose }: DogOwnershipManagerProps) {
   const [owners, setOwners] = useState<any[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [isInviting, setIsInviting] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   
   const { user } = useAuth();
-  const { getDogOwners, removeCoOwner, inviteCoOwner } = useDogOwnership();
+  const { getDogOwners, removeCoOwner } = useDogOwnership();
 
   useEffect(() => {
     if (visible) {
@@ -71,30 +71,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         },
       ]
     );
-  };
-
-  const handleInviteOwner = async () => {
-    if (!inviteEmail.trim()) {
-      Alert.alert('Error', 'Please enter an email address');
-      return;
-    }
-
-    setIsInviting(true);
-    try {
-      const result = await inviteCoOwner(dogId, inviteEmail.trim(), 'co-owner');
-      
-      if (result.success) {
-        Alert.alert('Success', 'Invitation sent successfully!');
-        setInviteEmail('');
-        onClose();
-      } else {
-        Alert.alert('Error', result.error || 'Failed to send invitation');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
-    } finally {
-      setIsInviting(false);
-    }
   };
 
   const canRemoveOwner = (owner: any) => {
@@ -150,81 +126,70 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   );
 
   return (
-    <Modal
-      animationType="fade"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-    >
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Manage {dogName}'s Owners</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <X size={24} color={COLORS.neutralDark} />
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.content}>
-            {canInviteOwners() && (
-              <TouchableOpacity
-                style={styles.inviteButton}
-                onPress={() => {
-                  // Show email input
-                  Alert.prompt(
-                    'Invite Owner',
-                    'Enter the email address of the person you want to invite',
-                    [
-                      {
-                        text: 'Cancel',
-                        style: 'cancel',
-                      },
-                      {
-                        text: 'Invite',
-                        onPress: (email) => {
-                          if (email) {
-                            setInviteEmail(email);
-                            handleInviteOwner();
-                          }
-                        },
-                      },
-                    ],
-                    'plain-text',
-                    '',
-                    'email-address'
-                  );
-                }}
-              >
-                <UserPlus size={20} color={COLORS.white} />
-                <Text style={styles.inviteButtonText}>Invite Owner</Text>
+    <>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={visible}
+        onRequestClose={onClose}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Manage {dogName}'s Owners</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <X size={24} color={COLORS.neutralDark} />
               </TouchableOpacity>
-            )}
+            </View>
 
-            <View style={styles.ownersListContainer}>
-              {isLoadingOwners ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                  <Text style={styles.loadingText}>Loading owners...</Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={owners}
-                  renderItem={renderOwner}
-                  keyExtractor={(item) => item.profile_id}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.ownersList}
-                  ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                      <Text style={styles.emptyText}>No owners found</Text>
-                    </View>
-                  }
-                />
+            <View style={styles.content}>
+              {canInviteOwners() && (
+                <TouchableOpacity 
+                  style={styles.inviteButton}
+                  onPress={() => {
+                    onClose();
+                    // Short delay to avoid modal animation conflicts
+                    setTimeout(() => setShowInviteModal(true), 300);
+                  }}
+                >
+                  <UserPlus size={20} color={COLORS.white} />
+                  <Text style={styles.inviteButtonText}>Invite Owner</Text>
+                </TouchableOpacity>
               )}
+
+              <View style={styles.ownersListContainer}>
+                {isLoadingOwners ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.loadingText}>Loading owners...</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={owners}
+                    renderItem={renderOwner}
+                    keyExtractor={(item) => item.profile_id}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.ownersList}
+                    ListEmptyComponent={
+                      <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>No owners found</Text>
+                      </View>
+                    }
+                  />
+                )}
+              </View>
             </View>
           </View>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      <DogInviteModal
+        visible={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        dogId={dogId}
+        dogName={dogName}
+      />
+    </>
   );
 }
 
