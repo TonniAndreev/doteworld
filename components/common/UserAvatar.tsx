@@ -55,6 +55,8 @@ export default function UserAvatar({
       borderRadius: size / 2,
       overflow: 'hidden',
       backgroundColor: bgColor,
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     containerStyle
   ];

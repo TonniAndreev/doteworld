@@ -377,6 +377,34 @@ export default function MapScreen() {
     setMapRegion(region);
   };
 
+  // Debug function to log territory polygons
+  const logTerritoryPolygons = () => {
+    if (!isFriendsLoading && friends.length > 0) {
+      friends.forEach(friend => {
+        if (friend.territoryPolygons && friend.territoryPolygons.length > 0) {
+          console.log(`Friend ${friend.name} has ${friend.territoryPolygons.length} territory polygons`);
+          friend.territoryPolygons.forEach((territory, index) => {
+            console.log(`Territory ${index}: dogId=${territory.dogId}, dogName=${territory.dogName}, has centroid=${!!territory.centroid}`);
+            if (territory.centroid) {
+              console.log(`Centroid: lat=${territory.centroid.latitude}, lon=${territory.centroid.longitude}`);
+            }
+          });
+        } else {
+          console.log(`Friend ${friend.name} has no territory polygons`);
+        }
+      });
+    } else {
+      console.log('No friends loaded or still loading');
+    }
+  };
+
+  // Call this once to debug
+  useEffect(() => {
+    if (!isFriendsLoading && friends.length > 0) {
+      logTerritoryPolygons();
+    }
+  }, [isFriendsLoading, friends]);
+
   return (
     <GestureHandlerRootView style={styles.container}>
       {location ? (
@@ -411,9 +439,9 @@ export default function MapScreen() {
             
             {/* Render friends' territories */}
             {!isFriendsLoading && friends.map(friend => 
-              friend.territoryPolygons?.map(territory => (
+              friend.territoryPolygons?.map((territory, tIndex) => (
                 <Polygon
-                  key={`friend-territory-${friend.id}-${territory.id}`}
+                  key={`friend-territory-${friend.id}-${territory.id || tIndex}`}
                   coordinates={territory.coordinates}
                   fillColor={getColorWithOpacity(territory.color, 0.3)}
                   strokeColor={territory.color}
@@ -457,9 +485,9 @@ export default function MapScreen() {
             
             {/* Render dog markers at the center of each friend's territory */}
             {!isFriendsLoading && friends.map(friend => 
-              friend.territoryPolygons?.filter(territory => territory.centroid).map(territory => (
+              friend.territoryPolygons?.filter(territory => territory.centroid).map((territory, tIndex) => (
                 <DogMarker
-                  key={`dog-marker-${friend.id}-${territory.dogId}-${territory.id}`}
+                  key={`dog-marker-${friend.id}-${territory.dogId}-${territory.id || tIndex}`}
                   coordinate={territory.centroid!}
                   dogId={territory.dogId}
                   dogName={territory.dogName}

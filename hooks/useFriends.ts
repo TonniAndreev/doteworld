@@ -119,23 +119,29 @@ export function useFriends() {
             let centroid: Coordinate | undefined;
             
             if (turfPolygon) {
-              const turfCentroid = turf.centroid(turfPolygon);
-              centroid = {
-                latitude: turfCentroid.geometry.coordinates[1],
-                longitude: turfCentroid.geometry.coordinates[0]
-              };
-              
-              // Add to territory polygons
-              territoryPolygons.push({
-                id: point.id,
-                coordinates: hull,
-                color,
-                dogId: dog.id,
-                dogName: dog.name,
-                dogPhotoURL: dog.photo_url,
-                dogBreed: dog.breed,
-                centroid
-              });
+              try {
+                const turfCentroid = turf.centroid(turfPolygon);
+                centroid = {
+                  latitude: turfCentroid.geometry.coordinates[1],
+                  longitude: turfCentroid.geometry.coordinates[0]
+                };
+                
+                // Add to territory polygons
+                territoryPolygons.push({
+                  id: point.id,
+                  coordinates: hull,
+                  color,
+                  dogId: dog.id,
+                  dogName: dog.name,
+                  dogPhotoURL: dog.photo_url,
+                  dogBreed: dog.breed,
+                  centroid
+                });
+                
+                console.log(`Added territory polygon with centroid: ${centroid.latitude}, ${centroid.longitude}`);
+              } catch (centroidError) {
+                console.error('Error calculating centroid:', centroidError);
+              }
             }
           }
         }

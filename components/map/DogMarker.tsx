@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import { Marker } from 'react-native-maps';
 import UserAvatar from '@/components/common/UserAvatar';
 import { COLORS } from '@/constants/theme';
@@ -58,6 +58,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 120, // Fixed width to ensure consistent sizing
+    zIndex: 999, // Ensure it appears above other map elements
   },
   avatarContainer: {
     width: 48,
@@ -69,10 +70,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+    elevation: 8,
   },
   nameContainer: {
     paddingHorizontal: 12,
@@ -82,16 +83,19 @@ const styles = StyleSheet.create({
     minWidth: 80,
     alignItems: 'center',
     shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
   nameText: {
     fontFamily: 'Inter-Bold',
     fontSize: 12,
     color: COLORS.white,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });
 
