@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { ChevronLeft, User, Mail, Phone, Camera, X } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/utils/supabase';
@@ -278,76 +278,69 @@ export default function EditProfileScreen() {
               />
               
               <View style={styles.photoActions}>
-                <TouchableOpacity 
-                  style={styles.photoActionButton}
-                  onPress={takePhoto}
-                >
-                  <Camera size={20} color={COLORS.white} />
-                </TouchableOpacity>
-                
                 {avatarUrl && (
                   <TouchableOpacity 
                     style={[styles.photoActionButton, styles.removePhotoButton]}
                     onPress={removePhoto}
                   >
-                    <X size={20} color={COLORS.white} />
+                    <Text style={styles.removePhotoText}>Remove</Text>
                   </TouchableOpacity>
                 )}
               </View>
             </View>
             
-            <TouchableOpacity 
-              style={styles.changePhotoButton}
-              onPress={pickImage}
-            >
-              <Text style={styles.changePhotoText}>Change Profile Photo</Text>
-            </TouchableOpacity>
+            <View style={styles.photoButtonsContainer}>
+              <TouchableOpacity 
+                style={styles.changePhotoButton}
+                onPress={pickImage}
+              >
+                <Text style={styles.changePhotoText}>Choose new photo</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.changePhotoButton}
+                onPress={takePhoto}
+              >
+                <Text style={styles.changePhotoText}>Take new photo</Text>
+              </TouchableOpacity>
+            </View>
           </View>
           
           {/* Form Fields */}
           <View style={styles.formContainer}>
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>First Name</Text>
-              <View style={styles.inputWrapper}>
-                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={firstName}
-                  onChangeText={setFirstName}
-                  placeholder="Enter your first name"
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
+              <TextInput
+                style={styles.input}
+                value={firstName}
+                onChangeText={setFirstName}
+                placeholder="Enter your first name"
+                placeholderTextColor={COLORS.neutralMedium}
+              />
             </View>
             
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Last Name</Text>
-              <View style={styles.inputWrapper}>
-                <User size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={lastName}
-                  onChangeText={setLastName}
-                  placeholder="Enter your last name"
-                  placeholderTextColor={COLORS.neutralMedium}
-                />
-              </View>
+              <TextInput
+                style={styles.input}
+                value={lastName}
+                onChangeText={setLastName}
+                placeholder="Enter your last name"
+                placeholderTextColor={COLORS.neutralMedium}
+              />
             </View>
             
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Email</Text>
-              <View style={styles.inputWrapper}>
-                <Mail size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="Enter your email"
-                  placeholderTextColor={COLORS.neutralMedium}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="Enter your email"
+                placeholderTextColor={COLORS.neutralMedium}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
               <Text style={styles.inputNote}>
                 Changing your email will require verification
               </Text>
@@ -355,17 +348,14 @@ export default function EditProfileScreen() {
             
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Phone Number</Text>
-              <View style={styles.inputWrapper}>
-                <Phone size={20} color={COLORS.neutralMedium} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="Enter your phone number"
-                  placeholderTextColor={COLORS.neutralMedium}
-                  keyboardType="phone-pad"
-                />
-              </View>
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="Enter your phone number"
+                placeholderTextColor={COLORS.neutralMedium}
+                keyboardType="phone-pad"
+              />
             </View>
           </View>
           
@@ -459,7 +449,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.error,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
@@ -468,6 +458,16 @@ const styles = StyleSheet.create({
   },
   removePhotoButton: {
     backgroundColor: COLORS.error,
+  },
+  removePhotoText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 10,
+    color: COLORS.white,
+  },
+  photoButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
   },
   changePhotoButton: {
     paddingVertical: 8,
@@ -490,21 +490,13 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 8,
   },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-  },
-  inputIcon: {
-    marginRight: 12,
-  },
   input: {
-    flex: 1,
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralDark,
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
     paddingVertical: 14,
   },
   inputNote: {
