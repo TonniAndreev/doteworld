@@ -25,8 +25,8 @@ interface DogOwner {
   role: 'owner' | 'co-owner' | 'caretaker';
   permissions: {
     edit: boolean;
-    delete: boolean;
     share: boolean;
+    delete: boolean;
   };
   ownership_since: string;
   invited_by?: string;
@@ -127,6 +127,13 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
   const CardComponent = onPress ? TouchableOpacity : View;
 
+  // Sort owners to ensure Alpha is always first
+  const sortedOwners = [...owners].sort((a, b) => {
+    if (a.role === 'owner') return -1;
+    if (b.role === 'owner') return 1;
+    return 0;
+  });
+
   return (
     <CardComponent 
       style={[styles.container, showFullDetails && styles.fullDetailsContainer]}
@@ -213,7 +220,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 </View>
               ) : (
                 <View style={styles.ownersList}>
-                  {owners.map((owner) => (
+                  {sortedOwners.map((owner) => (
                     <View key={owner.profile_id} style={styles.ownerItem}>
                       <UserAvatar
                         userId={owner.profile_id}
@@ -225,17 +232,26 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                       />
                       
                       <View style={styles.ownerInfo}>
-                        <Text style={styles.ownerName} numberOfLines={1}>
-                          {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
-                          {owner.role === 'owner' && " (Alpha)"}
+                        <Text style={[
+                          styles.ownerName,
+                          owner.role === 'owner' && { color: COLORS.primary }
+                        ]} numberOfLines={1}>
+                          {owner.role === 'owner' ? (
+                            <>
+                              <Text style={{ color: COLORS.primary }}>👑 </Text>
+                              {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
+                            </>
+                          ) : (
+                            `${owner.first_name || ''} ${owner.last_name || ''}`.trim()
+                          )}
                         </Text>
                         
-                        <View style={styles.ownerRole}>
-                          <Crown size={16} color={COLORS.accent} />
-                          <Text style={styles.roleText}>
-                            Owner
-                          </Text>
-                        </View>
+                        <Text style={[
+                          styles.roleText,
+                          owner.role === 'owner' ? styles.alphaRoleText : styles.regularRoleText
+                        ]}>
+                          {owner.role === 'owner' ? 'Alpha Owner' : 'Owner'}
+                        </Text>
                       </View>
                     </View>
                   ))}
@@ -453,16 +469,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
-    marginBottom: 2,
-  },
-  ownerRole: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    marginBottom: 4,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: COLORS.accent,
+  },
+  alphaRoleText: {
+    color: COLORS.primary,
+  },
+  regularRoleText: {
+    color: COLORS.neutralDark,
   },
 });
