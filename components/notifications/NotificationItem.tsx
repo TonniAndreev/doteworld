@@ -1,19 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
-import { 
-  UserPlus, 
-  UserCheck, 
-  Award, 
-  MapPin, 
-  Crown, 
-  Calendar, 
-  Bell, 
-  MessageSquare,
-  Camera,
-  AlertTriangle,
-  Info
-} from 'lucide-react-native';
+import { UserPlus, UserCheck, Award, MapPin, Crown, Calendar, Bell, MessageSquare, Camera, TriangleAlert as AlertTriangle, Info } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import UserAvatar from '@/components/common/UserAvatar';
 import { formatRelativeTime } from '@/utils/dateUtils';

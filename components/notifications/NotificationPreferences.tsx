@@ -9,19 +9,7 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { COLORS } from '@/constants/theme';
-import { 
-  UserPlus, 
-  Award, 
-  MapPin, 
-  Bell, 
-  Calendar, 
-  MessageSquare, 
-  Camera, 
-  AlertTriangle, 
-  Info,
-  ChevronDown,
-  ChevronUp
-} from 'lucide-react-native';
+import { UserPlus, Award, MapPin, Bell, Calendar, MessageSquare, Camera, TriangleAlert as AlertTriangle, Info, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useNotifications } from '@/contexts/NotificationContext';
 
 export default function NotificationPreferences() {
