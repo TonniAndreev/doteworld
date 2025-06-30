@@ -23,12 +23,13 @@ import {
   Share2,
   Heart
 } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import { useFriends } from '@/hooks/useFriends';
 import UserCard from '@/components/friends/UserCard';
 import FriendRequestItem from '@/components/friends/FriendRequestItem';
 import NotificationsButton from '@/components/common/NotificationsButton';
+import { useCallback } from 'react';
 
 export default function FriendsScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,6 +48,14 @@ export default function FriendsScreen() {
     refetch,
     isLoading
   } = useFriends();
+
+  // Refresh data when the screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Friends screen focused, refreshing data');
+      refetch();
+    }, [refetch])
+  );
 
   // Search for users when query changes
   useEffect(() => {

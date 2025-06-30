@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -68,7 +68,8 @@ export default function PublicUserProfileScreen() {
     thisMonthDistance: 0,
   });
   const [userBadges, setUserBadges] = useState<UserBadge[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
+  const [isLoadingStats, setIsLoadingStats] = useState(true);
   const [friendshipStatus, setFriendshipStatus] = useState<'none' | 'friend' | 'pending' | 'sent'>('none');
   const [isProcessingFriend, setIsProcessingFriend] = useState(false);
   
@@ -78,11 +79,17 @@ export default function PublicUserProfileScreen() {
   // Check friendship status first, then load user data
   useEffect(() => {
     if (id && currentUser) {
-      checkFriendshipStatus().then(() => {
-        loadUserData();
-      });
+      checkFriendshipStatus();
+      loadUserData();
     }
   }, [id, currentUser]);
+
+  // Re-check friendship status when friends list changes
+  useEffect(() => {
+    if (id && currentUser && friends) {
+      checkFriendshipStatus();
+    }
+  }, [friends]);
 
   const checkFriendshipStatus = async () => {
     if (!id || !currentUser) return;
@@ -130,7 +137,7 @@ export default function PublicUserProfileScreen() {
   const loadUserData = async () => {
     if (!id) return;
     
-    setIsLoading(true);
+    setIsLoadingProfile(true);
     try {
       // Load user profile
       const { data: profile, error: profileError } = await supabase
@@ -203,56 +210,97 @@ export default function PublicUserProfileScreen() {
         setUserBadges(badges);
       }
 
-      // Calculate stats from walk points if user has dogs
-      if (dogData && dogData.length > 0) {
-        const firstDog = dogData[0]?.dogs;
-        if (firstDog?.id) {
-          const { data: walkPoints, error: walkError } = await supabase
-            .from('walk_points')
-            .select('latitude:lat, longitude:lon, walk_session_id, timestamp')
-            .eq('dog_id', firstDog.id)
-            .order('timestamp', { ascending: true });
+      // Get achievement count
+      const { count: achievementCount } = await supabase
+        .from('profile_achievements')
+        .select('*', { count: 'exact', head: true })
+        .eq('profile_id', id)
+        .not('obtained_at', 'is', null);
 
-          if (!walkError && walkPoints && walkPoints.length > 0) {
-            const territorySize = calculateRealTerritoryFromWalkPoints(walkPoints);
-            const totalDistance = calculateRealDistanceFromWalkPoints(walkPoints);
-            
-            // Calculate this month's distance
-            const now = new Date();
-            const currentMonth = now.getMonth();
-            const currentYear = now.getFullYear();
-            
-            const thisMonthWalkPoints = walkPoints.filter(point => {
-              const pointDate = new Date(point.timestamp);
-              return pointDate.getMonth() === currentMonth && 
-                     pointDate.getFullYear() === currentYear;
-            });
-            
-            const thisMonthDistance = calculateRealDistanceFromWalkPoints(thisMonthWalkPoints);
-            
-            // Get achievement count
-            const { count: achievementCount } = await supabase
-              .from('profile_achievements')
-              .select('*', { count: 'exact', head: true })
-              .eq('profile_id', id)
-              .not('obtained_at', 'is', null);
+      // Set initial stats with achievement count
+      setUserStats(prev => ({
+        ...prev,
+        achievementCount: achievementCount || 0
+      }));
 
-            setUserStats({
-              territorySize,
-              totalDistance,
-              achievementCount: achievementCount || 0,
-              thisMonthDistance,
-            });
-          }
-        }
-      }
-
+      // Set loading state
+      setIsLoadingProfile(false);
+      
+      // Load detailed stats in a separate operation
+      loadUserStats(dogData?.map(pd => pd.dogs).filter(Boolean) || []);
+      
     } catch (error) {
       console.error('Error loading user data:', error);
       Alert.alert('Error', 'Failed to load user profile');
       router.back();
+      setIsLoadingProfile(false);
+    }
+  };
+
+  // Separate function to load user stats after profile is loaded
+  const loadUserStats = async (dogs: UserDog[]) => {
+    if (!id || dogs.length === 0) {
+      setIsLoadingStats(false);
+      return;
+    }
+
+    try {
+      setIsLoadingStats(true);
+      
+      let territorySize = 0;
+      let totalDistance = 0;
+      let thisMonthDistance = 0;
+      
+      // Get current month and year
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+      
+      // Process each dog's walk sessions
+      for (const dog of dogs) {
+        if (!dog || !dog.id) continue;
+        
+        // Get walk sessions for this dog
+        const { data: walkSessions, error: sessionsError } = await supabase
+          .from('walk_sessions')
+          .select('territory_gained, distance, started_at')
+          .eq('dog_id', dog.id)
+          .eq('status', 'completed');
+
+        if (sessionsError) {
+          console.error(`Error fetching walk sessions for dog ${dog.id}:`, sessionsError);
+          continue;
+        }
+
+        if (walkSessions && walkSessions.length > 0) {
+          // Add to total territory and distance
+          territorySize += walkSessions.reduce((sum, session) => sum + (session.territory_gained || 0), 0);
+          totalDistance += walkSessions.reduce((sum, session) => sum + (session.distance || 0), 0);
+          
+          // Calculate this month's distance
+          const thisMonthWalkSessions = walkSessions.filter(session => {
+            if (!session.started_at) return false;
+            const sessionDate = new Date(session.started_at);
+            return sessionDate.getMonth() === currentMonth && 
+                   sessionDate.getFullYear() === currentYear;
+          });
+          
+          thisMonthDistance += thisMonthWalkSessions.reduce((sum, session) => sum + (session.distance || 0), 0);
+        }
+      }
+      
+      // Update stats
+      setUserStats({
+        territorySize,
+        totalDistance,
+        thisMonthDistance,
+        achievementCount: userStats.achievementCount // Keep existing achievement count
+      });
+      
+    } catch (error) {
+      console.error('Error loading user stats:', error);
     } finally {
-      setIsLoading(false);
+      setIsLoadingStats(false);
     }
   };
 
@@ -266,6 +314,7 @@ export default function PublicUserProfileScreen() {
         await sendFriendRequest(id);
         setFriendshipStatus('sent');
         Alert.alert('Success', 'Friend request sent!');
+        setIsProcessingFriend(false);
       } else if (friendshipStatus === 'friend') {
         Alert.alert(
           'Unfriend User',
@@ -342,7 +391,6 @@ export default function PublicUserProfileScreen() {
     } catch (error) {
       console.error('Error handling friend action:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
-    } finally {
       setIsProcessingFriend(false);
     }
   };
@@ -358,112 +406,35 @@ export default function PublicUserProfileScreen() {
     }
   };
 
-  // Helper functions for territory calculations
-  const calculateRealTerritoryFromWalkPoints = (walkPoints: any[]): number => {
-    if (walkPoints.length < 3) return 0;
+  if (isLoadingProfile) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-    const sessionGroups = walkPoints.reduce((groups, point) => {
-      if (!groups[point.walk_session_id]) {
-        groups[point.walk_session_id] = [];
-      }
-      groups[point.walk_session_id].push(point);
-      return groups;
-    }, {} as Record<string, any[]>);
+  if (!userProfile) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>User not found</Text>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-    let totalTerritory = 0;
+  const displayName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User';
+  const isCurrentUserProfile = id === currentUser?.id;
+  const friendButton = getFriendButtonContent();
 
-    Object.values(sessionGroups).forEach(sessionPoints => {
-      if (sessionPoints.length >= 3) {
-        sessionPoints.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        
-        let area = 0;
-        const n = sessionPoints.length;
-        
-        for (let i = 0; i < n; i++) {
-          const j = (i + 1) % n;
-          const xi = sessionPoints[i].longitude;
-          const yi = sessionPoints[i].latitude;
-          const xj = sessionPoints[j].longitude;
-          const yj = sessionPoints[j].latitude;
-          
-          area += (xi * yj - xj * yi);
-        }
-        
-        area = Math.abs(area) / 2;
-        
-        const avgLat = sessionPoints.reduce((sum, p) => sum + p.latitude, 0) / sessionPoints.length;
-        const latConversion = 111.32;
-        const lonConversion = 111.32 * Math.cos(toRad(avgLat));
-        
-        const areaInKm2 = area * latConversion * lonConversion;
-        
-        if (areaInKm2 > 0.0001 && areaInKm2 < 10) {
-          totalTerritory += areaInKm2;
-        }
-      }
-    });
-
-    return totalTerritory;
-  };
-
-  const calculateRealDistanceFromWalkPoints = (walkPoints: any[]): number => {
-    if (walkPoints.length < 2) return 0;
-
-    const sessionGroups = walkPoints.reduce((groups, point) => {
-      if (!groups[point.walk_session_id]) {
-        groups[point.walk_session_id] = [];
-      }
-      groups[point.walk_session_id].push(point);
-      return groups;
-    }, {} as Record<string, any[]>);
-
-    let totalDistance = 0;
-
-    Object.values(sessionGroups).forEach(sessionPoints => {
-      if (sessionPoints.length > 1) {
-        sessionPoints.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-        
-        for (let i = 1; i < sessionPoints.length; i++) {
-          const prev = sessionPoints[i - 1];
-          const curr = sessionPoints[i];
-          const distance = calculateDistance(
-            prev.latitude,
-            prev.longitude,
-            curr.latitude,
-            curr.longitude
-          );
-          
-          if (distance > 0 && distance < 1) {
-            totalDistance += distance;
-          }
-        }
-      }
-    });
-
-    return totalDistance;
-  };
-
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-    
-    const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-    
-    return distance;
-  };
-
-  const toRad = (degrees: number): number => {
-    return degrees * (Math.PI / 180);
-  };
-
-  const getFriendButtonContent = () => {
+  function getFriendButtonContent() {
     switch (friendshipStatus) {
       case 'friend':
         return {
@@ -494,35 +465,7 @@ export default function PublicUserProfileScreen() {
           disabled: false,
         };
     }
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Loading profile...</Text>
-        </View>
-      </SafeAreaView>
-    );
   }
-
-  if (!userProfile) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>User not found</Text>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const displayName = `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || 'User';
-  const isCurrentUserProfile = id === currentUser?.id;
-  const friendButton = getFriendButtonContent();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -624,6 +567,13 @@ export default function PublicUserProfileScreen() {
               <Text style={styles.statLabel}>Total Distance</Text>
             </View>
           </View>
+          
+          {isLoadingStats && (
+            <View style={styles.statsLoadingOverlay}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.statsLoadingText}>Loading stats...</Text>
+            </View>
+          )}
         </View>
 
         {/* Dogs Section */}
@@ -835,6 +785,7 @@ const styles = StyleSheet.create({
   },
   statsSection: {
     padding: 16,
+    position: 'relative',
   },
   statsRow: {
     flexDirection: 'row',
@@ -879,6 +830,23 @@ const styles = StyleSheet.create({
   emphasisStatLabel: {
     color: COLORS.primary,
     fontFamily: 'Inter-Medium',
+  },
+  statsLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  statsLoadingText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+    marginTop: 8,
   },
   sectionContainer: {
     padding: 16,

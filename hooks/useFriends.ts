@@ -117,7 +117,7 @@ export function useFriends() {
 
   const loadData = async () => {
     setIsLoading(true);
-    await Promise.all([fetchFriends(), fetchFriendRequests()]);
+    await Promise.all([fetchFriendRequests(), fetchFriends()]);
     setIsLoading(false);
   };
 
@@ -125,6 +125,8 @@ export function useFriends() {
     if (!user) return;
 
     try {
+      console.log('Fetching friends for user:', user.id);
+      
       // Get accepted friendships where current user is either requester or receiver
       const { data: friendships, error: friendshipsError } = await supabase
         .from('friendships')
@@ -137,6 +139,7 @@ export function useFriends() {
         return;
       }
 
+      console.log(`Found ${friendships?.length || 0} friendships`);
       const friendsData: User[] = [];
 
       for (const friendship of friendships || []) {
@@ -183,109 +186,135 @@ export function useFriends() {
           .select('*', { count: 'exact', head: true })
           .eq('profile_id', friendId);
 
-        // Calculate REAL territory and distance from walk sessions
-        let territorySize = 0;
-        let totalDistance = 0;
-        
-        // Array to store territory polygons for this friend
-        const territoryPolygons: User['territoryPolygons'] = [];
-        
-        // Process each dog's territory
-        for (const dog of dogs) {
-          if (!dog || !dog.id) continue;
-          
-          // Get walk sessions for this dog
-          const { data: walkSessions, error: sessionsError } = await supabase
-            .from('walk_sessions')
-            .select(`
-              id,
-              territory_gained,
-              distance,
-              walk_points!walk_points_walk_session_id_fkey (
-                id,
-                path_coordinates
-              )
-            `)
-            .eq('dog_id', dog.id)
-            .eq('status', 'completed');
-
-          if (sessionsError) {
-            console.error(`Error fetching walk sessions for dog ${dog.id}:`, sessionsError);
-            continue;
-          }
-
-          if (!walkSessions || walkSessions.length === 0) {
-            console.log(`No walk sessions found for dog ${dog.id}`);
-            continue;
-          }
-
-          // Process each walk session
-          for (const session of walkSessions) {
-            // Add to totals
-            territorySize += session.territory_gained || 0;
-            totalDistance += session.distance || 0;
-            
-            // Process walk points to create territory polygons
-            if (session.walk_points && session.walk_points.length > 0) {
-              for (const point of session.walk_points) {
-                if (point.path_coordinates && point.path_coordinates.length >= 3) {
-                  // Get coordinates from path_coordinates JSON
-                  const coordinates = point.path_coordinates as Coordinate[];
-                  
-                  // Create convex hull
-                  const hull = createConvexHull(coordinates);
-                  if (!hull) continue;
-                  
-                  // Calculate centroid
-                  const turfPolygon = coordinatesToTurfPolygon(hull);
-                  let centroid: Coordinate | undefined;
-                  
-                  if (turfPolygon) {
-                    const turfCentroid = turf.centroid(turfPolygon);
-                    centroid = {
-                      latitude: turfCentroid.geometry.coordinates[1],
-                      longitude: turfCentroid.geometry.coordinates[0]
-                    };
-                  }
-                  
-                  // Get color for this friend
-                  const color = await getFriendTerritoryColor(friendId);
-                  
-                  // Add to territory polygons
-                  territoryPolygons.push({
-                    id: point.id,
-                    coordinates: hull,
-                    color,
-                    dogId: dog.id,
-                    dogName: dog.name,
-                    dogPhotoURL: dog.photo_url,
-                    dogBreed: dog.breed,
-                    centroid
-                  });
-                }
-              }
-            }
-          }
-        }
-
-        friendsData.push({
+        // Add friend to the list with basic info
+        const friendData: User = {
           id: friendId,
           name: `${friendProfile.first_name || ''} ${friendProfile.last_name || ''}`.trim() || 'User',
           dogName: firstDog?.name || 'No dog',
           dogBreed: firstDog?.breed || '',
           photoURL: friendProfile.avatar_url,
-          territorySize,
-          totalDistance,
+          territorySize: 0,
+          totalDistance: 0,
           achievementCount: achievementCount || 0,
           isFriend: true,
           dogs: dogs,
-          territoryPolygons
+          territoryPolygons: []
+        };
+        
+        friendsData.push(friendData);
+        
+        // Load territory data in the background
+        loadFriendTerritoryData(friendData, dogs).then(updatedFriend => {
+          // Update the friend in the list with territory data
+          setFriends(prev => 
+            prev.map(f => f.id === updatedFriend.id ? updatedFriend : f)
+          );
         });
       }
 
+      // Set friends with basic data immediately
       setFriends(friendsData);
+      
     } catch (error) {
       console.error('Error fetching friends:', error);
+    }
+  };
+  
+  // Separate function to load territory data for a friend
+  const loadFriendTerritoryData = async (friend: User, dogs: any[]): Promise<User> => {
+    try {
+      let territorySize = 0;
+      let totalDistance = 0;
+      const territoryPolygons: User['territoryPolygons'] = [];
+      
+      // Process each dog's territory
+      for (const dog of dogs) {
+        if (!dog || !dog.id) continue;
+        
+        // Get walk sessions for this dog
+        const { data: walkSessions, error: sessionsError } = await supabase
+          .from('walk_sessions')
+          .select(`
+            id,
+            territory_gained,
+            distance,
+            walk_points!walk_points_walk_session_id_fkey (
+              id,
+              path_coordinates
+            )
+          `)
+          .eq('dog_id', dog.id)
+          .eq('status', 'completed');
+
+        if (sessionsError) {
+          console.error(`Error fetching walk sessions for dog ${dog.id}:`, sessionsError);
+          continue;
+        }
+
+        if (!walkSessions || walkSessions.length === 0) {
+          console.log(`No walk sessions found for dog ${dog.id}`);
+          continue;
+        }
+
+        // Process each walk session
+        for (const session of walkSessions) {
+          // Add to totals
+          territorySize += session.territory_gained || 0;
+          totalDistance += session.distance || 0;
+          
+          // Process walk points to create territory polygons
+          if (session.walk_points && session.walk_points.length > 0) {
+            for (const point of session.walk_points) {
+              if (point.path_coordinates && point.path_coordinates.length >= 3) {
+                // Get coordinates from path_coordinates JSON
+                const coordinates = point.path_coordinates as Coordinate[];
+                
+                // Create convex hull
+                const hull = createConvexHull(coordinates);
+                if (!hull) continue;
+                
+                // Calculate centroid
+                const turfPolygon = coordinatesToTurfPolygon(hull);
+                let centroid: Coordinate | undefined;
+                
+                if (turfPolygon) {
+                  const turfCentroid = turf.centroid(turfPolygon);
+                  centroid = {
+                    latitude: turfCentroid.geometry.coordinates[1],
+                    longitude: turfCentroid.geometry.coordinates[0]
+                  };
+                }
+                
+                // Get color for this friend
+                const color = await getFriendTerritoryColor(friend.id);
+                
+                // Add to territory polygons
+                territoryPolygons.push({
+                  id: point.id,
+                  coordinates: hull,
+                  color,
+                  dogId: dog.id,
+                  dogName: dog.name,
+                  dogPhotoURL: dog.photo_url,
+                  dogBreed: dog.breed,
+                  centroid
+                });
+              }
+            }
+          }
+        }
+      }
+      
+      // Return updated friend with territory data
+      return {
+        ...friend,
+        territorySize,
+        totalDistance,
+        territoryPolygons
+      };
+    } catch (error) {
+      console.error(`Error loading territory data for friend ${friend.id}:`, error);
+      return friend;
     }
   };
 
@@ -620,11 +649,6 @@ export function useFriends() {
       console.error('Error canceling friend request:', error);
       return false;
     }
-  };
-
-  // Helper function to convert degrees to radians
-  const toRad = (degrees: number): number => {
-    return degrees * (Math.PI / 180);
   };
 
   return {
