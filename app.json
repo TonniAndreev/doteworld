@@ -11,13 +11,13 @@
     "ios": {
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
+        "googleMapsApiKey": "YAIzaSyCFlLwN3mRu8d9SsxDW2rDwI-GZX_lpJtI"
       }
     },
     "android": {
       "config": {
         "googleMaps": {
-          "apiKey": "${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
+          "apiKey": "AIzaSyCFlLwN3mRu8d9SsxDW2rDwI-GZX_lpJtI"
         }
       },
       "permissions": [
