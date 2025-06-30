@@ -8,10 +8,8 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
-  Share,
-  Platform,
 } from 'react-native';
-import { X, Crown, UserX, UserPlus, Share2 } from 'lucide-react-native';
+import { X, Crown, UserX, UserPlus } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';

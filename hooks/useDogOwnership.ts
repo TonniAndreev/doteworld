@@ -136,7 +136,7 @@ export function useDogOwnership() {
         ? { edit: true, delete: false, share: true }
         : { edit: false, delete: false, share: false };
 
-      // Create the invite
+      // Create the invite directly in the database without sending an email
       const { error: inviteError } = await supabase
         .from('dog_ownership_invites')
         .insert({

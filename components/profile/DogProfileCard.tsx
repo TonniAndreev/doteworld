@@ -45,10 +45,9 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const [owners, setOwners] = useState<DogOwner[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
   const [showOwnershipModal, setShowOwnershipModal] = useState(false);
-  const [showAllOwners, setShowAllOwners] = useState(false);
   
   const { user } = useAuth();
-  const { getDogOwners, removeCoOwner } = useDogOwnership();
+  const { getDogOwners } = useDogOwnership();
 
   useEffect(() => {
     if (showFullDetails) {
@@ -68,65 +67,10 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
     }
   };
 
-  const handleRemoveOwner = async (profileId: string, ownerName: string) => {
-    Alert.alert(
-      'Remove Owner',
-      `Are you sure you want to remove ${ownerName} as an owner of ${dog.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await removeCoOwner(dog.id, profileId);
-            if (result.success) {
-              Alert.alert('Success', 'Owner removed successfully');
-              loadOwners();
-            } else {
-              Alert.alert('Error', result.error || 'Failed to remove owner');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const canRemoveOwner = (owner: DogOwner) => {
-    if (!user) return false;
-    
-    // Can't remove yourself
-    if (owner.profile_id === user.id) return false;
-    
-    // Can't remove the original owner
-    if (owner.role === 'owner') return false;
-    
-    // Check if current user has share permissions
-    const currentUserOwnership = owners.find(o => o.profile_id === user.id);
-    return currentUserOwnership?.permissions?.share === true;
-  };
-
   const canInviteOwners = () => {
     if (!user) return false;
     const currentUserOwnership = owners.find(o => o.profile_id === user.id);
     return currentUserOwnership?.permissions?.share === true;
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return <Crown size={16} color={COLORS.accent} />;
-      default:
-        return <Crown size={16} color={COLORS.accent} />;
-    }
-  };
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return COLORS.accent;
-      default:
-        return COLORS.accent;
-    }
   };
 
   const calculateAge = (birthday: string) => {
@@ -178,9 +122,6 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
         return COLORS.neutralMedium;
     }
   };
-
-  const displayedOwners = owners;
-  const hasMoreOwners = false;
 
   const CardComponent = onPress ? TouchableOpacity : View;
 
@@ -270,7 +211,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 </View>
               ) : (
                 <View style={styles.ownersList}>
-                  {displayedOwners.map((owner) => (
+                  {owners.map((owner) => (
                     <View key={owner.profile_id} style={styles.ownerItem}>
                       <UserAvatar
                         userId={owner.profile_id}
@@ -287,44 +228,14 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                         </Text>
                         
                         <View style={styles.ownerRole}>
-                          {getRoleIcon(owner.role)}
-                          <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
+                          <Crown size={16} color={COLORS.accent} />
+                          <Text style={styles.roleText}>
                             Owner
                           </Text>
                         </View>
                       </View>
-                      
-                      {canRemoveOwner(owner) && (
-                        <TouchableOpacity
-                          style={styles.removeOwnerButton}
-                          onPress={() => handleRemoveOwner(
-                            owner.profile_id, 
-                            `${owner.first_name} ${owner.last_name}`
-                          )}
-                        >
-                          <UserX size={12} color={COLORS.error} />
-                        </TouchableOpacity>
-                      )}
                     </View>
                   ))}
-                  
-                  {hasMoreOwners && !showAllOwners && (
-                    <TouchableOpacity
-                      style={styles.showMoreButton}
-                      onPress={() => setShowAllOwners(true)}
-                    >
-                      <Text style={styles.showMoreText}>Show All Owners</Text>
-                    </TouchableOpacity>
-                  )}
-                  
-                  {hasMoreOwners && showAllOwners && (
-                    <TouchableOpacity
-                      style={styles.showLessButton}
-                      onPress={() => setShowAllOwners(false)}
-                    >
-                      <Text style={styles.showLessText}>Show Less</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               )}
             </View>
@@ -497,7 +408,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -533,6 +444,7 @@ const styles = StyleSheet.create({
   },
   ownerInfo: {
     flex: 1,
+    marginLeft: 16,
   },
   ownerName: {
     fontFamily: 'Inter-Medium',
@@ -548,34 +460,6 @@ const styles = StyleSheet.create({
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-  },
-  removeOwnerButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.errorLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  showMoreButton: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    backgroundColor: COLORS.white,
-    borderRadius: 12,
-    marginTop: 4,
-  },
-  showMoreText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    color: COLORS.primary,
-  },
-  showLessButton: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  showLessText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    color: COLORS.primary,
+    color: COLORS.accent,
   },
 });
