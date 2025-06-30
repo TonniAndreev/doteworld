@@ -236,6 +236,13 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         `${owner.first_name} ${owner.last_name}`.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
+  // Sort owners to ensure Alpha is always first
+  const sortedOwners = [...filteredOwners].sort((a, b) => {
+    if (a.role === 'owner') return -1;
+    if (b.role === 'owner') return 1;
+    return 0;
+  });
+
   const renderOwner = ({ item: owner }: { item: any }) => (
     <View style={[
       styles.ownerItem,
@@ -339,7 +346,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
             </View>
 
             <View style={styles.content}>
-              {/* Search Bar */}
+              {/* Search Bar - Automatically searches as you type */}
               <View style={styles.searchContainer}>
                 <Search size={20} color={COLORS.neutralMedium} style={styles.searchIcon} />
                 <TextInput
@@ -479,7 +486,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                   </View>
                 ) : (
                   <FlatList
-                    data={filteredOwners}
+                    data={sortedOwners}
                     renderItem={renderOwner}
                     keyExtractor={(item) => item.profile_id}
                     showsVerticalScrollIndicator={false}

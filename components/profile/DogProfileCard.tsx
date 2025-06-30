@@ -127,6 +127,13 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
   const CardComponent = onPress ? TouchableOpacity : View;
 
+  // Sort owners to ensure Alpha is always first
+  const sortedOwners = [...owners].sort((a, b) => {
+    if (a.role === 'owner') return -1;
+    if (b.role === 'owner') return 1;
+    return 0;
+  });
+
   return (
     <CardComponent 
       style={[styles.container, showFullDetails && styles.fullDetailsContainer]}
@@ -213,7 +220,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 </View>
               ) : (
                 <View style={styles.ownersList}>
-                  {owners.map((owner) => (
+                  {sortedOwners.map((owner) => (
                     <View key={owner.profile_id} style={styles.ownerItem}>
                       <UserAvatar
                         userId={owner.profile_id}
@@ -230,7 +237,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                         </Text>
                         
                         <View style={styles.ownerRole}>
-                          <Crown size={16} color={COLORS.accent} />
+                          <Crown size={16} color={owner.role === 'owner' ? COLORS.accent : COLORS.primary} />
                           <Text style={styles.roleText}>
                             {owner.role === 'owner' ? 'Alpha Owner' : 'Owner'}
                           </Text>
