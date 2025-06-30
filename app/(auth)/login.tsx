@@ -99,7 +99,12 @@ export default function LoginScreen() {
         router.replace('/(tabs)');
       }
     } catch (error: any) {
-      console.error('🔴 Email login error:', error);
+      // Log invalid credentials as warning instead of error
+      if (error.message && error.message.includes('Invalid login credentials')) {
+        console.warn('🟡 Email login attempt with invalid credentials:', error.message);
+      } else {
+        console.error('🔴 Email login error:', error);
+      }
       setError(error.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);

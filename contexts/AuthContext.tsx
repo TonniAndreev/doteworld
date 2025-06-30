@@ -284,7 +284,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        console.error('Login error:', error);
+        // Log invalid credentials as warning instead of error
+        if (error.message.includes('Invalid login credentials')) {
+          console.warn('Login attempt with invalid credentials:', error.message);
+        } else {
+          console.error('Login error:', error);
+        }
         throw new Error(error.message || 'Login failed');
       }
 
@@ -821,7 +826,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error('Logout error:', error);
+        // Log missing auth session as warning instead of error
+        if (error.message.includes('Auth session missing!')) {
+          console.warn('Logout attempted but auth session was already missing:', error.message);
+        } else {
+          console.error('Logout error:', error);
+        }
       }
       
       setUser(null);
