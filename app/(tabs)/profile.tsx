@@ -20,6 +20,7 @@ import BadgesRow from '@/components/profile/BadgesRow';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import DogOwnershipInvites from '@/components/dog/DogOwnershipInvites';
 import UserAvatar from '@/components/common/UserAvatar';
+import { formatArea, formatDistance } from '@/utils/formatUtils';
 
 export default function ProfileScreen() {
   const [showInvites, setShowInvites] = useState(false);
@@ -120,7 +121,7 @@ export default function ProfileScreen() {
           <View style={styles.statsRow}>
             <StatsCard
               icon={<Map size={24} color={COLORS.primary} />}
-              value={`${(territorySize * 1000000).toFixed(0)} m²`}
+              value={formatArea(territorySize * 1000000)}
               label="Territory"
               emphasis={true}
             />
@@ -134,12 +135,12 @@ export default function ProfileScreen() {
           <View style={styles.statsRow}>
             <StatsCard
               icon={<Route size={24} color={COLORS.primary} />}
-              value={`${(thisMonthDistance * 1000).toFixed(0)} m`}
+              value={formatDistance(thisMonthDistance * 1000)}
               label="This Month"
             />
             <StatsCard
               icon={<Route size={24} color={COLORS.primary} />}
-              value={`${(totalDistance * 1000).toFixed(0)} m`}
+              value={formatDistance(totalDistance * 1000)}
               label="Total Distance"
             />
           </View>

@@ -18,6 +18,7 @@ import UserAvatar from '@/components/common/UserAvatar';
 import DogProfileCard from '@/components/profile/DogProfileCard';
 import { useFriends } from '@/hooks/useFriends';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatArea, formatDistance } from '@/utils/formatUtils';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -596,7 +597,7 @@ export default function PublicUserProfileScreen() {
             <View style={[styles.statCard, styles.emphasisStatCard]}>
               <Map size={24} color={COLORS.primary} />
               <Text style={[styles.statValue, styles.emphasisStatValue]}>
-                {userStats.territorySize > 0 ? `${(userStats.territorySize * 1000000).toFixed(0)} m²` : '0 m²'}
+                {formatArea(userStats.territorySize * 1000000)}
               </Text>
               <Text style={[styles.statLabel, styles.emphasisStatLabel]}>Territory</Text>
             </View>
@@ -611,14 +612,14 @@ export default function PublicUserProfileScreen() {
             <View style={styles.statCard}>
               <Route size={24} color={COLORS.primary} />
               <Text style={styles.statValue}>
-                {userStats.thisMonthDistance > 0 ? `${(userStats.thisMonthDistance * 1000).toFixed(0)} m` : '0 m'}
+                {formatDistance(userStats.thisMonthDistance * 1000)}
               </Text>
               <Text style={styles.statLabel}>This Month</Text>
             </View>
             <View style={styles.statCard}>
               <Route size={24} color={COLORS.primary} />
               <Text style={styles.statValue}>
-                {userStats.totalDistance > 0 ? `${(userStats.totalDistance * 1000).toFixed(0)} m` : '0 m'}
+                {formatDistance(userStats.totalDistance * 1000)}
               </Text>
               <Text style={styles.statLabel}>Total Distance</Text>
             </View>

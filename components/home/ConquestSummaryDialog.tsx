@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { COLORS } from '@/constants/theme';
 import { X, Map, Route, Award } from 'lucide-react-native';
+import { formatArea, formatDistance } from '@/utils/formatUtils';
 
 interface ConquestSummaryDialogProps {
   visible: boolean;
@@ -55,14 +56,14 @@ export default function ConquestSummaryDialog({
             <View style={styles.statItem}>
               <Map size={24} color={COLORS.primary} />
               <Text style={styles.statValue}>
-                {(territoryGained * 1000000).toFixed(0)} m²
+                {formatArea(territoryGained * 1000000)}
               </Text>
               <Text style={styles.statLabel}>New Territory</Text>
             </View>
             <View style={styles.statItem}>
               <Route size={24} color={COLORS.secondary} />
               <Text style={styles.statValue}>
-                {(distanceWalked * 1000).toFixed(0)} m
+                {formatDistance(distanceWalked * 1000)}
               </Text>
               <Text style={styles.statLabel}>New Distance</Text>
             </View>
