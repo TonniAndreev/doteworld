@@ -47,7 +47,8 @@ export function useDogOwnership() {
       const { data, error } = await supabase
         .from('dog_owners_view')
         .select('*')
-        .eq('dog_id', dogId);
+        .eq('dog_id', dogId)
+        .order('role', { ascending: true });  // 'owner' comes before 'co-owner' alphabetically
 
       if (error) {
         console.error('Error fetching dog owners:', error);

@@ -104,6 +104,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
       <View style={styles.ownerInfo}>
         <Text style={styles.ownerName}>
           {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
+          {owner.role === 'owner' && " (Alpha)"}
         </Text>
         
         <View style={styles.ownerRole}>
