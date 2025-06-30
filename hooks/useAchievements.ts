@@ -468,13 +468,16 @@ export function useAchievements() {
         return false;
       }
 
-      // Award achievement to user
+      // Award achievement to user - use upsert to handle potential race conditions
       const { error: insertError } = await supabase
         .from('profile_achievements')
-        .insert({
+        .upsert({
           profile_id: user.id,
           achievement_id: achievement.id,
           obtained_at: new Date().toISOString(),
+        }, {
+          onConflict: 'profile_id,achievement_id',
+          ignoreDuplicates: true
         });
 
       if (insertError) {
