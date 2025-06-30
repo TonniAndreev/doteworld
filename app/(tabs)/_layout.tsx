@@ -43,7 +43,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: 'Leaderboard',
+          title: 'Rankings',
           tabBarIcon: ({ color, size }) => (
             <Trophy size={size} color={color} />
           ),
