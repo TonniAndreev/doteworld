@@ -109,6 +109,34 @@ export default function MapScreen() {
     loadLastGeocodeDate();
   }, []);
 
+  // Debug function to log territory polygons
+  const logTerritoryPolygons = () => {
+    if (!isFriendsLoading && friends.length > 0) {
+      friends.forEach(friend => {
+        if (friend.territoryPolygons && friend.territoryPolygons.length > 0) {
+          console.log(`Friend ${friend.name} has ${friend.territoryPolygons.length} territory polygons`);
+          friend.territoryPolygons.forEach((territory, index) => {
+            console.log(`Territory ${index}: dogId=${territory.dogId}, dogName=${territory.dogName}, has centroid=${!!territory.centroid}`);
+            if (territory.centroid) {
+              console.log(`Centroid: lat=${territory.centroid.latitude}, lon=${territory.centroid.longitude}`);
+            }
+          });
+        } else {
+          console.log(`Friend ${friend.name} has no territory polygons`);
+        }
+      });
+    } else {
+      console.log('No friends loaded or still loading');
+    }
+  };
+
+  // Call this once to debug
+  useEffect(() => {
+    if (!isFriendsLoading && friends.length > 0) {
+      logTerritoryPolygons();
+    }
+  }, [isFriendsLoading, friends]);
+
   // Check city from location coordinates
   const checkCityFromLocation = async (latitude: number, longitude: number) => {
     try {
@@ -377,34 +405,6 @@ export default function MapScreen() {
     setMapRegion(region);
   };
 
-  // Debug function to log territory polygons
-  const logTerritoryPolygons = () => {
-    if (!isFriendsLoading && friends.length > 0) {
-      friends.forEach(friend => {
-        if (friend.territoryPolygons && friend.territoryPolygons.length > 0) {
-          console.log(`Friend ${friend.name} has ${friend.territoryPolygons.length} territory polygons`);
-          friend.territoryPolygons.forEach((territory, index) => {
-            console.log(`Territory ${index}: dogId=${territory.dogId}, dogName=${territory.dogName}, has centroid=${!!territory.centroid}`);
-            if (territory.centroid) {
-              console.log(`Centroid: lat=${territory.centroid.latitude}, lon=${territory.centroid.longitude}`);
-            }
-          });
-        } else {
-          console.log(`Friend ${friend.name} has no territory polygons`);
-        }
-      });
-    } else {
-      console.log('No friends loaded or still loading');
-    }
-  };
-
-  // Call this once to debug
-  useEffect(() => {
-    if (!isFriendsLoading && friends.length > 0) {
-      logTerritoryPolygons();
-    }
-  }, [isFriendsLoading, friends]);
-
   return (
     <GestureHandlerRootView style={styles.container}>
       {location ? (
@@ -484,20 +484,30 @@ export default function MapScreen() {
             )}
             
             {/* Render dog markers at the center of each friend's territory */}
-            {!isFriendsLoading && friends.map(friend => 
-              friend.territoryPolygons?.filter(territory => territory.centroid).map((territory, tIndex) => (
-                <DogMarker
-                  key={`dog-marker-${friend.id}-${territory.dogId}-${territory.id || tIndex}`}
-                  coordinate={territory.centroid!}
-                  dogId={territory.dogId}
-                  dogName={territory.dogName}
-                  dogPhotoURL={territory.dogPhotoURL}
-                  dogBreed={territory.dogBreed}
-                  color={territory.color}
-                  onPress={() => handleDogMarkerPress(territory.dogId, territory.dogName)}
-                />
-              ))
-            )}
+            {!isFriendsLoading && friends.map(friend => {
+              if (!friend.territoryPolygons) return null;
+              
+              // Log for debugging
+              console.log(`Rendering markers for friend ${friend.name}: ${friend.territoryPolygons.length} polygons`);
+              
+              return friend.territoryPolygons
+                .filter(territory => territory && territory.centroid)
+                .map((territory, tIndex) => {
+                  console.log(`Rendering marker for ${territory.dogName} at ${territory.centroid?.latitude}, ${territory.centroid?.longitude}`);
+                  return (
+                    <DogMarker
+                      key={`dog-marker-${friend.id}-${territory.dogId}-${territory.id || tIndex}`}
+                      coordinate={territory.centroid!}
+                      dogId={territory.dogId}
+                      dogName={territory.dogName}
+                      dogPhotoURL={territory.dogPhotoURL}
+                      dogBreed={territory.dogBreed}
+                      color={territory.color}
+                      onPress={() => handleDogMarkerPress(territory.dogId, territory.dogName)}
+                    />
+                  );
+                });
+            })}
           </MapView>
 
           <SafeAreaView style={styles.overlay} pointerEvents="box-none">

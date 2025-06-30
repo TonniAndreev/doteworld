@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { Marker } from 'react-native-maps';
 import UserAvatar from '@/components/common/UserAvatar';
 import { COLORS } from '@/constants/theme';
@@ -26,11 +26,14 @@ const DogMarker: React.FC<DogMarkerProps> = ({
   color,
   onPress
 }) => {
+  console.log(`Rendering dog marker for ${dogName} at ${coordinate.latitude}, ${coordinate.longitude}`);
+  
   return (
     <Marker
       coordinate={coordinate}
-      tracksViewChanges={false}
+      tracksViewChanges={Platform.OS === 'ios' ? false : true}
       onPress={onPress}
+      zIndex={999}
     >
       <View style={styles.markerContainer}>
         <View style={[styles.avatarContainer, { borderColor: color }]}>
