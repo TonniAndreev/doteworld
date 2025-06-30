@@ -17,7 +17,7 @@ export function formatDistance(meters: number): string {
     return `${Math.round(meters)} m`;
   } else {
     // Over 1km, show in kilometers with 1 decimal place
-    const km = meters / 1000000;
+    const km = meters / 1000;
     // Format with thousand separator and decimal point
     return `${formatNumber(km, 1)} km`;
   }
