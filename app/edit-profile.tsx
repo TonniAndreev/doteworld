@@ -97,24 +97,6 @@ export default function EditProfileScreen() {
     }
   };
   
-  const removePhoto = () => {
-    Alert.alert(
-      'Remove Photo',
-      'Are you sure you want to remove your profile photo?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => setAvatarUrl(null),
-        },
-      ]
-    );
-  };
-  
   const validateForm = () => {
     if (!firstName.trim()) {
       setError('First name is required');
@@ -276,17 +258,6 @@ export default function EditProfileScreen() {
                 userName={`${firstName} ${lastName}`}
                 size={120}
               />
-              
-              <View style={styles.photoActions}>
-                {avatarUrl && (
-                  <TouchableOpacity 
-                    style={[styles.photoActionButton, styles.removePhotoButton]}
-                    onPress={removePhoto}
-                  >
-                    <Text style={styles.removePhotoText}>Remove</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
             </View>
             
             <View style={styles.photoButtonsContainer}>
@@ -449,20 +420,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.error,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 8,
     borderWidth: 2,
     borderColor: COLORS.white,
-  },
-  removePhotoButton: {
-    backgroundColor: COLORS.error,
-  },
-  removePhotoText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 10,
-    color: COLORS.white,
   },
   photoButtonsContainer: {
     flexDirection: 'row',
