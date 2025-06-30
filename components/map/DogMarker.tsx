@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Platform, Image } from 'react-native';
 import { Marker } from 'react-native-maps';
-import UserAvatar from '@/components/common/UserAvatar';
 import { COLORS } from '@/constants/theme';
+import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
 
 interface DogMarkerProps {
   coordinate: {
@@ -26,24 +26,36 @@ const DogMarker: React.FC<DogMarkerProps> = ({
   color,
   onPress
 }) => {
+  const [tracksChanges, setTracksChanges] = useState(true);
+  
+  // Get the avatar source directly instead of using UserAvatar component
+  const avatarSource = getDogAvatarSource(dogId, dogPhotoURL, dogBreed);
+  
   console.log(`Rendering dog marker for ${dogName} at ${coordinate.latitude}, ${coordinate.longitude}`);
+  
+  // Set tracksViewChanges to false after initial render to improve performance
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTracksChanges(false);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, []);
   
   return (
     <Marker
       coordinate={coordinate}
-      tracksViewChanges={Platform.OS === 'ios' ? false : true}
+      tracksViewChanges={tracksChanges}
       onPress={onPress}
       zIndex={999}
+      anchor={{x: 0.5, y: 0.5}}
     >
       <View style={styles.markerContainer}>
         <View style={[styles.avatarContainer, { borderColor: color }]}>
-          <UserAvatar
-            userId={dogId}
-            photoURL={dogPhotoURL}
-            userName={dogName}
-            size={40}
-            isDogAvatar={true}
-            dogBreed={dogBreed}
+          <Image 
+            source={avatarSource}
+            style={styles.avatarImage}
+            resizeMode="cover"
           />
         </View>
         <View style={[styles.nameContainer, { backgroundColor: color }]}>
@@ -61,7 +73,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 120, // Fixed width to ensure consistent sizing
-    zIndex: 999, // Ensure it appears above other map elements
+    ...Platform.select({
+      android: {
+        position: 'relative',
+        zIndex: 999,
+      }
+    })
   },
   avatarContainer: {
     width: 48,
@@ -69,14 +86,25 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     borderWidth: 3,
     overflow: 'hidden',
-    backgroundColor: COLORS.white, // Explicitly set background color
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.black,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 8,
+      }
+    })
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 24,
   },
   nameContainer: {
     paddingHorizontal: 12,
@@ -85,20 +113,34 @@ const styles = StyleSheet.create({
     marginTop: 4,
     minWidth: 80,
     alignItems: 'center',
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: COLORS.black,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+      },
+      android: {
+        elevation: 6,
+      }
+    })
   },
   nameText: {
     fontFamily: 'Inter-Bold',
     fontSize: 12,
     color: COLORS.white,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    ...Platform.select({
+      ios: {
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+      },
+      android: {
+        // Android doesn't support text shadows well, so we use a different approach
+        fontWeight: 'bold',
+      }
+    })
   },
 });
 

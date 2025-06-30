@@ -65,6 +65,34 @@ export default function MapScreen() {
   const { friends, isLoading: isFriendsLoading } = useFriends();
   const { user, updateUserCity } = useAuth();
 
+  // Debug function to log territory polygons
+  const logTerritoryPolygons = () => {
+    if (!isFriendsLoading && friends.length > 0) {
+      friends.forEach(friend => {
+        if (friend.territoryPolygons && friend.territoryPolygons.length > 0) {
+          console.log(`Friend ${friend.name} has ${friend.territoryPolygons.length} territory polygons`);
+          friend.territoryPolygons.forEach((territory, index) => {
+            console.log(`Territory ${index}: dogId=${territory.dogId}, dogName=${territory.dogName}, has centroid=${!!territory.centroid}`);
+            if (territory.centroid) {
+              console.log(`Centroid: lat=${territory.centroid.latitude}, lon=${territory.centroid.longitude}`);
+            }
+          });
+        } else {
+          console.log(`Friend ${friend.name} has no territory polygons`);
+        }
+      });
+    } else {
+      console.log('No friends loaded or still loading');
+    }
+  };
+
+  // Call this once to debug
+  useEffect(() => {
+    if (!isFriendsLoading && friends.length > 0) {
+      logTerritoryPolygons();
+    }
+  }, [isFriendsLoading, friends]);
+
   // Initial location setup
   useEffect(() => {
     const setupInitialLocation = async () => {
@@ -108,34 +136,6 @@ export default function MapScreen() {
     
     loadLastGeocodeDate();
   }, []);
-
-  // Debug function to log territory polygons
-  const logTerritoryPolygons = () => {
-    if (!isFriendsLoading && friends.length > 0) {
-      friends.forEach(friend => {
-        if (friend.territoryPolygons && friend.territoryPolygons.length > 0) {
-          console.log(`Friend ${friend.name} has ${friend.territoryPolygons.length} territory polygons`);
-          friend.territoryPolygons.forEach((territory, index) => {
-            console.log(`Territory ${index}: dogId=${territory.dogId}, dogName=${territory.dogName}, has centroid=${!!territory.centroid}`);
-            if (territory.centroid) {
-              console.log(`Centroid: lat=${territory.centroid.latitude}, lon=${territory.centroid.longitude}`);
-            }
-          });
-        } else {
-          console.log(`Friend ${friend.name} has no territory polygons`);
-        }
-      });
-    } else {
-      console.log('No friends loaded or still loading');
-    }
-  };
-
-  // Call this once to debug
-  useEffect(() => {
-    if (!isFriendsLoading && friends.length > 0) {
-      logTerritoryPolygons();
-    }
-  }, [isFriendsLoading, friends]);
 
   // Check city from location coordinates
   const checkCityFromLocation = async (latitude: number, longitude: number) => {
