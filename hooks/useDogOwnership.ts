@@ -7,8 +7,8 @@ interface DogOwner {
   role: 'owner' | 'co-owner' | 'caretaker';
   permissions: {
     edit: boolean;
-    delete: boolean;
     share: boolean;
+    delete: boolean;
   };
   ownership_since: string;
   invited_by?: string;
@@ -359,61 +359,6 @@ export function useDogOwnership() {
     }
   };
 
-  // Function to handle deep link invites
-  const handleDeepLinkInvite = async (inviteToken: string): Promise<{ success: boolean; error?: string }> => {
-    if (!user) return { success: false, error: 'Not authenticated' };
-
-    try {
-      setIsLoading(true);
-      
-      // In a real implementation, you would validate the invite token with your backend
-      // For now, we'll simulate a successful invite acceptance
-      
-      // Parse the token to extract dog ID
-      const parts = inviteToken.split('_');
-      if (parts.length < 3) {
-        return { success: false, error: 'Invalid invite token' };
-      }
-      
-      const dogId = parts[0];
-      
-      // Check if the dog exists
-      const { data: dog, error: dogError } = await supabase
-        .from('dogs')
-        .select('id, name')
-        .eq('id', dogId)
-        .single();
-        
-      if (dogError || !dog) {
-        return { success: false, error: 'Dog not found' };
-      }
-      
-      // Create a direct link between user and dog
-      const { error: linkError } = await supabase
-        .from('profile_dogs')
-        .insert({
-          profile_id: user.id,
-          dog_id: dogId,
-          role: 'co-owner',
-          permissions: { edit: true, delete: false, share: true }
-        });
-        
-      if (linkError) {
-        return { success: false, error: 'Failed to link dog to your profile' };
-      }
-      
-      // Refresh user data
-      await refreshUserData();
-      
-      return { success: true };
-    } catch (error) {
-      console.error('Error handling deep link invite:', error);
-      return { success: false, error: 'An unexpected error occurred' };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // New function to search for users to add as dog owners
   const searchUsersForDogOwnership = async (
     searchQuery: string,
@@ -513,6 +458,61 @@ export function useDogOwnership() {
       return { success: true };
     } catch (error) {
       console.error('Error transferring Alpha ownership:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to handle deep link invites
+  const handleDeepLinkInvite = async (inviteToken: string): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    try {
+      setIsLoading(true);
+      
+      // In a real implementation, you would validate the invite token with your backend
+      // For now, we'll simulate a successful invite acceptance
+      
+      // Parse the token to extract dog ID
+      const parts = inviteToken.split('_');
+      if (parts.length < 3) {
+        return { success: false, error: 'Invalid invite token' };
+      }
+      
+      const dogId = parts[0];
+      
+      // Check if the dog exists
+      const { data: dog, error: dogError } = await supabase
+        .from('dogs')
+        .select('id, name')
+        .eq('id', dogId)
+        .single();
+        
+      if (dogError || !dog) {
+        return { success: false, error: 'Dog not found' };
+      }
+      
+      // Create a direct link between user and dog
+      const { error: linkError } = await supabase
+        .from('profile_dogs')
+        .insert({
+          profile_id: user.id,
+          dog_id: dogId,
+          role: 'co-owner',
+          permissions: { edit: true, delete: false, share: true }
+        });
+        
+      if (linkError) {
+        return { success: false, error: 'Failed to link dog to your profile' };
+      }
+      
+      // Refresh user data
+      await refreshUserData();
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error handling deep link invite:', error);
       return { success: false, error: 'An unexpected error occurred' };
     } finally {
       setIsLoading(false);

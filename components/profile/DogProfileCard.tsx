@@ -232,16 +232,26 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                       />
                       
                       <View style={styles.ownerInfo}>
-                        <Text style={styles.ownerName} numberOfLines={1}>
-                          {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
+                        <Text style={[
+                          styles.ownerName,
+                          owner.role === 'owner' && { color: COLORS.accent }
+                        ]} numberOfLines={1}>
+                          {owner.role === 'owner' ? (
+                            <>
+                              <Text style={{ color: COLORS.accent }}>👑 </Text>
+                              {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
+                            </>
+                          ) : (
+                            `${owner.first_name || ''} ${owner.last_name || ''}`.trim()
+                          )}
                         </Text>
                         
-                        <View style={styles.ownerRole}>
-                          <Crown size={16} color={owner.role === 'owner' ? COLORS.accent : COLORS.primary} />
-                          <Text style={styles.roleText}>
-                            {owner.role === 'owner' ? 'Alpha Owner' : 'Owner'}
-                          </Text>
-                        </View>
+                        <Text style={[
+                          styles.roleText,
+                          owner.role === 'owner' ? styles.alphaRoleText : styles.regularRoleText
+                        ]}>
+                          {owner.role === 'owner' ? 'Alpha Owner' : 'Owner'}
+                        </Text>
                       </View>
                     </View>
                   ))}
@@ -461,14 +471,14 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 2,
   },
-  ownerRole: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
+  },
+  alphaRoleText: {
     color: COLORS.accent,
+  },
+  regularRoleText: {
+    color: COLORS.neutralDark,
   },
 });

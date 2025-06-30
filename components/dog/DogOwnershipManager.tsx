@@ -257,19 +257,26 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
       />
       
       <View style={styles.ownerInfo}>
-        <Text style={styles.ownerName}>
-          {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
+        <Text style={[
+          styles.ownerName,
+          owner.role === 'owner' && { color: COLORS.accent }
+        ]}>
+          {owner.role === 'owner' ? (
+            <>
+              <Text style={{ color: COLORS.accent }}>👑 </Text>
+              {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
+            </>
+          ) : (
+            `${owner.first_name || ''} ${owner.last_name || ''}`.trim()
+          )}
         </Text>
         
-        <View style={styles.ownerRole}>
-          <Crown size={16} color={owner.role === 'owner' ? COLORS.accent : COLORS.primary} />
-          <Text style={[
-            styles.roleText,
-            owner.role === 'owner' ? styles.alphaRoleText : styles.regularRoleText
-          ]}>
-            {owner.role === 'owner' ? 'Alpha Owner' : 'Owner'}
-          </Text>
-        </View>
+        <Text style={[
+          styles.roleText,
+          owner.role === 'owner' ? styles.alphaRoleText : styles.regularRoleText
+        ]}>
+          {owner.role === 'owner' ? 'Alpha Owner' : 'Owner'}
+        </Text>
       </View>
       
       <View style={styles.ownerActions}>
@@ -906,6 +913,7 @@ const styles = StyleSheet.create({
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
+    color: COLORS.neutralDark,
   },
   alphaRoleText: {
     color: COLORS.accent,
