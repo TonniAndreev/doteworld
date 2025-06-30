@@ -57,6 +57,7 @@ const styles = StyleSheet.create({
   markerContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: 120, // Fixed width to ensure consistent sizing
   },
   avatarContainer: {
     width: 48,
@@ -71,6 +72,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+    backgroundColor: COLORS.white, // Explicitly set background color
   },
   nameContainer: {
     paddingHorizontal: 12,

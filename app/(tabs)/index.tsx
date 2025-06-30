@@ -457,20 +457,18 @@ export default function MapScreen() {
             
             {/* Render dog markers at the center of each friend's territory */}
             {!isFriendsLoading && friends.map(friend => 
-              friend.territoryPolygons?.map(territory => 
-                territory.centroid && (
-                  <DogMarker
-                    key={`dog-marker-${friend.id}-${territory.dogId}-${territory.id}`}
-                    coordinate={territory.centroid}
-                    dogId={territory.dogId}
-                    dogName={territory.dogName}
-                    dogPhotoURL={territory.dogPhotoURL}
-                    dogBreed={territory.dogBreed}
-                    color={territory.color}
-                    onPress={() => handleDogMarkerPress(territory.dogId, territory.dogName)}
-                  />
-                )
-              )
+              friend.territoryPolygons?.filter(territory => territory.centroid).map(territory => (
+                <DogMarker
+                  key={`dog-marker-${friend.id}-${territory.dogId}-${territory.id}`}
+                  coordinate={territory.centroid!}
+                  dogId={territory.dogId}
+                  dogName={territory.dogName}
+                  dogPhotoURL={territory.dogPhotoURL}
+                  dogBreed={territory.dogBreed}
+                  color={territory.color}
+                  onPress={() => handleDogMarkerPress(territory.dogId, territory.dogName)}
+                />
+              ))
             )}
           </MapView>
 

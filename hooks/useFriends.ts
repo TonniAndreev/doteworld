@@ -122,22 +122,24 @@ export function useFriends() {
                 latitude: turfCentroid.geometry.coordinates[1],
                 longitude: turfCentroid.geometry.coordinates[0]
               };
+              
+              // Add to territory polygons
+              territoryPolygons.push({
+                id: point.id,
+                coordinates: hull,
+                color,
+                dogId: dog.id,
+                dogName: dog.name,
+                dogPhotoURL: dog.photo_url,
+                dogBreed: dog.breed,
+                centroid
+              });
             }
-            
-            // Add to territory polygons
-            territoryPolygons.push({
-              id: point.id,
-              coordinates: hull,
-              color,
-              dogId: dog.id,
-              dogName: dog.name,
-              dogPhotoURL: dog.photo_url,
-              dogBreed: dog.breed,
-              centroid
-            });
           }
         }
       }
+      
+      console.log(`Loaded ${territoryPolygons.length} territory polygons for friend ${friend.id}`);
       
       // Return updated friend with territory data
       return {
