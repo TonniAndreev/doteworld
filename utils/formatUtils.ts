@@ -8,6 +8,10 @@
  * @returns Formatted string with appropriate unit
  */
 export function formatDistance(meters: number): string {
+  if (!meters || meters <= 0) {
+    return '0 m';
+  }
+  
   if (meters < 1000) {
     // Under 1km, show in meters with no decimal places
     return `${Math.round(meters)} m`;
@@ -25,12 +29,17 @@ export function formatDistance(meters: number): string {
  * @returns Formatted string with appropriate unit
  */
 export function formatArea(squareMeters: number): string {
+  if (!squareMeters || squareMeters <= 0) {
+    return '0 m²';
+  }
+  
   if (squareMeters < 1000000) {
     // Under 1km², show in square meters with no decimal places
     return `${formatNumber(Math.round(squareMeters))} m²`;
   } else {
     // Over 1km², show in square kilometers with 2 decimal places
-    const squareKm = squareMeters / 1000000;
+    // Round up to ensure we don't show smaller values than actual
+    const squareKm = Math.ceil(squareMeters / 1000000 * 100) / 100;
     return `${formatNumber(squareKm, 2)} km²`;
   }
 }
