@@ -12,7 +12,7 @@ export function formatDistance(meters: number): string {
     return '0 m';
   }
   
-  if (meters < 1000) {
+  if (meters < 1000000) {
     // Under 1km, show in meters with no decimal places
     return `${Math.round(meters)} m`;
   } else {
