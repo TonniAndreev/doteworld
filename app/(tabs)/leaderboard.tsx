@@ -86,9 +86,9 @@ export default function LeaderboardScreen() {
         // If user has a current city but no territories, use that
         setSelectedCity({
           id: user.current_city_id,
-          name: user.current_city_name,
+          name: user.current_city_name.split(',')[0].trim(),
           state: null,
-          country: 'Unknown'
+          country: user.current_city_name.split(',')[1]?.trim() || 'Unknown'
         });
       } else {
         // If no cities at all, try to get current location and find nearest city

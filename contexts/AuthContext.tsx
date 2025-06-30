@@ -232,6 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Format city name with country if available
         let formattedCityName = null;
         if (profile.cities) {
+          // Fix: Only use name and country from cities table, omit state
           formattedCityName = `${profile.cities.name}, ${profile.cities.country}`;
         } else if (profile.current_city_name) {
           // If we already have a formatted name, use it
