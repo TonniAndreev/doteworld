@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
-import { Calendar, Heart, Scale, Info, Users, Crown, Shield, Eye, UserPlus, UserX, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
+import { Calendar, Heart, Scale, Info, Users, Crown, Shield, Eye, UserPlus, UserX, MoveHorizontal as MoreHorizontal, Pencil } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
@@ -306,13 +306,17 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 <View style={styles.ownersList}>
                   {displayedOwners.map((owner) => (
                     <View key={owner.profile_id} style={styles.ownerItem}>
-                      <UserAvatar
-                        userId={owner.profile_id}
-                        photoURL={owner.avatar_url}
-                        userName={`${owner.first_name} ${owner.last_name}`}
-                        size={32}
-                        style={styles.ownerAvatar}
-                      />
+                      <View style={styles.ownerAvatarContainer}>
+                        <UserAvatar
+                          userId={owner.profile_id}
+                          photoURL={owner.avatar_url}
+                          userName={`${owner.first_name} ${owner.last_name}`}
+                          size={32}
+                          style={styles.ownerAvatar}
+                          containerStyle={styles.ownerAvatarInner}
+                        />
+                        {getRoleIcon(owner.role)}
+                      </View>
                       
                       <View style={styles.ownerInfo}>
                         <Text style={styles.ownerName} numberOfLines={1}>
@@ -320,7 +324,6 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                         </Text>
                         
                         <View style={styles.ownerRole}>
-                          {getRoleIcon(owner.role)}
                           <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
                             {getRoleDisplayName(owner.role)}
                           </Text>
@@ -403,9 +406,9 @@ const styles = StyleSheet.create({
     padding: 16,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
     marginBottom: 16,
   },
   fullDetailsContainer: {
@@ -579,8 +582,15 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  ownerAvatar: {
+  ownerAvatarContainer: {
+    position: 'relative',
     marginRight: 12,
+  },
+  ownerAvatarInner: {
+    backgroundColor: '#F0F0F0',
+  },
+  ownerAvatar: {
+    marginRight: 0,
   },
   ownerInfo: {
     flex: 1,

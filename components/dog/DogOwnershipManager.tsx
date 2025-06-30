@@ -145,13 +145,17 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
 
   const renderOwner = ({ item: owner }: { item: any }) => (
     <View style={styles.ownerItem}>
-      <UserAvatar
-        userId={owner.profile_id}
-        photoURL={owner.avatar_url}
-        userName={`${owner.first_name} ${owner.last_name}`}
-        size={50}
-        style={styles.ownerAvatar}
-      />
+      <View style={styles.avatarContainer}>
+        <UserAvatar
+          userId={owner.profile_id}
+          photoURL={owner.avatar_url}
+          userName={`${owner.first_name} ${owner.last_name}`}
+          size={50}
+          style={styles.ownerAvatar}
+          containerStyle={styles.avatarInner}
+        />
+        {getRoleIcon(owner.role)}
+      </View>
       
       <View style={styles.ownerInfo}>
         <Text style={styles.ownerName}>
@@ -159,7 +163,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         </Text>
         
         <View style={styles.ownerRole}>
-          {getRoleIcon(owner.role)}
           <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
             {getRoleDisplayName(owner.role)}
           </Text>
@@ -262,7 +265,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: 'white',
     borderRadius: 20,
     width: '100%',
     maxWidth: 500,
@@ -338,8 +341,25 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
-  ownerAvatar: {
+  avatarContainer: {
+    position: 'relative',
     marginRight: 16,
+  },
+  avatarInner: {
+    backgroundColor: '#F0F0F0',
+  },
+  ownerAvatar: {
+    marginRight: 0,
+  },
+  roleIcon: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
   },
   ownerInfo: {
     flex: 1,
@@ -354,15 +374,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
-    paddingVertical: 9,
-  },
-  roleIcon: {
-    marginRight: 9,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
-    marginLeft: 6,
   },
   ownershipDate: {
     fontFamily: 'Inter-Regular',

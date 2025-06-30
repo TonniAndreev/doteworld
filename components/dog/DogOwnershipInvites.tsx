@@ -49,7 +49,7 @@ export default function DogOwnershipInvites({ onInviteHandled }: DogOwnershipInv
       const result = await acceptInvite(inviteId);
       
       if (result.success) {
-        Alert.alert('Success', `You are now a co-owner of ${dogName}!`);
+        Alert.alert('Success', `You are now an owner of ${dogName}!`);
         await loadInvites();
         onInviteHandled?.();
       } else {
@@ -70,7 +70,7 @@ export default function DogOwnershipInvites({ onInviteHandled }: DogOwnershipInv
   const handleDeclineInvite = async (inviteId: string, dogName: string) => {
     Alert.alert(
       'Decline Invitation',
-      `Are you sure you want to decline the invitation to be a co-owner of ${dogName}?`,
+      `Are you sure you want to decline the invitation to be an owner of ${dogName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -144,7 +144,7 @@ export default function DogOwnershipInvites({ onInviteHandled }: DogOwnershipInv
             <View style={styles.roleContainer}>
               {getRoleIcon(invite.role)}
               <Text style={styles.roleText}>
-                {invite.role.charAt(0).toUpperCase() + invite.role.slice(1)}
+                Owner
               </Text>
             </View>
           </View>
@@ -202,15 +202,7 @@ export default function DogOwnershipInvites({ onInviteHandled }: DogOwnershipInv
   }
 
   if (invites.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Crown size={48} color={COLORS.neutralMedium} />
-        <Text style={styles.emptyTitle}>No Pending Invitations</Text>
-        <Text style={styles.emptyText}>
-          You don't have any pending dog ownership invitations.
-        </Text>
-      </View>
-    );
+    return null;
   }
 
   return (
@@ -244,26 +236,6 @@ const styles = StyleSheet.create({
     color: COLORS.neutralMedium,
     marginTop: 12,
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.neutralDark,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralMedium,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
   sectionTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 20,
@@ -279,9 +251,9 @@ const styles = StyleSheet.create({
     padding: 20,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 2,
     borderLeftWidth: 4,
     borderLeftColor: COLORS.primary,
   },

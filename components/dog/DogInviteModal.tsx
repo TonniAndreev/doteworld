@@ -140,22 +140,6 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
               </TouchableOpacity>
             </View>
 
-            {/* Share Link Section */}
-            <View style={styles.inviteSection}>
-              <Text style={styles.sectionTitle}>Share Invite Link</Text>
-              <Text style={styles.linkDescription}>
-                Share a link directly with someone to invite them as an owner.
-              </Text>
-              
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareLink}
-              >
-                <Send size={20} color={COLORS.primary} />
-                <Text style={styles.shareButtonText}>Share Invite Link</Text>
-              </TouchableOpacity>
-            </View>
-
             {/* Explanation */}
             <View style={styles.roleExplanation}>
               <Text style={styles.explanationTitle}>Owner Permissions:</Text>
@@ -182,7 +166,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: '#F8F8F8',
+    backgroundColor: 'white',
     borderRadius: 20,
     width: '100%',
     maxWidth: 500,
