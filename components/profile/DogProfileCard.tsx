@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
-import { Calendar, Heart, Scale, Info, Users, Crown, Shield, Eye, UserPlus, UserX, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
+import { Calendar, Heart, Scale, Info, Users, Crown, UserX, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
@@ -114,13 +114,9 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
-        return <Crown size={14} color={COLORS.accent} />;
-      case 'co-owner':
-        return <Shield size={14} color={COLORS.primary} />;
-      case 'caretaker':
-        return <Eye size={14} color={COLORS.secondary} />;
+        return <Crown size={16} color={COLORS.accent} />;
       default:
-        return null;
+        return <Crown size={16} color={COLORS.accent} />;
     }
   };
 
@@ -128,12 +124,8 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
     switch (role) {
       case 'owner':
         return COLORS.accent;
-      case 'co-owner':
-        return COLORS.primary;
-      case 'caretaker':
-        return COLORS.secondary;
       default:
-        return COLORS.neutralMedium;
+        return COLORS.accent;
     }
   };
 
@@ -256,7 +248,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
             {/* Owners Section */}
             <View style={styles.ownersSection}>
-              <View style={styles.ownersSectionHeader}>
+              <View style={styles.sectionHeader}>
                 <View style={styles.ownersHeaderLeft}>
                   <Users size={16} color={COLORS.neutralDark} />
                   <Text style={styles.ownersTitle}>
@@ -286,6 +278,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                         userName={`${owner.first_name} ${owner.last_name}`}
                         size={40}
                         style={styles.ownerAvatar}
+                        containerStyle={styles.ownerAvatarContainer}
                       />
                       
                       <View style={styles.ownerInfo}>
@@ -484,7 +477,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginTop: 8,
   },
-  ownersSectionHeader: {
+  sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -531,6 +524,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  ownerAvatarContainer: {
+    backgroundColor: '#F0F0F0',
   },
   ownerAvatar: {
     marginRight: 12,

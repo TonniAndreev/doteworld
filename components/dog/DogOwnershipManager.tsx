@@ -10,7 +10,7 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
-import { X, Crown, Shield, Eye, UserX, UserPlus, Mail, Send } from 'lucide-react-native';
+import { X, Crown, UserX, UserPlus, Mail, Send } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
@@ -97,32 +97,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     }
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return <Crown size={16} color={COLORS.accent} />;
-      case 'co-owner':
-        return <Shield size={16} color={COLORS.primary} />;
-      case 'caretaker':
-        return <Eye size={16} color={COLORS.secondary} />;
-      default:
-        return null;
-    }
-  };
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return COLORS.accent;
-      case 'co-owner':
-        return COLORS.primary;
-      case 'caretaker':
-        return COLORS.secondary;
-      default:
-        return COLORS.neutralMedium;
-    }
-  };
-
   const canRemoveOwner = (owner: any) => {
     if (!user) return false;
     
@@ -150,7 +124,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         photoURL={owner.avatar_url}
         userName={`${owner.first_name} ${owner.last_name}`}
         size={48}
-        style={styles.ownerAvatar}
+        containerStyle={styles.ownerAvatarContainer}
       />
       
       <View style={styles.ownerInfo}>
@@ -159,10 +133,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         </Text>
         
         <View style={styles.ownerRole}>
-          {getRoleIcon(owner.role)}
-          <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-            Owner
-          </Text>
+          <Crown size={16} color={COLORS.accent} />
+          <Text style={styles.roleText}>Owner</Text>
         </View>
       </View>
       
@@ -195,40 +167,40 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
 
           <View style={styles.content}>
             {canInviteOwners() && (
-              <View style={styles.inviteSection}>
-                <View style={styles.inputWithIcon}>
-                  <Mail size={20} color={COLORS.neutralMedium} />
-                  <TextInput
-                    style={styles.textInput}
-                    value={inviteEmail}
-                    onChangeText={setInviteEmail}
-                    placeholder="Enter email address"
-                    placeholderTextColor={COLORS.neutralMedium}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                </View>
-                
-                <TouchableOpacity
-                  style={styles.inviteButton}
-                  onPress={handleInviteOwner}
-                  disabled={isInviting || !inviteEmail.trim()}
-                >
-                  {isInviting ? (
-                    <ActivityIndicator color={COLORS.white} />
-                  ) : (
-                    <>
-                      <Send size={20} color={COLORS.white} />
-                      <Text style={styles.inviteButtonText}>Invite Owner</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={styles.inviteButton}
+                onPress={() => {
+                  // Show email input
+                  Alert.prompt(
+                    'Invite Owner',
+                    'Enter the email address of the person you want to invite',
+                    [
+                      {
+                        text: 'Cancel',
+                        style: 'cancel',
+                      },
+                      {
+                        text: 'Invite',
+                        onPress: (email) => {
+                          if (email) {
+                            setInviteEmail(email);
+                            handleInviteOwner();
+                          }
+                        },
+                      },
+                    ],
+                    'plain-text',
+                    '',
+                    'email-address'
+                  );
+                }}
+              >
+                <UserPlus size={20} color={COLORS.white} />
+                <Text style={styles.inviteButtonText}>Invite Owner</Text>
+              </TouchableOpacity>
             )}
 
-            <View style={styles.ownersSection}>
-              <Text style={styles.sectionTitle}>Current Owners ({owners.length}/4)</Text>
-              
+            <View style={styles.ownersListContainer}>
               {isLoadingOwners ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={COLORS.primary} />
@@ -265,7 +237,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContainer: {
-    backgroundColor: COLORS.white,
+    backgroundColor: '#F8F8F8',
     borderRadius: 20,
     width: '100%',
     maxHeight: '80%',
@@ -278,6 +250,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.neutralLight,
+    backgroundColor: COLORS.white,
   },
   modalTitle: {
     fontFamily: 'Inter-Bold',
@@ -289,49 +262,27 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
-    maxHeight: '80%',
-  },
-  inviteSection: {
-    marginBottom: 24,
-  },
-  inputWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.neutralLight,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  textInput: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    flex: 1,
-    marginLeft: 12,
   },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 16,
     gap: 8,
+    marginBottom: 20,
   },
   inviteButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
   },
-  ownersSection: {
+  ownersListContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
     flex: 1,
-  },
-  sectionTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    marginBottom: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -355,19 +306,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
     borderWidth: 1,
     borderColor: COLORS.neutralLight,
+  },
+  ownerAvatarContainer: {
+    backgroundColor: '#F0F0F0',
   },
   ownerAvatar: {
     marginRight: 16,
   },
   ownerInfo: {
     flex: 1,
+    marginLeft: 16,
   },
   ownerName: {
     fontFamily: 'Inter-Bold',
@@ -383,6 +333,7 @@ const styles = StyleSheet.create({
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
+    color: COLORS.accent,
   },
   removeButton: {
     width: 36,
