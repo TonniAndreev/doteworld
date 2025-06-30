@@ -919,7 +919,7 @@ const styles = StyleSheet.create({
     color: COLORS.accent,
   },
   regularRoleText: {
-    color: COLORS.primary,
+    color: COLORS.neutralDark,
   },
   ownerActions: {
     flexDirection: 'row',
