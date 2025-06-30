@@ -8,13 +8,13 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  TextInput,
 } from 'react-native';
-import { X, Crown, Shield, Eye, UserX, UserPlus } from 'lucide-react-native';
+import { X, Crown, Shield, Eye, UserX, UserPlus, Mail, Send } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
 import UserAvatar from '@/components/common/UserAvatar';
-import DogInviteModal from '@/components/dog/DogInviteModal';
 
 interface DogOwnershipManagerProps {
   dogId: string;
@@ -26,10 +26,11 @@ interface DogOwnershipManagerProps {
 export default function DogOwnershipManager({ dogId, dogName, visible, onClose }: DogOwnershipManagerProps) {
   const [owners, setOwners] = useState<any[]>([]);
   const [isLoadingOwners, setIsLoadingOwners] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [isInviting, setIsInviting] = useState(false);
   
   const { user } = useAuth();
-  const { getDogOwners, removeCoOwner } = useDogOwnership();
+  const { getDogOwners, removeCoOwner, inviteCoOwner } = useDogOwnership();
 
   useEffect(() => {
     if (visible) {
@@ -51,8 +52,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
 
   const handleRemoveOwner = async (profileId: string, ownerName: string) => {
     Alert.alert(
-      'Remove Co-Owner',
-      `Are you sure you want to remove ${ownerName} as a co-owner of ${dogName}?`,
+      'Remove Owner',
+      `Are you sure you want to remove ${ownerName} as an owner of ${dogName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -61,15 +62,39 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
           onPress: async () => {
             const result = await removeCoOwner(dogId, profileId);
             if (result.success) {
-              Alert.alert('Success', 'Co-owner removed successfully');
+              Alert.alert('Success', 'Owner removed successfully');
               loadOwners();
             } else {
-              Alert.alert('Error', result.error || 'Failed to remove co-owner');
+              Alert.alert('Error', result.error || 'Failed to remove owner');
             }
           },
         },
       ]
     );
+  };
+
+  const handleInviteOwner = async () => {
+    if (!inviteEmail.trim()) {
+      Alert.alert('Error', 'Please enter an email address');
+      return;
+    }
+
+    setIsInviting(true);
+    try {
+      const result = await inviteCoOwner(dogId, inviteEmail.trim(), 'co-owner');
+      
+      if (result.success) {
+        Alert.alert('Success', 'Invitation sent successfully!');
+        setInviteEmail('');
+        onClose();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to send invitation');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setIsInviting(false);
+    }
   };
 
   const getRoleIcon = (role: string) => {
@@ -136,13 +161,9 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         <View style={styles.ownerRole}>
           {getRoleIcon(owner.role)}
           <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-            {owner.role.charAt(0).toUpperCase() + owner.role.slice(1)}
+            Owner
           </Text>
         </View>
-        
-        <Text style={styles.ownershipDate}>
-          Since {new Date(owner.ownership_since).toLocaleDateString()}
-        </Text>
       </View>
       
       {canRemoveOwner(owner) && (
@@ -157,39 +178,57 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   );
 
   return (
-    <>
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={visible}
-        onRequestClose={onClose}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Manage {dogName}'s Owners</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <X size={24} color={COLORS.neutralDark} />
-              </TouchableOpacity>
-            </View>
+    <Modal
+      animationType="fade"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Manage {dogName}'s Owners</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <X size={24} color={COLORS.neutralDark} />
+            </TouchableOpacity>
+          </View>
 
-            <View style={styles.content}>
-              <View style={styles.headerActions}>
-                {canInviteOwners() && (
-                  <TouchableOpacity 
-                    style={styles.inviteButton}
-                    onPress={() => {
-                      onClose();
-                      // Short delay to avoid modal animation conflicts
-                      setTimeout(() => setShowInviteModal(true), 300);
-                    }}
-                  >
-                    <UserPlus size={20} color={COLORS.white} />
-                    <Text style={styles.inviteButtonText}>Invite Co-Owner</Text>
-                  </TouchableOpacity>
-                )}
+          <View style={styles.content}>
+            {canInviteOwners() && (
+              <View style={styles.inviteSection}>
+                <View style={styles.inputWithIcon}>
+                  <Mail size={20} color={COLORS.neutralMedium} />
+                  <TextInput
+                    style={styles.textInput}
+                    value={inviteEmail}
+                    onChangeText={setInviteEmail}
+                    placeholder="Enter email address"
+                    placeholderTextColor={COLORS.neutralMedium}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                  />
+                </View>
+                
+                <TouchableOpacity
+                  style={styles.inviteButton}
+                  onPress={handleInviteOwner}
+                  disabled={isInviting || !inviteEmail.trim()}
+                >
+                  {isInviting ? (
+                    <ActivityIndicator color={COLORS.white} />
+                  ) : (
+                    <>
+                      <Send size={20} color={COLORS.white} />
+                      <Text style={styles.inviteButtonText}>Invite Owner</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
+            )}
 
+            <View style={styles.ownersSection}>
+              <Text style={styles.sectionTitle}>Current Owners ({owners.length}/4)</Text>
+              
               {isLoadingOwners ? (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="large" color={COLORS.primary} />
@@ -212,15 +251,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
             </View>
           </View>
         </View>
-      </Modal>
-
-      <DogInviteModal
-        visible={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        dogId={dogId}
-        dogName={dogName}
-      />
-    </>
+      </View>
+    </Modal>
   );
 }
 
@@ -259,8 +291,24 @@ const styles = StyleSheet.create({
     padding: 20,
     maxHeight: '80%',
   },
-  headerActions: {
-    marginBottom: 20,
+  inviteSection: {
+    marginBottom: 24,
+  },
+  inputWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  textInput: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    flex: 1,
+    marginLeft: 12,
   },
   inviteButton: {
     flexDirection: 'row',
@@ -275,6 +323,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
+  },
+  ownersSection: {
+    flex: 1,
+  },
+  sectionTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    marginBottom: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -300,9 +357,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
   },
   ownerAvatar: {
     marginRight: 16,
@@ -319,17 +378,11 @@ const styles = StyleSheet.create({
   ownerRole: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
     gap: 6,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
-  },
-  ownershipDate: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: COLORS.neutralMedium,
   },
   removeButton: {
     width: 36,
