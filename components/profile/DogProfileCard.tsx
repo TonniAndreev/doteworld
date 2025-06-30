@@ -72,8 +72,8 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
 
   const handleRemoveOwner = async (profileId: string, ownerName: string) => {
     Alert.alert(
-      'Remove Co-Owner',
-      `Are you sure you want to remove ${ownerName} as a co-owner of ${dog.name}?`,
+      'Remove Owner',
+      `Are you sure you want to remove ${ownerName} as an owner of ${dog.name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -82,10 +82,10 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
           onPress: async () => {
             const result = await removeCoOwner(dog.id, profileId);
             if (result.success) {
-              Alert.alert('Success', 'Co-owner removed successfully');
+              Alert.alert('Success', 'Owner removed successfully');
               loadOwners();
             } else {
-              Alert.alert('Error', result.error || 'Failed to remove co-owner');
+              Alert.alert('Error', result.error || 'Failed to remove owner');
             }
           },
         },
@@ -293,25 +293,27 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                 <View style={styles.ownersList}>
                   {displayedOwners.map((owner) => (
                     <View key={owner.profile_id} style={styles.ownerItem}>
-                      <UserAvatar
-                        userId={owner.profile_id}
-                        photoURL={owner.avatar_url}
-                        userName={`${owner.first_name} ${owner.last_name}`}
-                        size={32}
-                        style={styles.ownerAvatar}
-                      />
+                      <View style={styles.ownerAvatarWrapper}>
+                        <UserAvatar
+                          userId={owner.profile_id}
+                          photoURL={owner.avatar_url}
+                          userName={`${owner.first_name} ${owner.last_name}`}
+                          size={32}
+                          containerStyle={styles.ownerAvatarContainer}
+                        />
+                        <View style={styles.ownerRoleIcon}>
+                          {getRoleIcon(owner.role)}
+                        </View>
+                      </View>
                       
                       <View style={styles.ownerInfo}>
                         <Text style={styles.ownerName} numberOfLines={1}>
                           {`${owner.first_name} ${owner.last_name}`.trim()}
                         </Text>
                         
-                        <View style={styles.ownerRole}>
-                          {getRoleIcon(owner.role)}
-                          <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-                            {owner.role.charAt(0).toUpperCase() + owner.role.slice(1)}
-                          </Text>
-                        </View>
+                        <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
+                          {owner.role === 'owner' || owner.role === 'co-owner' ? 'Owner' : 'Caretaker'}
+                        </Text>
                       </View>
                       
                       {canRemoveOwner(owner) && (
@@ -500,7 +502,7 @@ const styles = StyleSheet.create({
   
   // Owners Section Styles
   ownersSection: {
-    backgroundColor: COLORS.neutralExtraLight,
+    backgroundColor: '#F8F8F8',
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
@@ -566,8 +568,20 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 1,
   },
-  ownerAvatar: {
+  ownerAvatarWrapper: {
+    position: 'relative',
     marginRight: 12,
+  },
+  ownerAvatarContainer: {
+    backgroundColor: '#F0F0F0',
+  },
+  ownerRoleIcon: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    padding: 2,
   },
   ownerInfo: {
     flex: 1,
@@ -578,14 +592,9 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 2,
   },
-  ownerRole: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    marginLeft: 4,
   },
   removeOwnerButton: {
     width: 24,

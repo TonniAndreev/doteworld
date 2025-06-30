@@ -51,8 +51,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
 
   const handleRemoveOwner = async (profileId: string, ownerName: string) => {
     Alert.alert(
-      'Remove Co-Owner',
-      `Are you sure you want to remove ${ownerName} as a co-owner of ${dogName}?`,
+      'Remove Owner',
+      `Are you sure you want to remove ${ownerName} as an owner of ${dogName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -61,10 +61,10 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
           onPress: async () => {
             const result = await removeCoOwner(dogId, profileId);
             if (result.success) {
-              Alert.alert('Success', 'Co-owner removed successfully');
+              Alert.alert('Success', 'Owner removed successfully');
               loadOwners();
             } else {
-              Alert.alert('Error', result.error || 'Failed to remove co-owner');
+              Alert.alert('Error', result.error || 'Failed to remove owner');
             }
           },
         },
@@ -120,13 +120,13 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
 
   const renderOwner = ({ item: owner }: { item: any }) => (
     <View style={styles.ownerItem}>
-      <View style={styles.ownerAvatarContainer}>
+      <View style={styles.ownerAvatarWrapper}>
         <UserAvatar
           userId={owner.profile_id}
           photoURL={owner.avatar_url}
           userName={`${owner.first_name} ${owner.last_name}`}
           size={40}
-          style={styles.ownerAvatar}
+          containerStyle={styles.ownerAvatarContainer}
         />
         <View style={styles.roleIconContainer}>
           {getRoleIcon(owner.role)}
@@ -139,11 +139,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         </Text>
         
         <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-          {owner.role.charAt(0).toUpperCase() + owner.role.slice(1)}
-        </Text>
-        
-        <Text style={styles.ownershipDate}>
-          Since {new Date(owner.ownership_since).toLocaleDateString()}
+          {owner.role === 'owner' ? 'Owner' : 
+           owner.role === 'co-owner' ? 'Owner' : 'Caretaker'}
         </Text>
       </View>
       
@@ -187,7 +184,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                     }}
                   >
                     <UserPlus size={20} color={COLORS.white} />
-                    <Text style={styles.inviteButtonText}>Invite Co-Owner</Text>
+                    <Text style={styles.inviteButtonText}>Invite Owner</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -303,11 +300,11 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
-  ownerAvatarContainer: {
+  ownerAvatarWrapper: {
     position: 'relative',
     marginRight: 16,
   },
-  ownerAvatar: {
+  ownerAvatarContainer: {
     backgroundColor: COLORS.neutralLight,
   },
   roleIconContainer: {
@@ -318,7 +315,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 2,
     borderWidth: 1,
-    borderColor: COLORS.neutralLight,
+    borderColor: COLORS.white,
   },
   ownerInfo: {
     flex: 1,
@@ -332,7 +329,6 @@ const styles = StyleSheet.create({
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
-    marginBottom: 4,
   },
   ownershipDate: {
     fontFamily: 'Inter-Regular',
