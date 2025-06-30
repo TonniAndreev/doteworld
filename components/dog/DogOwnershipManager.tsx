@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { X, Crown, Shield, Eye, UserX, UserPlus } from 'lucide-react-native';
+import { X, Crown, UserX, UserPlus } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
@@ -51,8 +51,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
 
   const handleRemoveOwner = async (profileId: string, ownerName: string) => {
     Alert.alert(
-      'Remove Co-Owner',
-      `Are you sure you want to remove ${ownerName} as a co-owner of ${dogName}?`,
+      'Remove Owner',
+      `Are you sure you want to remove ${ownerName} as an owner of ${dogName}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -61,10 +61,10 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
           onPress: async () => {
             const result = await removeCoOwner(dogId, profileId);
             if (result.success) {
-              Alert.alert('Success', 'Co-owner removed successfully');
+              Alert.alert('Success', 'Owner removed successfully');
               loadOwners();
             } else {
-              Alert.alert('Error', result.error || 'Failed to remove co-owner');
+              Alert.alert('Error', result.error || 'Failed to remove owner');
             }
           },
         },
@@ -72,30 +72,10 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     );
   };
 
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return <Crown size={16} color={COLORS.accent} />;
-      case 'co-owner':
-        return <Shield size={16} color={COLORS.primary} />;
-      case 'caretaker':
-        return <Eye size={16} color={COLORS.secondary} />;
-      default:
-        return null;
-    }
-  };
-
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'owner':
-        return COLORS.accent;
-      case 'co-owner':
-        return COLORS.primary;
-      case 'caretaker':
-        return COLORS.secondary;
-      default:
-        return COLORS.neutralMedium;
-    }
+  const isAlphaOwner = () => {
+    if (!user) return false;
+    const currentUserOwnership = owners.find(o => o.profile_id === user.id);
+    return currentUserOwnership?.role === 'owner';
   };
 
   const canRemoveOwner = (owner: any) => {
@@ -107,15 +87,8 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     // Can't remove the original owner
     if (owner.role === 'owner') return false;
     
-    // Check if current user has share permissions
-    const currentUserOwnership = owners.find(o => o.profile_id === user.id);
-    return currentUserOwnership?.permissions?.share === true;
-  };
-
-  const canInviteOwners = () => {
-    if (!user) return false;
-    const currentUserOwnership = owners.find(o => o.profile_id === user.id);
-    return currentUserOwnership?.permissions?.share === true;
+    // Check if current user is the alpha owner
+    return isAlphaOwner();
   };
 
   const renderOwner = ({ item: owner }: { item: any }) => (
@@ -124,25 +97,20 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         userId={owner.profile_id}
         photoURL={owner.avatar_url}
         userName={`${owner.first_name} ${owner.last_name}`}
-        size={40}
-        style={styles.ownerAvatar}
+        size={48}
+        containerStyle={styles.ownerAvatarContainer}
       />
       
       <View style={styles.ownerInfo}>
         <Text style={styles.ownerName}>
           {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
+          {owner.role === 'owner' && " (Alpha)"}
         </Text>
         
         <View style={styles.ownerRole}>
-          {getRoleIcon(owner.role)}
-          <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>
-            {owner.role.charAt(0).toUpperCase() + owner.role.slice(1)}
-          </Text>
+          <Crown size={16} color={COLORS.accent} />
+          <Text style={styles.roleText}>Owner</Text>
         </View>
-        
-        <Text style={styles.ownershipDate}>
-          Since {new Date(owner.ownership_since).toLocaleDateString()}
-        </Text>
       </View>
       
       {canRemoveOwner(owner) && (
@@ -159,7 +127,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   return (
     <>
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={visible}
         onRequestClose={onClose}
@@ -174,41 +142,41 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
             </View>
 
             <View style={styles.content}>
-              <View style={styles.headerActions}>
-                {canInviteOwners() && (
-                  <TouchableOpacity 
-                    style={styles.inviteButton}
-                    onPress={() => {
-                      onClose();
-                      // Short delay to avoid modal animation conflicts
-                      setTimeout(() => setShowInviteModal(true), 300);
-                    }}
-                  >
-                    <UserPlus size={20} color={COLORS.white} />
-                    <Text style={styles.inviteButtonText}>Invite Co-Owner</Text>
-                  </TouchableOpacity>
+              {isAlphaOwner() && (
+                <TouchableOpacity 
+                  style={styles.inviteButton}
+                  onPress={() => {
+                    onClose();
+                    // Short delay to avoid modal animation conflicts
+                    setTimeout(() => setShowInviteModal(true), 300);
+                  }}
+                >
+                  <UserPlus size={20} color={COLORS.white} />
+                  <Text style={styles.inviteButtonText}>Invite Owner</Text>
+                </TouchableOpacity>
+              )}
+
+              <View style={styles.ownersListContainer}>
+                {isLoadingOwners ? (
+                  <View style={styles.loadingContainer}>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.loadingText}>Loading owners...</Text>
+                  </View>
+                ) : (
+                  <FlatList
+                    data={owners}
+                    renderItem={renderOwner}
+                    keyExtractor={(item) => item.profile_id}
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={styles.ownersList}
+                    ListEmptyComponent={
+                      <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyText}>No owners found</Text>
+                      </View>
+                    }
+                  />
                 )}
               </View>
-
-              {isLoadingOwners ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                  <Text style={styles.loadingText}>Loading owners...</Text>
-                </View>
-              ) : (
-                <FlatList
-                  data={owners}
-                  renderItem={renderOwner}
-                  keyExtractor={(item) => item.profile_id}
-                  showsVerticalScrollIndicator={false}
-                  contentContainerStyle={styles.ownersList}
-                  ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                      <Text style={styles.emptyText}>No owners found</Text>
-                    </View>
-                  }
-                />
-              )}
             </View>
           </View>
         </View>
@@ -228,13 +196,16 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContainer: {
-    backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 20,
+    width: '100%',
     maxHeight: '80%',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -243,6 +214,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.neutralLight,
+    backgroundColor: COLORS.white,
   },
   modalTitle: {
     fontFamily: 'Inter-Bold',
@@ -253,25 +225,28 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   content: {
-    flex: 1,
     padding: 20,
-  },
-  headerActions: {
-    marginBottom: 20,
   },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 16,
     gap: 8,
+    marginBottom: 20,
   },
   inviteButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
+  },
+  ownersListContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 16,
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -295,17 +270,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: COLORS.neutralLight,
   },
-  ownerAvatar: {
-    marginRight: 16,
+  ownerAvatarContainer: {
+    backgroundColor: '#F0F0F0',
   },
   ownerInfo: {
     flex: 1,
+    marginLeft: 16,
   },
   ownerName: {
     fontFamily: 'Inter-Bold',
@@ -316,17 +289,12 @@ const styles = StyleSheet.create({
   ownerRole: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 6,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    marginLeft: 6,
-  },
-  ownershipDate: {
-    fontFamily: 'Inter-Regular',
     fontSize: 12,
-    color: COLORS.neutralMedium,
+    color: COLORS.accent,
   },
   removeButton: {
     width: 36,
