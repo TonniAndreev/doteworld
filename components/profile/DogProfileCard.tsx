@@ -25,8 +25,8 @@ interface DogOwner {
   role: 'owner' | 'co-owner' | 'caretaker';
   permissions: {
     edit: boolean;
-    delete: boolean;
     share: boolean;
+    delete: boolean;
   };
   ownership_since: string;
   invited_by?: string;
