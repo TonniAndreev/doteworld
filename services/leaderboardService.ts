@@ -45,7 +45,7 @@ export async function fetchLeaderboard(
       try {
         console.log('Fetching city leaderboard:', cityId);
         
-        // Fix: Query the view directly instead of using RPC
+        // Query the view directly instead of using RPC
         const { data: cityLeaderboard, error: cityLeaderboardError } = await supabase
           .from('city_leaderboard')
           .select('*')
