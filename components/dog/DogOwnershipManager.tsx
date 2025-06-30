@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
   Alert,
   TextInput,
+  ScrollView,
 } from 'react-native';
-import { X, Crown, UserX, UserPlus, Mail, Send, Search } from 'lucide-react-native';
+import { X, Crown, UserX, UserPlus, Mail, Send, Search, Check, ArrowRight, Shield } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,13 +34,35 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   const [isInviting, setIsInviting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showInviteForm, setShowInviteForm] = useState(false);
+  const [showSearchUsers, setShowSearchUsers] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showTransferConfirm, setShowTransferConfirm] = useState(false);
+  const [selectedUserForTransfer, setSelectedUserForTransfer] = useState<any>(null);
+  const [isTransferring, setIsTransferring] = useState(false);
   
   const { user } = useAuth();
-  const { getDogOwners, removeCoOwner, inviteCoOwner } = useDogOwnership();
+  const { 
+    getDogOwners, 
+    removeCoOwner, 
+    inviteCoOwner, 
+    searchUsersForDogOwnership,
+    addExistingOwner,
+    transferAlphaOwnership
+  } = useDogOwnership();
 
   useEffect(() => {
     if (visible) {
       loadOwners();
+      // Reset all state when modal opens
+      setShowInviteForm(false);
+      setShowSearchUsers(false);
+      setSearchQuery('');
+      setUserSearchQuery('');
+      setSearchResults([]);
+      setShowTransferConfirm(false);
+      setSelectedUserForTransfer(null);
     }
   }, [visible, dogId]);
 
@@ -105,6 +128,80 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     }
   };
 
+  const handleSearchUsers = useCallback(async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      const results = await searchUsersForDogOwnership(query, dogId);
+      setSearchResults(results);
+    } catch (error) {
+      console.error('Error searching users:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [dogId, searchUsersForDogOwnership]);
+
+  useEffect(() => {
+    const delaySearch = setTimeout(() => {
+      if (userSearchQuery.trim() && userSearchQuery.length >= 2) {
+        handleSearchUsers(userSearchQuery);
+      }
+    }, 500);
+
+    return () => clearTimeout(delaySearch);
+  }, [userSearchQuery, handleSearchUsers]);
+
+  const handleAddExistingUser = async (userId: string, userName: string) => {
+    try {
+      const result = await addExistingOwner(dogId, userId);
+      
+      if (result.success) {
+        Alert.alert('Success', `${userName} has been added as an owner of ${dogName}`);
+        setUserSearchQuery('');
+        setSearchResults([]);
+        setShowSearchUsers(false);
+        loadOwners();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to add user as owner');
+      }
+    } catch (error) {
+      console.error('Error adding user as owner:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    }
+  };
+
+  const handleTransferAlpha = (owner: any) => {
+    setSelectedUserForTransfer(owner);
+    setShowTransferConfirm(true);
+  };
+
+  const confirmTransferAlpha = async () => {
+    if (!selectedUserForTransfer) return;
+    
+    setIsTransferring(true);
+    try {
+      const result = await transferAlphaOwnership(dogId, selectedUserForTransfer.profile_id);
+      
+      if (result.success) {
+        Alert.alert('Success', `Alpha ownership has been transferred to ${selectedUserForTransfer.first_name} ${selectedUserForTransfer.last_name}`);
+        setShowTransferConfirm(false);
+        setSelectedUserForTransfer(null);
+        loadOwners();
+      } else {
+        Alert.alert('Error', result.error || 'Failed to transfer Alpha ownership');
+      }
+    } catch (error) {
+      console.error('Error transferring Alpha ownership:', error);
+      Alert.alert('Error', 'An unexpected error occurred');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
   const isAlphaOwner = () => {
     if (!user) return false;
     const currentUserOwnership = owners.find(o => o.profile_id === user.id);
@@ -124,6 +221,16 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     return isAlphaOwner();
   };
 
+  const canTransferAlphaTo = (owner: any) => {
+    if (!user || !isAlphaOwner()) return false;
+    
+    // Can't transfer to yourself (you're already Alpha)
+    if (owner.profile_id === user.id) return false;
+    
+    // Can only transfer to co-owners, not caretakers
+    return owner.role === 'co-owner';
+  };
+
   // Filter owners based on search query
   const filteredOwners = searchQuery.trim() === '' 
     ? owners 
@@ -132,7 +239,10 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
       );
 
   const renderOwner = ({ item: owner }: { item: any }) => (
-    <View style={styles.ownerItem}>
+    <View style={[
+      styles.ownerItem,
+      owner.role === 'owner' && styles.alphaOwnerItem
+    ]}>
       <UserAvatar
         userId={owner.profile_id}
         photoURL={owner.avatar_url}
@@ -147,19 +257,67 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         </Text>
         
         <View style={styles.ownerRole}>
-          <Crown size={16} color={COLORS.accent} />
-          <Text style={styles.roleText}>
+          <Crown size={16} color={owner.role === 'owner' ? COLORS.accent : COLORS.primary} />
+          <Text style={[
+            styles.roleText,
+            owner.role === 'owner' ? styles.alphaRoleText : styles.regularRoleText
+          ]}>
             {owner.role === 'owner' ? 'Alpha Owner' : 'Owner'}
           </Text>
         </View>
       </View>
       
-      {canRemoveOwner(owner) && (
+      <View style={styles.ownerActions}>
+        {canTransferAlphaTo(owner) && (
+          <TouchableOpacity
+            style={styles.transferButton}
+            onPress={() => handleTransferAlpha(owner)}
+          >
+            <ArrowRight size={16} color={COLORS.primary} />
+          </TouchableOpacity>
+        )}
+        
+        {canRemoveOwner(owner) && (
+          <TouchableOpacity
+            style={styles.removeButton}
+            onPress={() => handleRemoveOwner(owner.profile_id, `${owner.first_name} ${owner.last_name}`)}
+          >
+            <UserX size={16} color={COLORS.error} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  const renderSearchResult = ({ item: user }: { item: any }) => (
+    <View style={styles.searchResultItem}>
+      <UserAvatar
+        userId={user.id}
+        photoURL={user.avatar_url}
+        userName={`${user.first_name} ${user.last_name}`}
+        size={40}
+        style={styles.searchResultAvatar}
+      />
+      
+      <View style={styles.searchResultInfo}>
+        <Text style={styles.searchResultName}>
+          {`${user.first_name || ''} ${user.last_name || ''}`.trim()}
+        </Text>
+        <Text style={styles.searchResultEmail}>{user.email}</Text>
+      </View>
+      
+      {user.is_already_owner ? (
+        <View style={styles.alreadyOwnerBadge}>
+          <Check size={16} color={COLORS.success} />
+          <Text style={styles.alreadyOwnerText}>Owner</Text>
+        </View>
+      ) : (
         <TouchableOpacity
-          style={styles.removeButton}
-          onPress={() => handleRemoveOwner(owner.profile_id, `${owner.first_name} ${owner.last_name}`)}
+          style={styles.addButton}
+          onPress={() => handleAddExistingUser(user.id, `${user.first_name} ${user.last_name}`)}
         >
-          <UserX size={20} color={COLORS.error} />
+          <UserPlus size={16} color={COLORS.white} />
+          <Text style={styles.addButtonText}>Add</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -195,17 +353,47 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                 />
               </View>
 
-              {/* Invite Form Toggle */}
+              {/* Action Buttons */}
               {isAlphaOwner() && (
-                <TouchableOpacity 
-                  style={styles.inviteButton}
-                  onPress={() => setShowInviteForm(!showInviteForm)}
-                >
-                  <UserPlus size={20} color={COLORS.white} />
-                  <Text style={styles.inviteButtonText}>
-                    {showInviteForm ? 'Cancel Invite' : 'Invite Owner'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    style={[
+                      styles.actionButton,
+                      showInviteForm && styles.activeActionButton
+                    ]}
+                    onPress={() => {
+                      setShowInviteForm(!showInviteForm);
+                      setShowSearchUsers(false);
+                    }}
+                  >
+                    <Mail size={20} color={showInviteForm ? COLORS.white : COLORS.primary} />
+                    <Text style={[
+                      styles.actionButtonText,
+                      showInviteForm && styles.activeActionButtonText
+                    ]}>
+                      Invite by Email
+                    </Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[
+                      styles.actionButton,
+                      showSearchUsers && styles.activeActionButton
+                    ]}
+                    onPress={() => {
+                      setShowSearchUsers(!showSearchUsers);
+                      setShowInviteForm(false);
+                    }}
+                  >
+                    <Search size={20} color={showSearchUsers ? COLORS.white : COLORS.primary} />
+                    <Text style={[
+                      styles.actionButtonText,
+                      showSearchUsers && styles.activeActionButtonText
+                    ]}>
+                      Find Users
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               )}
 
               {/* Invite Form */}
@@ -258,8 +446,52 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                 </View>
               )}
 
+              {/* User Search */}
+              {showSearchUsers && (
+                <View style={styles.userSearchContainer}>
+                  <View style={styles.userSearchInputContainer}>
+                    <Search size={20} color={COLORS.neutralMedium} style={styles.searchIcon} />
+                    <TextInput
+                      style={styles.searchInput}
+                      placeholder="Search by name or email..."
+                      value={userSearchQuery}
+                      onChangeText={setUserSearchQuery}
+                      placeholderTextColor={COLORS.neutralMedium}
+                      autoFocus
+                    />
+                  </View>
+                  
+                  {isSearching ? (
+                    <View style={styles.searchingContainer}>
+                      <ActivityIndicator size="small" color={COLORS.primary} />
+                      <Text style={styles.searchingText}>Searching...</Text>
+                    </View>
+                  ) : userSearchQuery.length > 0 && searchResults.length === 0 ? (
+                    <View style={styles.noResultsContainer}>
+                      <Text style={styles.noResultsText}>No users found</Text>
+                    </View>
+                  ) : (
+                    <FlatList
+                      data={searchResults}
+                      renderItem={renderSearchResult}
+                      keyExtractor={(item) => item.id}
+                      style={styles.searchResultsList}
+                      contentContainerStyle={styles.searchResultsContent}
+                    />
+                  )}
+                </View>
+              )}
+
+              {/* Owners List */}
               <View style={styles.ownersListContainer}>
-                <Text style={styles.sectionTitle}>Current Owners</Text>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Current Owners</Text>
+                  {isAlphaOwner() && (
+                    <View style={styles.ownerCountBadge}>
+                      <Text style={styles.ownerCountText}>{owners.length}</Text>
+                    </View>
+                  )}
+                </View>
                 
                 {isLoadingOwners ? (
                   <View style={styles.loadingContainer}>
@@ -285,7 +517,77 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                   />
                 )}
               </View>
+
+              {/* Ownership Levels Info */}
+              <View style={styles.infoContainer}>
+                <Text style={styles.infoTitle}>Ownership Levels</Text>
+                <View style={styles.infoItem}>
+                  <Crown size={16} color={COLORS.accent} />
+                  <Text style={styles.infoText}>
+                    <Text style={styles.infoHighlight}>Alpha Owner:</Text> Full management rights, can add/remove owners
+                  </Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <Shield size={16} color={COLORS.primary} />
+                  <Text style={styles.infoText}>
+                    <Text style={styles.infoHighlight}>Owner:</Text> Can view and interact with profile
+                  </Text>
+                </View>
+              </View>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Alpha Transfer Confirmation Modal */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={showTransferConfirm}
+        onRequestClose={() => setShowTransferConfirm(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModalContainer}>
+            <Text style={styles.confirmTitle}>Transfer Alpha Ownership</Text>
+            
+            {selectedUserForTransfer && (
+              <>
+                <Text style={styles.confirmText}>
+                  Are you sure you want to transfer Alpha ownership to{' '}
+                  <Text style={styles.confirmHighlight}>
+                    {selectedUserForTransfer.first_name} {selectedUserForTransfer.last_name}
+                  </Text>?
+                </Text>
+                
+                <Text style={styles.confirmWarning}>
+                  This action will make them the Alpha Owner with full control over {dogName}'s profile. You will become a regular Owner.
+                </Text>
+                
+                <View style={styles.confirmButtons}>
+                  <TouchableOpacity
+                    style={styles.cancelButton}
+                    onPress={() => {
+                      setShowTransferConfirm(false);
+                      setSelectedUserForTransfer(null);
+                    }}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity
+                    style={styles.confirmButton}
+                    onPress={confirmTransferAlpha}
+                    disabled={isTransferring}
+                  >
+                    {isTransferring ? (
+                      <ActivityIndicator size="small" color={COLORS.white} />
+                    ) : (
+                      <Text style={styles.confirmButtonText}>Transfer</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
         </View>
       </Modal>
@@ -354,6 +656,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.neutralDark,
     paddingVertical: 12,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  activeActionButton: {
+    backgroundColor: COLORS.primary,
+  },
+  actionButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.primary,
+  },
+  activeActionButtonText: {
+    color: COLORS.white,
   },
   inviteButton: {
     flexDirection: 'row',
@@ -427,14 +756,129 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: COLORS.white,
   },
+  userSearchContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight,
+  },
+  userSearchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.neutralLight,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+  },
+  searchingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  searchingText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginLeft: 8,
+  },
+  noResultsContainer: {
+    padding: 16,
+    alignItems: 'center',
+  },
+  noResultsText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+  },
+  searchResultsList: {
+    maxHeight: 200,
+  },
+  searchResultsContent: {
+    paddingBottom: 8,
+  },
+  searchResultItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.neutralLight,
+  },
+  searchResultAvatar: {
+    marginRight: 12,
+  },
+  searchResultInfo: {
+    flex: 1,
+  },
+  searchResultName: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 2,
+  },
+  searchResultEmail: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: COLORS.neutralMedium,
+  },
+  alreadyOwnerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.successLight,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    gap: 4,
+  },
+  alreadyOwnerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.success,
+  },
+  addButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    gap: 4,
+  },
+  addButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 12,
+    color: COLORS.white,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
   sectionTitle: {
     fontFamily: 'Inter-Bold',
     fontSize: 18,
     color: COLORS.neutralDark,
-    marginBottom: 12,
+    marginRight: 8,
+  },
+  ownerCountBadge: {
+    backgroundColor: COLORS.primaryLight,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  ownerCountText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 12,
+    color: COLORS.primary,
   },
   ownersListContainer: {
     flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -461,6 +905,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.neutralLight,
   },
+  alphaOwnerItem: {
+    borderColor: COLORS.accentLight,
+    backgroundColor: COLORS.neutralExtraLight,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.accent,
+  },
   ownerAvatar: {
     marginRight: 16,
   },
@@ -481,12 +931,29 @@ const styles = StyleSheet.create({
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
+  },
+  alphaRoleText: {
     color: COLORS.accent,
   },
+  regularRoleText: {
+    color: COLORS.primary,
+  },
+  ownerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  transferButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   removeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: COLORS.errorLight,
     justifyContent: 'center',
     alignItems: 'center',
@@ -501,5 +968,98 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 16,
     color: COLORS.neutralMedium,
+  },
+  infoContainer: {
+    backgroundColor: COLORS.neutralExtraLight,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  infoTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 14,
+    color: COLORS.neutralDark,
+    marginBottom: 8,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+    gap: 8,
+  },
+  infoText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 12,
+    color: COLORS.neutralDark,
+    flex: 1,
+  },
+  infoHighlight: {
+    fontFamily: 'Inter-Bold',
+  },
+  confirmModalContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: 20,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  confirmTitle: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 20,
+    color: COLORS.neutralDark,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  confirmText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+    marginBottom: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  confirmHighlight: {
+    fontFamily: 'Inter-Bold',
+    color: COLORS.primary,
+  },
+  confirmWarning: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.warning,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+    backgroundColor: COLORS.warningLight,
+    padding: 12,
+    borderRadius: 8,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.neutralLight,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 16,
+    color: COLORS.neutralDark,
+  },
+  confirmButton: {
+    flex: 1,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  confirmButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.white,
   },
 });
