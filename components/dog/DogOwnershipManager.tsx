@@ -149,7 +149,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
         <View style={styles.ownerRole}>
           <Crown size={16} color={COLORS.accent} />
           <Text style={styles.roleText}>
-            {owner.role === 'owner' ? '(Alpha) Owner' : 'Owner'}
+            {owner.role === 'owner' ? 'Alpha Owner' : 'Owner'}
           </Text>
         </View>
       </View>
