@@ -622,11 +622,6 @@ export function useFriends() {
     }
   };
 
-  // Helper function to convert degrees to radians
-  const toRad = (degrees: number): number => {
-    return degrees * (Math.PI / 180);
-  };
-
   return {
     friends,
     friendRequests,
