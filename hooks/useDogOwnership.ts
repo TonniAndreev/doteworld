@@ -7,8 +7,8 @@ interface DogOwner {
   role: 'owner' | 'co-owner' | 'caretaker';
   permissions: {
     edit: boolean;
-    delete: boolean;
     share: boolean;
+    delete: boolean;
   };
   ownership_since: string;
   invited_by?: string;
@@ -34,6 +34,15 @@ interface DogOwnershipInvite {
   expires_at: string;
   inviter_name: string;
   dog_name: string;
+}
+
+interface SearchUserResult {
+  id: string;
+  first_name: string;
+  last_name: string;
+  avatar_url?: string;
+  email: string;
+  is_already_owner: boolean;
 }
 
 export function useDogOwnership() {
@@ -89,7 +98,7 @@ export function useDogOwnership() {
     if (!user) return [];
 
     try {
-      console.log('Fetching dog invites for user:', user.id);
+      console.log('Fetching dog ownership invites for user:', user.id);
       
       const { data, error } = await supabase
         .from('dog_ownership_invites')
@@ -350,6 +359,111 @@ export function useDogOwnership() {
     }
   };
 
+  // New function to search for users to add as dog owners
+  const searchUsersForDogOwnership = async (
+    searchQuery: string,
+    dogId: string
+  ): Promise<SearchUserResult[]> => {
+    if (!user || !searchQuery.trim() || !dogId) return [];
+
+    try {
+      setIsLoading(true);
+      
+      // Call the RPC function to search for users
+      const { data, error } = await supabase.rpc('search_users_for_dog_ownership', {
+        p_search_query: searchQuery.trim(),
+        p_dog_id: dogId,
+        p_limit: 10
+      });
+
+      if (error) {
+        console.error('Error searching users:', error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error('Error searching users:', error);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // New function to add an existing user as a dog owner
+  const addExistingOwner = async (
+    dogId: string,
+    profileId: string,
+    role: 'co-owner' | 'caretaker' = 'co-owner'
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    try {
+      setIsLoading(true);
+      
+      // Call the RPC function to add the user as an owner
+      const { data, error } = await supabase.rpc('add_dog_owner', {
+        p_dog_id: dogId,
+        p_profile_id: profileId,
+        p_role: role
+      });
+
+      if (error) {
+        console.error('Error adding dog owner:', error);
+        return { success: false, error: error.message || 'Failed to add owner' };
+      }
+
+      if (!data) {
+        return { success: false, error: 'Failed to add owner' };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error adding dog owner:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // New function to transfer Alpha ownership
+  const transferAlphaOwnership = async (
+    dogId: string,
+    newAlphaProfileId: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    try {
+      setIsLoading(true);
+      
+      // Call the RPC function to transfer Alpha ownership
+      const { data, error } = await supabase.rpc('transfer_alpha_ownership', {
+        p_dog_id: dogId,
+        p_new_alpha_profile_id: newAlphaProfileId,
+        p_current_alpha_profile_id: user.id
+      });
+
+      if (error) {
+        console.error('Error transferring Alpha ownership:', error);
+        return { success: false, error: error.message || 'Failed to transfer ownership' };
+      }
+
+      if (!data) {
+        return { success: false, error: 'Failed to transfer ownership' };
+      }
+
+      // Refresh user data to ensure consistency
+      await refreshUserData();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error transferring Alpha ownership:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Function to handle deep link invites
   const handleDeepLinkInvite = async (inviteToken: string): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'Not authenticated' };
@@ -416,5 +530,8 @@ export function useDogOwnership() {
     updateDogData,
     updateDogPermissions,
     handleDeepLinkInvite,
+    searchUsersForDogOwnership,
+    addExistingOwner,
+    transferAlphaOwnership
   };
 }
