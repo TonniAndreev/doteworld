@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
 import UserAvatar from '@/components/common/UserAvatar';
 import { COLORS } from '@/constants/theme';
