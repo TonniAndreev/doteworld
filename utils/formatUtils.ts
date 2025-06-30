@@ -34,12 +34,18 @@ export function formatArea(squareMeters: number): string {
   }
   
   if (squareMeters < 1000) {
-    // Under 1km², show in square meters with no decimal places
+    // Under 1000m², show in square meters with no decimal places
     return `${formatNumber(Math.round(squareMeters))} m²`;
   } else {
-    // Over 1km², show in square kilometers with 2 decimal places
-    // Round up to ensure we don't show smaller values than actual
-    const squareKm = Math.ceil(squareMeters / 1000000 * 100) / 100;
+    // Convert to square kilometers (1 km² = 1,000,000 m²)
+    const squareKm = squareMeters / 1000000;
+    
+    // For values that would display as 0.00 km², show in m² instead
+    if (squareKm < 0.01) {
+      return `${formatNumber(Math.round(squareMeters))} m²`;
+    }
+    
+    // Otherwise show in square kilometers with 2 decimal places
     return `${formatNumber(squareKm, 2)} km²`;
   }
 }
