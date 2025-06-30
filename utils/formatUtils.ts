@@ -1,5 +1,22 @@
 /**
  * Format a territory size value with appropriate units
+ * @param size Territory size in square meters
+ * @returns Formatted string with appropriate units (m² or km²)
+ */
+export function formatArea(size: number): string {
+  if (size === 0) return '0 m²';
+  
+  // If less than 1 square kilometer, show in square meters
+  if (size < 1000000) {
+    return `${Math.round(size)} m²`;
+  }
+  
+  // Otherwise show in square kilometers with 2 decimal places
+  return `${(size / 1000000).toFixed(2)} km²`;
+}
+
+/**
+ * Format a territory size value with appropriate units
  * @param size Territory size in square kilometers
  * @returns Formatted string with appropriate units (m² or km²)
  */
