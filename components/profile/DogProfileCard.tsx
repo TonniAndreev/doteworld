@@ -116,11 +116,11 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
-        return <Crown size={14} color={COLORS.accent} />;
+        return <Crown size={16} color="#FFD700" />;
       case 'co-owner':
-        return <Shield size={14} color={COLORS.primary} />;
+        return <Shield size={16} color={COLORS.primary} />;
       case 'caretaker':
-        return <Eye size={14} color={COLORS.secondary} />;
+        return <Eye size={16} color={COLORS.secondary} />;
       default:
         return null;
     }
@@ -129,7 +129,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return COLORS.accent;
+        return '#FFD700';
       case 'co-owner':
         return COLORS.primary;
       case 'caretaker':
@@ -298,7 +298,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                           userId={owner.profile_id}
                           photoURL={owner.avatar_url}
                           userName={`${owner.first_name} ${owner.last_name}`}
-                          size={32}
+                          size={40}
                           containerStyle={styles.ownerAvatarContainer}
                         />
                         <View style={styles.ownerRoleIcon}>
@@ -406,9 +406,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dogPhoto: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     borderWidth: 3,
     borderColor: COLORS.primaryLight,
   },

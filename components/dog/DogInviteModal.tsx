@@ -89,7 +89,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
       <View style={styles.modalOverlay}>
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Invite Co-Owner</Text>
+            <Text style={styles.modalTitle}>Invite Owner</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <X size={24} color={COLORS.neutralDark} />
             </TouchableOpacity>
@@ -110,7 +110,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
                 >
                   <Shield size={20} color={inviteRole === 'co-owner' ? COLORS.white : COLORS.primary} />
                   <Text style={[styles.roleOptionText, inviteRole === 'co-owner' && styles.selectedRoleOptionText]}>
-                    Co-Owner
+                    Owner
                   </Text>
                 </TouchableOpacity>
 
@@ -198,7 +198,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
               <View style={styles.explanationItem}>
                 <Shield size={16} color={COLORS.primary} />
                 <Text style={styles.explanationText}>
-                  <Text style={styles.boldText}>Co-Owner:</Text> Can edit dog info and invite others
+                  <Text style={styles.boldText}>Owner:</Text> Can edit dog info and invite others
                 </Text>
               </View>
               <View style={styles.explanationItem}>
@@ -219,13 +219,14 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    padding: 20,
   },
   modalContainer: {
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     maxHeight: '90%',
+    width: '100%',
   },
   modalHeader: {
     flexDirection: 'row',

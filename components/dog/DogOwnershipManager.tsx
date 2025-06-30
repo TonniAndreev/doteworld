@@ -125,7 +125,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
           userId={owner.profile_id}
           photoURL={owner.avatar_url}
           userName={`${owner.first_name} ${owner.last_name}`}
-          size={40}
+          size={50}
           containerStyle={styles.ownerAvatarContainer}
         />
         <View style={styles.roleIconContainer}>
@@ -227,13 +227,14 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    justifyContent: 'center',
+    padding: 20,
   },
   modalContainer: {
     backgroundColor: COLORS.white,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderRadius: 20,
     maxHeight: '80%',
+    width: '100%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -305,7 +306,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   ownerAvatarContainer: {
-    backgroundColor: COLORS.neutralLight,
+    backgroundColor: '#F0F0F0',
   },
   roleIconContainer: {
     position: 'absolute',
@@ -329,11 +330,6 @@ const styles = StyleSheet.create({
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
-  },
-  ownershipDate: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: COLORS.neutralMedium,
   },
   removeButton: {
     width: 36,
