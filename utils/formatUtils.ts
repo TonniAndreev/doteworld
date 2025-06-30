@@ -33,7 +33,7 @@ export function formatArea(squareMeters: number): string {
     return '0 m²';
   }
   
-  if (squareMeters < 1000) {
+  if (squareMeters < 100000) {
     // Under 1km², show in square meters with no decimal places
     return `${formatNumber(Math.round(squareMeters))} m²`;
   } else {
