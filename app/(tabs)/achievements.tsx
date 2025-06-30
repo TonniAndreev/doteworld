@@ -99,9 +99,16 @@ export default function BadgesScreen() {
     return `${Math.round((badge.currentValue / badge.targetValue) * 100)}%`;
   };
 
+  // Helper function to get progress percentage for the progress bar
+  const getProgressPercentage = (badge: any) => {
+    if (badge.completed) return 100;
+    return Math.min(100, (badge.currentValue / badge.targetValue) * 100);
+  };
+
   const renderBadgeItem = ({ item: badge }: { item: any }) => {
     const isInProgress = badge.currentValue > 0 && !badge.completed;
     const isNotStarted = badge.currentValue === 0 && !badge.completed;
+    const progressPercentage = getProgressPercentage(badge);
     
     return (
       <TouchableOpacity 
@@ -150,7 +157,7 @@ export default function BadgesScreen() {
               <View 
                 style={[
                   styles.progressFill, 
-                  { width: `${Math.min(100, (badge.currentValue / badge.targetValue) * 100)}%` },
+                  { width: `${progressPercentage}%` },
                   isNotStarted && styles.incompleteProgressFill,
                   isInProgress && styles.inProgressFill
                 ]} 
@@ -266,7 +273,7 @@ export default function BadgesScreen() {
                     style={[
                       styles.modalProgressFill, 
                       { 
-                        width: `${Math.min(100, (selectedBadge.currentValue / selectedBadge.targetValue) * 100)}%` 
+                        width: `${getProgressPercentage(selectedBadge)}%` 
                       },
                       selectedBadge.currentValue === 0 && !selectedBadge.completed && styles.incompleteProgressFill,
                       selectedBadge.currentValue > 0 && !selectedBadge.completed && styles.inProgressFill
