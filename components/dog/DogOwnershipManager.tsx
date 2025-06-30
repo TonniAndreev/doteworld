@@ -75,7 +75,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   const getRoleIcon = (role: string) => {
     switch (role) {
       case 'owner':
-        return <Crown size={16} color={COLORS.accent} />;
+        return <Crown size={16} color="#FFD700" />;
       case 'co-owner':
         return <Shield size={16} color={COLORS.primary} />;
       case 'caretaker':
@@ -88,7 +88,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   const getRoleColor = (role: string) => {
     switch (role) {
       case 'owner':
-        return COLORS.accent;
+        return '#FFD700';
       case 'co-owner':
         return COLORS.primary;
       case 'caretaker':
@@ -158,7 +158,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
   return (
     <>
       <Modal
-        animationType="slide"
+        animationType="fade"
         transparent={true}
         visible={visible}
         onRequestClose={onClose}
@@ -173,21 +173,19 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
             </View>
 
             <View style={styles.content}>
-              <View style={styles.headerActions}>
-                {canInviteOwners() && (
-                  <TouchableOpacity 
-                    style={styles.inviteButton}
-                    onPress={() => {
-                      onClose();
-                      // Short delay to avoid modal animation conflicts
-                      setTimeout(() => setShowInviteModal(true), 300);
-                    }}
-                  >
-                    <UserPlus size={20} color={COLORS.white} />
-                    <Text style={styles.inviteButtonText}>Invite Owner</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+              {canInviteOwners() && (
+                <TouchableOpacity 
+                  style={styles.inviteButton}
+                  onPress={() => {
+                    onClose();
+                    // Short delay to avoid modal animation conflicts
+                    setTimeout(() => setShowInviteModal(true), 300);
+                  }}
+                >
+                  <UserPlus size={20} color={COLORS.white} />
+                  <Text style={styles.inviteButtonText}>Invite Owner</Text>
+                </TouchableOpacity>
+              )}
 
               {isLoadingOwners ? (
                 <View style={styles.loadingContainer}>
@@ -235,6 +233,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     maxHeight: '80%',
     width: '100%',
+    overflow: 'hidden',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -253,20 +252,17 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   content: {
-    flex: 1,
     padding: 20,
-  },
-  headerActions: {
-    marginBottom: 20,
   },
   inviteButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.primary,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 12,
     gap: 8,
+    marginBottom: 20,
   },
   inviteButtonText: {
     fontFamily: 'Inter-Bold',

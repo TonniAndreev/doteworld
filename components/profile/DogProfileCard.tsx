@@ -308,7 +308,7 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                       
                       <View style={styles.ownerInfo}>
                         <Text style={styles.ownerName} numberOfLines={1}>
-                          {`${owner.first_name} ${owner.last_name}`.trim()}
+                          {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
                         </Text>
                         
                         <Text style={[styles.roleText, { color: getRoleColor(owner.role) }]}>

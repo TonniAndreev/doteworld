@@ -81,7 +81,7 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
 
   return (
     <Modal
-      animationType="slide"
+      animationType="fade"
       transparent={true}
       visible={visible}
       onRequestClose={onClose}
