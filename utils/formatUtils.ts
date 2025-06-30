@@ -33,12 +33,12 @@ export function formatArea(squareMeters: number): string {
     return '0 m²';
   }
   
-  // For values between 100,000 and 1,000,000 m², show as k m²
-  if (squareMeters >= 100000 && squareMeters < 1000000) {
+  // For values between 10,000 and 1,000,000 m², show as k m²
+  if (squareMeters >= 10000 && squareMeters < 1000000) {
     const kSquareMeters = squareMeters / 1000;
     return `${formatNumber(Math.round(kSquareMeters))}k m²`;
-  } else if (squareMeters < 100000) {
-    // Under 100k m², show in square meters with no decimal places
+  } else if (squareMeters < 10000) {
+    // Under 10k m², show in square meters with no decimal places
     return `${formatNumber(Math.round(squareMeters))} m²`;
   } else {
     // Convert to square kilometers (1 km² = 1,000,000 m²)
