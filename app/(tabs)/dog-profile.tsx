@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { ChevronLeft, Plus, CreditCard as Edit, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
+import { ChevronLeft, Pencil, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -436,7 +436,7 @@ export default function DogProfileScreen() {
             style={styles.addButton}
             onPress={handleAddDog}
           >
-            <Plus size={24} color={COLORS.primary} />
+            <ChevronLeft size={24} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -456,7 +456,7 @@ export default function DogProfileScreen() {
               style={styles.addFirstDogButton}
               onPress={handleAddDog}
             >
-              <Plus size={20} color={COLORS.white} />
+              <ChevronLeft size={20} color={COLORS.white} />
               <Text style={styles.addFirstDogText}>Add Your First Dog</Text>
             </TouchableOpacity>
           </View>
@@ -473,7 +473,7 @@ export default function DogProfileScreen() {
                     style={styles.editButton}
                     onPress={() => handleEditDog(dog)}
                   >
-                    <Edit size={16} color={COLORS.white} />
+                    <Pencil size={16} color={COLORS.white} />
                     <Text style={styles.editButtonText}>Edit Profile</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
@@ -758,7 +758,7 @@ export default function DogProfileScreen() {
                   style={styles.photoActionButton}
                   onPress={pickImage}
                 >
-                  <Plus size={20} color={COLORS.white} />
+                  <ChevronLeft size={20} color={COLORS.white} />
                   <Text style={styles.photoActionText}>Choose Photo</Text>
                 </TouchableOpacity>
               </View>

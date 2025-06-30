@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ScrollView, Alert } from 'react-native';
-import { Calendar, Heart, Scale, Info, Users, Crown, UserPlus } from 'lucide-react-native';
+import { Calendar, Heart, Scale, Info, Users, Crown, UserPlus, Pencil } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { getDogAvatarSource } from '@/utils/dogAvatarUtils';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
@@ -58,7 +58,9 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
   const loadOwners = async () => {
     setIsLoadingOwners(true);
     try {
+      console.log('Loading owners for dog:', dog.id);
       const ownersData = await getDogOwners(dog.id);
+      console.log('Owners data loaded:', ownersData);
       setOwners(ownersData);
     } catch (error) {
       console.error('Error loading owners:', error);
