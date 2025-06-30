@@ -3,6 +3,7 @@ import { Bell } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import { useNotifications } from '@/contexts/NotificationContext';
+import NotificationBadge from '@/components/notifications/NotificationBadge';
 
 export default function NotificationsButton() {
   const { unreadCount } = useNotifications();
@@ -15,11 +16,7 @@ export default function NotificationsButton() {
     <TouchableOpacity style={styles.container} onPress={handlePress}>
       <Bell size={24} color={COLORS.neutralDark} />
       {unreadCount > 0 && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </Text>
-        </View>
+        <NotificationBadge count={unreadCount} size="small" style={styles.badge} />
       )}
     </TouchableOpacity>
   );
@@ -34,17 +31,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: COLORS.primary,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 12,
-    color: COLORS.white,
   },
 });

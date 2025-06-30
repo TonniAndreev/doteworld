@@ -1,44 +1,43 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
-  RefreshControl,
+  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { ChevronLeft, UserPlus, UserCheck, Award, MapPin, Crown, X, Check, MoveHorizontal as MoreHorizontal } from 'lucide-react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { ChevronLeft, Trash2, Settings } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
-import { useNotifications, Notification } from '@/contexts/NotificationContext';
-import { useFriends } from '@/hooks/useFriends';
-import { useDogOwnership } from '@/hooks/useDogOwnership';
-import UserAvatar from '@/components/common/UserAvatar';
+import { useNotifications } from '@/contexts/NotificationContext';
+import NotificationList from '@/components/notifications/NotificationList';
 
 export default function NotificationsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { 
     notifications, 
-    markAsRead, 
     markAllAsRead, 
-    removeNotification 
+    removeNotification,
+    refreshNotifications,
+    unreadCount
   } = useNotifications();
-  const { acceptFriendRequest, declineFriendRequest } = useFriends();
-  const { acceptInvite, declineInvite } = useDogOwnership();
+
+  // Refresh notifications when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      handleRefresh();
+    }, [])
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    // In a real app, you might refetch notifications here
-    setTimeout(() => setRefreshing(false), 1000);
+    await refreshNotifications();
+    setRefreshing(false);
   };
 
-  const handleNotificationPress = (notification: Notification) => {
-    if (!notification.read) {
-      markAsRead(notification.id);
-    }
-
+  const handleNotificationPress = (notification: any) => {
     // Handle different notification types
     switch (notification.type) {
       case 'friend_request':
@@ -58,173 +57,68 @@ export default function NotificationsScreen() {
         router.push('/(tabs)');
         break;
       case 'dog_invite':
+      case 'dog_ownership':
+      case 'alpha_transfer':
         // Navigate to profile screen where invites are shown
         router.push('/(tabs)/profile');
         break;
-    }
-  };
-
-  const handleAcceptFriendRequest = async (notification: Notification) => {
-    if (notification.data?.friendshipId) {
-      await acceptFriendRequest(notification.data.friendshipId);
-      removeNotification(notification.id);
-    }
-  };
-
-  const handleDeclineFriendRequest = async (notification: Notification) => {
-    if (notification.data?.friendshipId) {
-      await declineFriendRequest(notification.data.friendshipId);
-      removeNotification(notification.id);
-    }
-  };
-
-  const handleAcceptDogInvite = async (notification: Notification) => {
-    if (notification.data?.inviteId) {
-      const result = await acceptInvite(notification.data.inviteId);
-      
-      if (result.success) {
-        Alert.alert('Success', `You are now a co-owner of this dog!`);
-        removeNotification(notification.id);
-      } else {
-        Alert.alert('Error', result.error || 'Failed to accept invitation');
-      }
-    }
-  };
-
-  const handleDeclineDogInvite = async (notification: Notification) => {
-    if (notification.data?.inviteId) {
-      const result = await declineInvite(notification.data.inviteId);
-      
-      if (result.success) {
-        Alert.alert('Declined', 'Invitation declined');
-        removeNotification(notification.id);
-      } else {
-        Alert.alert('Error', result.error || 'Failed to decline invitation');
-      }
-    }
-  };
-
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'friend_request':
-        return <UserPlus size={24} color={COLORS.primary} />;
-      case 'friend_accepted':
-        return <UserCheck size={24} color={COLORS.success} />;
-      case 'achievement':
-        return <Award size={24} color={COLORS.accent} />;
-      case 'territory':
-        return <MapPin size={24} color={COLORS.secondary} />;
-      case 'dog_invite':
-        return <Crown size={24} color={COLORS.tertiary} />;
+      case 'walk_reminder':
+        // Navigate to map screen to start a walk
+        router.push('/(tabs)');
+        break;
+      case 'vet_appointment':
+        // Navigate to appointments screen (if it exists)
+        Alert.alert('Vet Appointment', notification.message);
+        break;
+      case 'comment':
+        // Navigate to the comment thread
+        Alert.alert('Comment', notification.message);
+        break;
+      case 'photo_upload':
+        // Navigate to the photo
+        Alert.alert('New Photo', notification.message);
+        break;
+      case 'system':
+      case 'app_update':
+      case 'safety_alert':
+      case 'announcement':
+        // Show alert with system message
+        Alert.alert(notification.title, notification.message);
+        break;
       default:
-        return <MoreHorizontal size={24} color={COLORS.neutralMedium} />;
+        // Default behavior for unknown types
+        Alert.alert(notification.title, notification.message);
     }
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+  const handleClearAll = () => {
+    if (notifications.length === 0) return;
     
-    return date.toLocaleDateString();
+    Alert.alert(
+      'Clear All Notifications',
+      'Are you sure you want to clear all notifications? This cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: () => {
+            // Clear all notifications
+            notifications.forEach(notification => {
+              removeNotification(notification.id);
+            });
+          },
+        },
+      ]
+    );
   };
 
-  const renderNotificationItem = ({ item: notification }: { item: Notification }) => (
-    <TouchableOpacity
-      style={[
-        styles.notificationItem,
-        !notification.read && styles.unreadNotification
-      ]}
-      onPress={() => handleNotificationPress(notification)}
-    >
-      <View style={styles.notificationContent}>
-        <View style={styles.notificationHeader}>
-          <View style={styles.iconContainer}>
-            {getNotificationIcon(notification.type)}
-          </View>
-          
-          <View style={styles.notificationInfo}>
-            <View style={styles.titleRow}>
-              <Text style={[
-                styles.notificationTitle,
-                !notification.read && styles.unreadTitle
-              ]}>
-                {notification.title}
-              </Text>
-              <Text style={styles.timestamp}>
-                {formatTimestamp(notification.timestamp)}
-              </Text>
-            </View>
-            
-            <Text style={styles.notificationMessage}>
-              {notification.message}
-            </Text>
-          </View>
-
-          {notification.data?.senderPhotoURL && (
-            <UserAvatar
-              userId={notification.data.senderId || 'unknown'}
-              photoURL={notification.data.senderPhotoURL}
-              userName={notification.data.senderName || 'User'}
-              size={40}
-            />
-          )}
-        </View>
-
-        {/* Action buttons based on notification type */}
-        {notification.type === 'friend_request' && !notification.read && (
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.acceptButton]}
-              onPress={() => handleAcceptFriendRequest(notification)}
-            >
-              <Check size={16} color={COLORS.white} />
-              <Text style={styles.acceptButtonText}>Accept</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.actionButton, styles.declineButton]}
-              onPress={() => handleDeclineFriendRequest(notification)}
-            >
-              <X size={16} color={COLORS.error} />
-              <Text style={styles.declineButtonText}>Decline</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* Dog invite action buttons */}
-        {notification.type === 'dog_invite' && !notification.read && (
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.acceptButton]}
-              onPress={() => handleAcceptDogInvite(notification)}
-            >
-              <Check size={16} color={COLORS.white} />
-              <Text style={styles.acceptButtonText}>Accept</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[styles.actionButton, styles.declineButton]}
-              onPress={() => handleDeclineDogInvite(notification)}
-            >
-              <X size={16} color={COLORS.error} />
-              <Text style={styles.declineButtonText}>Decline</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {!notification.read && <View style={styles.unreadIndicator} />}
-    </TouchableOpacity>
-  );
+  const handleOpenSettings = () => {
+    router.push('/notification-preferences');
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -238,37 +132,36 @@ export default function NotificationsScreen() {
         
         <Text style={styles.title}>Notifications</Text>
         
-        {notifications.some(n => !n.read) && (
+        <View style={styles.headerButtons}>
+          {unreadCount > 0 && (
+            <TouchableOpacity 
+              style={styles.markAllButton}
+              onPress={markAllAsRead}
+            >
+              <Text style={styles.markAllText}>Mark all read</Text>
+            </TouchableOpacity>
+          )}
+          
           <TouchableOpacity 
-            style={styles.markAllButton}
-            onPress={markAllAsRead}
+            style={styles.iconButton}
+            onPress={handleOpenSettings}
           >
-            <Text style={styles.markAllText}>Mark all read</Text>
+            <Settings size={20} color={COLORS.neutralDark} />
           </TouchableOpacity>
-        )}
+          
+          <TouchableOpacity 
+            style={styles.iconButton}
+            onPress={handleClearAll}
+          >
+            <Trash2 size={20} color={COLORS.neutralDark} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <FlatList
-        data={notifications}
-        renderItem={renderNotificationItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={COLORS.primary}
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Award size={64} color={COLORS.neutralMedium} />
-            <Text style={styles.emptyTitle}>No notifications yet</Text>
-            <Text style={styles.emptyText}>
-              You'll see friend requests, achievements, and other updates here
-            </Text>
-          </View>
-        }
+      <NotificationList
+        onNotificationPress={handleNotificationPress}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
       />
     </SafeAreaView>
   );
@@ -281,8 +174,8 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
@@ -296,133 +189,20 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: COLORS.neutralDark,
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   markAllButton: {
-    padding: 4,
+    marginRight: 12,
   },
   markAllText: {
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.primary,
   },
-  listContent: {
-    flexGrow: 1,
-  },
-  notificationItem: {
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.neutralLight,
-    position: 'relative',
-  },
-  unreadNotification: {
-    backgroundColor: COLORS.primaryExtraLight,
-  },
-  notificationContent: {
-    padding: 16,
-  },
-  notificationHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.neutralExtraLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  notificationInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  notificationTitle: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 16,
-    color: COLORS.neutralDark,
-    flex: 1,
-    marginRight: 8,
-  },
-  unreadTitle: {
-    fontFamily: 'Inter-Bold',
-  },
-  timestamp: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 12,
-    color: COLORS.neutralMedium,
-  },
-  notificationMessage: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 14,
-    color: COLORS.neutralMedium,
-    lineHeight: 20,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    marginTop: 12,
-    gap: 8,
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    gap: 4,
-  },
-  acceptButton: {
-    backgroundColor: COLORS.primary,
-  },
-  acceptButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.white,
-  },
-  declineButton: {
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.error,
-  },
-  declineButtonText: {
-    fontFamily: 'Inter-Medium',
-    fontSize: 14,
-    color: COLORS.error,
-  },
-  unreadIndicator: {
-    position: 'absolute',
-    left: 8,
-    top: '50%',
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
-    transform: [{ translateY: -4 }],
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 80,
-    paddingHorizontal: 32,
-  },
-  emptyTitle: {
-    fontFamily: 'Inter-Bold',
-    fontSize: 20,
-    color: COLORS.neutralDark,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontFamily: 'Inter-Regular',
-    fontSize: 16,
-    color: COLORS.neutralMedium,
-    textAlign: 'center',
-    lineHeight: 22,
+  iconButton: {
+    padding: 4,
+    marginLeft: 8,
   },
 });

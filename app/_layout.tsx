@@ -12,6 +12,30 @@ import { RevenueCatProvider } from '@/contexts/RevenueCatContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAchievements } from '@/hooks/useAchievements';
 import BadgeAwardDialog from '@/components/achievements/BadgeAwardDialog';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+
+// Configure notification handler for iOS
+if (Platform.OS === 'ios') {
+  Notifications.setNotificationCategoryAsync('actions', [
+    {
+      identifier: 'accept',
+      buttonTitle: 'Accept',
+      options: {
+        isDestructive: false,
+        isAuthenticationRequired: false,
+      },
+    },
+    {
+      identifier: 'decline',
+      buttonTitle: 'Decline',
+      options: {
+        isDestructive: true,
+        isAuthenticationRequired: false,
+      },
+    },
+  ]);
+}
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -60,6 +84,7 @@ function AppContent() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="welcome" options={{ headerShown: false }} />
         <Stack.Screen name="notifications" options={{ headerShown: false }} />
+        <Stack.Screen name="notification-preferences" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" options={{ title: 'Oops!' }} />
       </Stack>
       <StatusBar style="auto" />
