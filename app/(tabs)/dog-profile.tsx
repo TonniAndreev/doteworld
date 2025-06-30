@@ -473,7 +473,7 @@ export default function DogProfileScreen() {
                     style={styles.editButton}
                     onPress={() => handleEditDog(dog)}
                   >
-                    <Pencil size={16} color={COLORS.white} />
+                    <Pencil size={20} color={COLORS.primary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -897,12 +897,7 @@ const styles = StyleSheet.create({
     right: 16,
   },
   editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    padding: 8,
   },
   editButtonText: {
     fontFamily: 'Inter-Medium',
