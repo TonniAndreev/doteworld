@@ -170,9 +170,9 @@ export function useAchievements() {
             newlyCompleted = { ...socialButterflyAchievement, completed: true, currentValue: 3 };
           }
         } else if (count) {
-          // Update progress
+          // Update progress - store actual count, not percentage
           updatedProgress['social_butterfly'] = {
-            currentValue: count / 3, // 3 friends needed
+            currentValue: count, // Store actual count
             lastChecked: new Date().toISOString()
           };
         }
@@ -196,9 +196,9 @@ export function useAchievements() {
             newlyCompleted = { ...territoryKingAchievement, completed: true, currentValue: 0.1 };
           }
         } else if (totalTerritory > 0) {
-          // Update progress
+          // Update progress - store actual territory, not percentage
           updatedProgress['territory_king'] = {
-            currentValue: totalTerritory / 0.1,
+            currentValue: totalTerritory, // Store actual territory in km²
             lastChecked: new Date().toISOString()
           };
         }
@@ -222,9 +222,9 @@ export function useAchievements() {
             newlyCompleted = { ...marathonWalkerAchievement, completed: true, currentValue: 42.2 };
           }
         } else if (totalDistance > 0) {
-          // Update progress
+          // Update progress - store actual distance, not percentage
           updatedProgress['marathon_walker'] = {
-            currentValue: totalDistance / 42.2,
+            currentValue: totalDistance, // Store actual distance in km
             lastChecked: new Date().toISOString()
           };
         }
@@ -304,9 +304,9 @@ export function useAchievements() {
             newlyCompleted = { ...cityExplorerAchievement, completed: true, currentValue: 3 };
           }
         } else if (uniqueCitiesCount > 0) {
-          // Update progress
+          // Update progress - store actual count, not percentage
           updatedProgress['city_explorer'] = {
-            currentValue: uniqueCitiesCount / 3,
+            currentValue: uniqueCitiesCount, // Store actual count
             lastChecked: new Date().toISOString()
           };
         }
@@ -361,9 +361,9 @@ export function useAchievements() {
               newlyCompleted = { ...consistentWalkerAchievement, completed: true, currentValue: 7 };
             }
           } else {
-            // Update progress
+            // Update progress - store actual streak, not percentage
             updatedProgress['consistent_walker'] = {
-              currentValue: longestStreak / 7,
+              currentValue: longestStreak, // Store actual streak count
               lastChecked: new Date().toISOString()
             };
           }
@@ -386,9 +386,9 @@ export function useAchievements() {
             newlyCompleted = { ...dogWhispererAchievement, completed: true, currentValue: 3 };
           }
         } else if (dogCount) {
-          // Update progress
+          // Update progress - store actual count, not percentage
           updatedProgress['dog_whisperer'] = {
-            currentValue: dogCount / 3,
+            currentValue: dogCount, // Store actual dog count
             lastChecked: new Date().toISOString()
           };
         }
@@ -412,9 +412,9 @@ export function useAchievements() {
             newlyCompleted = { ...territoryGiantAchievement, completed: true, currentValue: 1 };
           }
         } else if (totalTerritory > 0) {
-          // Update progress
+          // Update progress - store actual territory, not percentage
           updatedProgress['territory_giant'] = {
-            currentValue: totalTerritory / 1,
+            currentValue: totalTerritory, // Store actual territory in km²
             lastChecked: new Date().toISOString()
           };
         }
