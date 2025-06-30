@@ -70,67 +70,74 @@ export default function BadgesScreen() {
   const completedCount = badges.filter(b => b.completed).length;
   const totalCount = badges.length;
 
-  const renderBadgeItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={[
-        styles.badgeCard,
-        !item.completed && styles.incompleteBadge
-      ]} 
-      onPress={() => handleBadgePress(item)}
-      activeOpacity={0.8}
-    >
-      <View style={styles.badgeImageContainer}>
-        <Image 
-          source={{ uri: item.icon_url }} 
-          style={[
-            styles.badgeImage,
-            !item.completed && styles.grayscaleImage
-          ]} 
-        />
-        {item.completed && (
-          <View style={styles.completedBadge}>
-            <Star size={16} color={COLORS.accent} fill={COLORS.accent} />
-          </View>
-        )}
-      </View>
-      
-      <View style={styles.badgeContent}>
-        <Text 
-          style={[
-            styles.badgeTitle,
-            !item.completed && styles.incompleteText
-          ]} 
-          numberOfLines={2}
-        >
-          {item.title}
-        </Text>
-        
-        <View style={styles.progressContainer}>
-          <View 
+  const renderBadgeItem = ({ item }: { item: any }) => {
+    const isInProgress = item.currentValue > 0 && !item.completed;
+    const isNotStarted = item.currentValue === 0 && !item.completed;
+    
+    return (
+      <TouchableOpacity 
+        style={[
+          styles.badgeCard,
+          item.completed && styles.completedBadgeCard,
+          isInProgress && styles.inProgressBadgeCard,
+          isNotStarted && styles.notStartedBadgeCard
+        ]} 
+        onPress={() => handleBadgePress(item)}
+        activeOpacity={0.8}
+      >
+        <View style={styles.badgeImageContainer}>
+          <Image 
+            source={{ uri: item.icon_url }} 
             style={[
-              styles.progressBar,
-              !item.completed && styles.incompleteProgressBar
-            ]}
-          >
-            <View 
-              style={[
-                styles.progressFill, 
-                { width: `${Math.min(100, (item.currentValue / item.targetValue) * 100)}%` },
-                !item.completed && styles.incompleteProgressFill
-              ]} 
-            />
-          </View>
+              styles.badgeImage,
+              isNotStarted && styles.grayscaleImage
+            ]} 
+          />
+          {item.completed && (
+            <View style={styles.completedBadge}>
+              <Star size={16} color={COLORS.accent} fill={COLORS.accent} />
+            </View>
+          )}
         </View>
         
-        <Text style={[
-          styles.progressText,
-          !item.completed && styles.incompleteText
-        ]}>
-          {item.completed ? 'Earned!' : `${Math.round(item.currentValue * 100)}%`}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={styles.badgeContent}>
+          <Text 
+            style={[
+              styles.badgeTitle,
+              isNotStarted && styles.incompleteText
+            ]} 
+            numberOfLines={2}
+          >
+            {item.title}
+          </Text>
+          
+          <View style={styles.progressContainer}>
+            <View 
+              style={[
+                styles.progressBar,
+                isNotStarted && styles.incompleteProgressBar
+              ]}
+            >
+              <View 
+                style={[
+                  styles.progressFill, 
+                  { width: `${Math.min(100, (item.currentValue / item.targetValue) * 100)}%` },
+                  isNotStarted && styles.incompleteProgressFill
+                ]} 
+              />
+            </View>
+          </View>
+          
+          <Text style={[
+            styles.progressText,
+            isNotStarted && styles.incompleteText
+          ]}>
+            {item.completed ? 'Earned!' : `${Math.round((item.currentValue / item.targetValue) * 100)}%`}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -203,7 +210,7 @@ export default function BadgesScreen() {
                   source={{ uri: selectedBadge.icon_url }} 
                   style={[
                     styles.modalImage,
-                    !selectedBadge.completed && styles.grayscaleImage
+                    selectedBadge.currentValue === 0 && !selectedBadge.completed && styles.grayscaleImage
                   ]} 
                 />
                 {selectedBadge.completed && (
@@ -220,7 +227,7 @@ export default function BadgesScreen() {
                 <View 
                   style={[
                     styles.modalProgressBar,
-                    !selectedBadge.completed && styles.incompleteProgressBar
+                    selectedBadge.currentValue === 0 && !selectedBadge.completed && styles.incompleteProgressBar
                   ]}
                 >
                   <View 
@@ -229,7 +236,7 @@ export default function BadgesScreen() {
                       { 
                         width: `${Math.min(100, (selectedBadge.currentValue / selectedBadge.targetValue) * 100)}%` 
                       },
-                      !selectedBadge.completed && styles.incompleteProgressFill
+                      selectedBadge.currentValue === 0 && !selectedBadge.completed && styles.incompleteProgressFill
                     ]} 
                   />
                 </View>
@@ -238,7 +245,7 @@ export default function BadgesScreen() {
               <Text style={styles.modalProgressText}>
                 {selectedBadge.completed 
                   ? 'Badge Earned!' 
-                  : `${Math.round(selectedBadge.currentValue * 100)}% Complete`}
+                  : `${Math.round((selectedBadge.currentValue / selectedBadge.targetValue) * 100)}% Complete`}
               </Text>
               
               {selectedBadge.completed && (
@@ -339,7 +346,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.primaryLight,
   },
-  incompleteBadge: {
+  completedBadgeCard: {
+    borderColor: COLORS.accent,
+    shadowColor: COLORS.accent,
+    shadowOpacity: 0.2,
+    elevation: 6,
+  },
+  inProgressBadgeCard: {
+    borderColor: COLORS.primary,
+    opacity: 1,
+    shadowColor: COLORS.primary,
+    shadowOpacity: 0.15,
+    elevation: 5,
+  },
+  notStartedBadgeCard: {
     opacity: 0.6,
     borderColor: COLORS.neutralLight,
     shadowOpacity: 0.06,
