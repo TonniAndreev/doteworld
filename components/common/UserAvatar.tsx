@@ -49,6 +49,7 @@ export default function UserAvatar({
       height: size,
       borderRadius: size / 2,
       overflow: 'hidden',
+      backgroundColor: COLORS.neutralLight,
     },
     containerStyle
   ];

@@ -44,17 +44,41 @@ export function useDogOwnership() {
     if (!user) return [];
 
     try {
+      // Instead of using the dog_owners_view which has recursion issues,
+      // directly query the profile_dogs table and join with profiles
       const { data, error } = await supabase
-        .from('dog_owners_view')
-        .select('*')
-        .eq('dog_id', dogId);
+        .from('profile_dogs')
+        .select(`
+          profile_id,
+          role,
+          permissions,
+          created_at as ownership_since,
+          invited_by,
+          profiles:profile_id (
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('dog_id', dogId)
+        .order('role', { ascending: true });  // 'owner' comes before 'co-owner' alphabetically
 
       if (error) {
         console.error('Error fetching dog owners:', error);
         return [];
       }
 
-      return data || [];
+      // Transform the data to match the DogOwner interface
+      return (data || []).map(item => ({
+        profile_id: item.profile_id,
+        role: item.role,
+        permissions: item.permissions,
+        ownership_since: item.ownership_since,
+        invited_by: item.invited_by,
+        first_name: item.profiles?.first_name || '',
+        last_name: item.profiles?.last_name || '',
+        avatar_url: item.profiles?.avatar_url
+      }));
     } catch (error) {
       console.error('Error fetching dog owners:', error);
       return [];
@@ -116,40 +140,19 @@ export function useDogOwnership() {
     try {
       setIsLoading(true);
 
-      // First, find the user by email
-      const { data: inviteeProfile, error: profileError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name')
-        .ilike('email', inviteeEmail)
-        .single();
-
-      if (profileError || !inviteeProfile) {
-        return { success: false, error: 'User not found with that email address' };
-      }
-
-      // Check if user already has access to this dog
-      const { data: existingAccess } = await supabase
+      // First, check if the dog already has 4 owners
+      const { data: existingOwners, error: ownersError } = await supabase
         .from('profile_dogs')
-        .select('id')
-        .eq('dog_id', dogId)
-        .eq('profile_id', inviteeProfile.id)
-        .single();
+        .select('profile_id')
+        .eq('dog_id', dogId);
 
-      if (existingAccess) {
-        return { success: false, error: 'User already has access to this dog' };
+      if (ownersError) {
+        console.error('Error checking existing owners:', ownersError);
+        return { success: false, error: 'Failed to check existing owners' };
       }
 
-      // Check if there's already a pending invite
-      const { data: existingInvite } = await supabase
-        .from('dog_ownership_invites')
-        .select('id')
-        .eq('dog_id', dogId)
-        .eq('invitee_id', inviteeProfile.id)
-        .eq('status', 'pending')
-        .single();
-
-      if (existingInvite) {
-        return { success: false, error: 'Invite already sent to this user' };
+      if (existingOwners && existingOwners.length >= 4) {
+        return { success: false, error: 'This dog already has the maximum number of owners (4)' };
       }
 
       // Set permissions based on role
@@ -157,13 +160,13 @@ export function useDogOwnership() {
         ? { edit: true, delete: false, share: true }
         : { edit: false, delete: false, share: false };
 
-      // Create the invite
+      // Create the invite directly in the database without sending an email
       const { error: inviteError } = await supabase
         .from('dog_ownership_invites')
         .insert({
           dog_id: dogId,
           inviter_id: user.id,
-          invitee_id: inviteeProfile.id,
+          invitee_email: inviteeEmail.trim(),
           role,
           permissions,
           message,
@@ -247,7 +250,7 @@ export function useDogOwnership() {
 
       if (error || !data) {
         console.error('Error removing co-owner:', error);
-        return { success: false, error: 'Failed to remove co-owner' };
+        return { success: false, error: 'Failed to remove owner' };
       }
 
       return { success: true };
@@ -285,6 +288,62 @@ export function useDogOwnership() {
       return { success: true };
     } catch (error) {
       console.error('Error updating dog data:', error);
+      return { success: false, error: 'An unexpected error occurred' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to update dog ownership permissions
+  const updateDogPermissions = async (
+    dogId: string, 
+    profileId: string, 
+    newPermissions: { edit?: boolean; share?: boolean; delete?: boolean }
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    try {
+      setIsLoading(true);
+
+      // First get current permissions
+      const { data: currentData, error: fetchError } = await supabase
+        .from('profile_dogs')
+        .select('permissions')
+        .eq('dog_id', dogId)
+        .eq('profile_id', profileId)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching current permissions:', fetchError);
+        return { success: false, error: 'Failed to fetch current permissions' };
+      }
+
+      // Merge current permissions with new ones
+      const updatedPermissions = {
+        ...currentData.permissions,
+        ...newPermissions
+      };
+
+      // Update permissions
+      const { error: updateError } = await supabase
+        .from('profile_dogs')
+        .update({
+          permissions: updatedPermissions
+        })
+        .eq('dog_id', dogId)
+        .eq('profile_id', profileId);
+
+      if (updateError) {
+        console.error('Error updating permissions:', updateError);
+        return { success: false, error: 'Failed to update permissions' };
+      }
+
+      // Refresh user data to ensure consistency
+      await refreshUserData();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating dog permissions:', error);
       return { success: false, error: 'An unexpected error occurred' };
     } finally {
       setIsLoading(false);
@@ -355,6 +414,7 @@ export function useDogOwnership() {
     declineInvite,
     removeCoOwner,
     updateDogData,
+    updateDogPermissions,
     handleDeepLinkInvite,
   };
 }

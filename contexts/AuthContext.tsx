@@ -565,6 +565,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .insert({
           profile_id: user.id,
           dog_id: dog.id,
+          role: 'owner',
+          permissions: { edit: true, share: true, delete: true }
         });
 
       if (linkError) {

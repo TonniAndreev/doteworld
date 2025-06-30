@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Award, Users, Map, Route, LogOut, CreditCard as Edit, Pencil } from 'lucide-react-native';
+import { Award, Users, Map, Route, LogOut, Pencil } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTerritory } from '@/contexts/TerritoryContext';
@@ -106,6 +106,7 @@ export default function ProfileScreen() {
               photoURL={user.avatar_url}
               userName={user.displayName || 'User'}
               size={100}
+              containerStyle={styles.avatarContainer}
             />
           </View>
           
@@ -170,6 +171,7 @@ export default function ProfileScreen() {
                   size={60}
                   isDogAvatar={true}
                   dogBreed={firstDog.breed}
+                  containerStyle={styles.dogAvatarContainer}
                 />
                 <View style={styles.dogPreviewInfo}>
                   <Text style={styles.dogPreviewName}>{firstDog.name}</Text>
@@ -232,6 +234,7 @@ export default function ProfileScreen() {
                       photoURL={friend.photoURL}
                       userName={friend.name}
                       size={60}
+                      containerStyle={styles.friendAvatarContainer}
                     />
                     <Text style={styles.friendName} numberOfLines={1}>
                       {friend.name || 'Friend'}
@@ -301,9 +304,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.neutralLight,
     marginHorizontal: 16,
+    backgroundColor: '#F8F8F8',
+    borderRadius: 16,
   },
   profileImageContainer: {
     marginBottom: 16,
+  },
+  avatarContainer: {
+    backgroundColor: '#F0F0F0',
   },
   userName: {
     fontFamily: 'Inter-Bold',
@@ -367,6 +375,9 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
   },
+  dogAvatarContainer: {
+    backgroundColor: '#F0F0F0',
+  },
   dogPreviewInfo: {
     marginLeft: 16,
     flex: 1,
@@ -406,6 +417,9 @@ const styles = StyleSheet.create({
   friendItem: {
     alignItems: 'center',
     width: 80,
+  },
+  friendAvatarContainer: {
+    backgroundColor: '#F0F0F0',
   },
   friendName: {
     fontFamily: 'Inter-Medium',

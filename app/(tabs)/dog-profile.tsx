@@ -17,7 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
-import { ChevronLeft, Plus, CreditCard as Edit, Calendar, Scale, ChevronDown, Search, X, Check, Camera } from 'lucide-react-native';
+import { ChevronLeft, Pencil, Calendar, Scale, ChevronDown, Search, X, Check, Camera, Plus } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import NotificationsButton from '@/components/common/NotificationsButton';
 import { useAuth } from '@/contexts/AuthContext';
@@ -473,15 +473,7 @@ export default function DogProfileScreen() {
                     style={styles.editButton}
                     onPress={() => handleEditDog(dog)}
                   >
-                    <Edit size={16} color={COLORS.white} />
-                    <Text style={styles.editButtonText}>Edit Profile</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={styles.photoButton}
-                    onPress={() => handleUpdatePhoto(dog)}
-                  >
-                    <Camera size={16} color={COLORS.white} />
-                    <Text style={styles.photoButtonText}>Update Photo</Text>
+                    <Pencil size={20} color={COLORS.primary} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -678,6 +670,25 @@ export default function DogProfileScreen() {
                   numberOfLines={3}
                   textAlignVertical="top"
                 />
+              </View>
+              
+              {/* Update Photo Button */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>Photo</Text>
+                <TouchableOpacity 
+                  style={styles.updatePhotoButton}
+                  onPress={() => {
+                    setEditModalVisible(false);
+                    setTimeout(() => {
+                      if (selectedDog) {
+                        handleUpdatePhoto(selectedDog);
+                      }
+                    }, 300);
+                  }}
+                >
+                  <Camera size={20} color={COLORS.white} />
+                  <Text style={styles.updatePhotoButtonText}>Update Photo</Text>
+                </TouchableOpacity>
               </View>
             </ScrollView>
 
@@ -881,20 +892,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   dogCardActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     position: 'absolute',
     top: 16,
     right: 16,
-    gap: 8,
   },
   editButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    padding: 8,
   },
   editButtonText: {
     fontFamily: 'Inter-Medium',
@@ -1210,6 +1213,21 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
+    color: COLORS.white,
+  },
+  updatePhotoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.secondary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  updatePhotoButtonText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
     color: COLORS.white,
   },
 });
