@@ -259,11 +259,11 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
       <View style={styles.ownerInfo}>
         <Text style={[
           styles.ownerName,
-          owner.role === 'owner' && { color: COLORS.accent }
+          owner.role === 'owner' && { color: COLORS.primary }
         ]}>
           {owner.role === 'owner' ? (
             <>
-              <Text style={{ color: COLORS.accent }}>👑 </Text>
+              <Text style={{ color: COLORS.primary }}>👑 </Text>
               {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
             </>
           ) : (
@@ -515,13 +515,11 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
               <View style={styles.infoContainer}>
                 <Text style={styles.infoTitle}>Ownership Levels</Text>
                 <View style={styles.infoItem}>
-                  <Crown size={16} color={COLORS.accent} />
                   <Text style={styles.infoText}>
-                    <Text style={styles.infoHighlight}>Alpha Owner:</Text> Full management rights, can add/remove owners
+                    <Text style={[styles.infoHighlight, { color: COLORS.primary }]}>👑 Alpha Owner:</Text> Full management rights, can add/remove owners
                   </Text>
                 </View>
                 <View style={styles.infoItem}>
-                  <Shield size={16} color={COLORS.primary} />
                   <Text style={styles.infoText}>
                     <Text style={styles.infoHighlight}>Owner:</Text> Can view and interact with profile
                   </Text>
@@ -888,10 +886,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.neutralLight,
   },
   alphaOwnerItem: {
-    borderColor: COLORS.accentLight,
+    borderColor: COLORS.primaryLight,
     backgroundColor: COLORS.neutralExtraLight,
     borderLeftWidth: 3,
-    borderLeftColor: COLORS.accent,
+    borderLeftColor: COLORS.primary,
   },
   ownerAvatar: {
     marginRight: 16,
@@ -905,18 +903,12 @@ const styles = StyleSheet.create({
     color: COLORS.neutralDark,
     marginBottom: 4,
   },
-  ownerRole: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
-    color: COLORS.neutralDark,
   },
   alphaRoleText: {
-    color: COLORS.accent,
+    color: COLORS.primary,
   },
   regularRoleText: {
     color: COLORS.neutralDark,
@@ -965,16 +957,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   infoItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
     marginBottom: 8,
-    gap: 8,
   },
   infoText: {
     fontFamily: 'Inter-Regular',
     fontSize: 12,
     color: COLORS.neutralDark,
-    flex: 1,
+    lineHeight: 18,
   },
   infoHighlight: {
     fontFamily: 'Inter-Bold',

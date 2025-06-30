@@ -234,11 +234,11 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
                       <View style={styles.ownerInfo}>
                         <Text style={[
                           styles.ownerName,
-                          owner.role === 'owner' && { color: COLORS.accent }
+                          owner.role === 'owner' && { color: COLORS.primary }
                         ]} numberOfLines={1}>
                           {owner.role === 'owner' ? (
                             <>
-                              <Text style={{ color: COLORS.accent }}>👑 </Text>
+                              <Text style={{ color: COLORS.primary }}>👑 </Text>
                               {`${owner.first_name || ''} ${owner.last_name || ''}`.trim()}
                             </>
                           ) : (
@@ -469,14 +469,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     fontSize: 14,
     color: COLORS.neutralDark,
-    marginBottom: 2,
+    marginBottom: 4,
   },
   roleText: {
     fontFamily: 'Inter-Medium',
     fontSize: 12,
   },
   alphaRoleText: {
-    color: COLORS.accent,
+    color: COLORS.primary,
   },
   regularRoleText: {
     color: COLORS.neutralDark,
