@@ -20,6 +20,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { reverseGeocodeToCity, getOrCreateCityInSupabase } from '@/utils/geocoding';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ConquestSummaryDialog from '@/components/home/ConquestSummaryDialog';
+import { formatArea, formatDistance } from '@/utils/formatUtils';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -470,14 +471,14 @@ export default function MapScreen() {
             <View style={styles.controlsContainer}>
               <View style={styles.territorySizeContainer}>
                 <Text style={styles.territorySizeText}>
-                  {(territorySize * 1000000).toFixed(0)} m² territory conquered
+                  {formatArea(territorySize * 1000000)} territory conquered
                 </Text>
               </View>
 
               {isWalking && (
                 <View style={styles.walkStatsContainer}>
                   <Text style={styles.walkStatsText}>
-                    {(currentWalkDistance * 1000).toFixed(0)}m walked • {currentWalkPoints.length} points
+                    {formatDistance(currentWalkDistance * 1000)} walked
                   </Text>
                 </View>
               )}

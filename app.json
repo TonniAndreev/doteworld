@@ -11,13 +11,13 @@
     "ios": {
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "AIzaSyCFlLwN3mRu8d9SsxDW2rDwI-GZX_lpJtI"
+        "googleMapsApiKey": "${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
       }
     },
     "android": {
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyCFlLwN3mRu8d9SsxDW2rDwI-GZX_lpJtI"
+          "apiKey": "${process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY}"
         }
       }
     },
@@ -33,8 +33,8 @@
       [
         "react-native-google-mobile-ads",
         {
-          "androidAppId": "ca-app-pub-2380886531830921~8661042855",
-          "iosAppId": "ca-app-pub-2380886531830921~9974124526",
+          "androidAppId": "${process.env.EXPO_PUBLIC_ADMOB_ANDROID_APP_ID}",
+          "iosAppId": "${process.env.EXPO_PUBLIC_ADMOB_IOS_APP_ID}",
           "userTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you."
         }
       ]

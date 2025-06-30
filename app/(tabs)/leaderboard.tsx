@@ -21,6 +21,7 @@ import { getUserCities, findNearestCity, reverseGeocodeToCity, getOrCreateCityIn
 import { useAuth } from '@/contexts/AuthContext';
 import * as Location from 'expo-location';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatArea, formatDistance } from '@/utils/formatUtils';
 
 type LeaderboardTab = 'territory' | 'distance' | 'achievements';
 
@@ -239,9 +240,9 @@ export default function LeaderboardScreen() {
     const getValue = (user) => {
       switch (activeTab) {
         case 'territory':
-          return `${(user.territorySize * 1000000).toFixed(0)} m²`;
+          return formatArea(user.territorySize * 1000000);
         case 'distance':
-          return `${user.totalDistance} km`;
+          return formatDistance(user.totalDistance * 1000);
         case 'achievements':
           return `${user.badgeCount}`;
         default:

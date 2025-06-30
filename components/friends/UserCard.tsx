@@ -3,6 +3,7 @@ import { UserCheck } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import UserAvatar from '@/components/common/UserAvatar';
+import { formatArea, formatDistance } from '@/utils/formatUtils';
 
 interface UserCardProps {
   user: {
@@ -112,11 +113,11 @@ export default function UserCard({ user, onPress, isFriend }: UserCardProps) {
         
         <View style={styles.stats}>
           <Text style={styles.stat}>
-            {user.territorySize > 0 ? `${(user.territorySize * 1000000).toFixed(0)} m²` : '0 m²'} territory
+            {formatArea(user.territorySize * 1000000)} territory
           </Text>
           <Text style={styles.statDivider}>•</Text>
           <Text style={styles.stat}>
-            {user.totalDistance > 0 ? `${(user.totalDistance * 1000).toFixed(0)} m` : '0 m'} walked
+            {formatDistance(user.totalDistance * 1000)} walked
           </Text>
           <Text style={styles.statDivider}>•</Text>
           <Text style={styles.stat}>{user.achievementCount} badges</Text>

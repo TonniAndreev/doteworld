@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { COLORS } from '@/constants/theme';
 import UserAvatar from '@/components/common/UserAvatar';
+import { formatArea, formatDistance } from '@/utils/formatUtils';
 
 type LeaderboardItemProps = {
   rank: number;
@@ -29,11 +30,11 @@ export default function LeaderboardItem({
   const getValue = () => {
     switch (category) {
       case 'territory':
-        return `${(user.territorySize * 1000000).toFixed(0)} m²`;
+        return formatArea(user.territorySize * 1000000);
       case 'distance':
-        return `${user.totalDistance} km`;
+        return formatDistance(user.totalDistance * 1000);
       case 'achievements':
-        return user.achievementCount;
+        return user.achievementCount?.toString() || '0';
       default:
         return '';
     }
