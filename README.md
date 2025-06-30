@@ -1,4 +1,3 @@
-
 # Dote - Dog Walking Territory Conquest App
 
 A React Native mobile application built with Expo that gamifies dog walking by allowing users to conquer territories, earn achievements, and connect with other dog walkers.
@@ -14,18 +13,18 @@ A React Native mobile application built with Expo that gamifies dog walking by a
 
 ### Key Screens
 - **Map View**: Interactive map showing your territory, current walk progress, and conquest controls
-- **Leaderboard**: Rankings by territory size, distance walked, achievements, and paws earned
+- **Leaderboard**: Rankings by territory size, distance walked, and achievements
 - **Achievements**: Browse available and completed badges with progress tracking
 - **Friends**: Connect with other users, manage friend requests, and discover new walkers
 - **Profile**: View your stats, dog information, and recent achievements
-- **Premium Store**: Subscription plans and paws packages for enhanced features
+- **Premium Store**: Subscription plans for enhanced features
 
 ## 🛠 Tech Stack
 
 - **Framework**: React Native with Expo SDK 53
 - **Navigation**: Expo Router v5 with tab-based navigation
 - **Database**: Supabase (PostgreSQL)
-- **Authentication**: Supabase Auth with email/password
+- **Authentication**: Supabase Auth with email/password and social logins
 - **Maps**: React Native Maps with Google Maps
 - **Location Services**: Expo Location
 - **State Management**: React Context API
@@ -37,14 +36,17 @@ A React Native mobile application built with Expo that gamifies dog walking by a
 
 The app uses Supabase with the following key tables:
 
-- **profiles**: User profile information and dog details
+- **profiles**: User profile information
 - **dogs**: Dog information (name, breed, photo)
 - **profile_dogs**: Many-to-many relationship between users and dogs
 - **friendships**: Friend relationships and requests
 - **achievements**: Available achievements and badges
 - **profile_achievements**: User achievement progress
+- **walk_sessions**: Records of dog walks
 - **walk_points**: GPS coordinates from user walks
 - **territory**: Territory ownership data
+- **cities**: City information for leaderboards
+- **notifications**: User notifications
 
 ## 🚀 Getting Started
 
@@ -52,7 +54,8 @@ The app uses Supabase with the following key tables:
 - Node.js 18+ 
 - npm or yarn
 - Expo CLI
-- iOS Simulator or Android Emulator (for testing)
+- Supabase account
+- Google Maps API key (for maps functionality)
 
 ### Installation
 
@@ -69,31 +72,10 @@ npm install
 
 3. Set up environment variables:
 Create a `.env` file in the root directory:
-```env
-# Dote App
-
-A React Native Expo app for dog walking and territory conquest.
-
-## Setup Instructions
-
-### Supabase Configuration
-
-To disable email confirmation for development:
-
-1. Go to your Supabase dashboard
-2. Navigate to Authentication > Settings
-3. Scroll down to "Email Auth"
-4. Turn OFF "Enable email confirmations"
-5. Turn OFF "Enable phone confirmations" (if not needed)
-6. Save the settings
-
-### Environment Variables
-
-Make sure your `.env` file contains:
-
 ```
 EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
 EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+EXPO_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 ```
 
 4. Start the development server:
@@ -105,6 +87,17 @@ npm run dev
 - Scan the QR code with Expo Go app on your device
 - Press `i` for iOS simulator
 - Press `a` for Android emulator
+- Open in web browser
+
+### Database Setup
+
+Run the migrations in the `supabase/migrations` folder to set up the database schema.
+
+The following public storage buckets are required:
+- `avatars` for user profile photos
+- `dog-photos` for dog photos
+
+Both buckets should be public and protected by RLS policies defined in the migrations.
 
 ## 🏗 Project Structure
 
@@ -131,18 +124,22 @@ components/
 ├── common/                     # Shared components
 ├── friends/                    # Friend-related components
 ├── home/                       # Home screen components
-├── leaderboard/               # Leaderboard components
-└── profile/                   # Profile components
+├── leaderboard/                # Leaderboard components
+├── map/                        # Map components
+└── profile/                    # Profile components
 
 contexts/
-├── AuthContext.tsx            # Authentication state
-├── PawsContext.tsx           # Paws currency system
-├── TerritoryContext.tsx      # Territory and walking logic
-└── NotificationContext.tsx   # Notifications
+├── AuthContext.tsx             # Authentication state
+├── PawsContext.tsx             # Paws currency system
+├── TerritoryContext.tsx        # Territory and walking logic
+└── NotificationContext.tsx     # Notifications
 
 utils/
-├── supabase.ts               # Supabase client configuration
-└── locationUtils.ts          # Geospatial utility functions
+├── supabase.ts                 # Supabase client configuration
+├── locationUtils.ts            # Geospatial utility functions
+├── formatUtils.ts              # Formatting helpers
+├── geocoding.ts                # Location services
+└── mapColors.ts                # Map styling utilities
 ```
 
 ## 🎮 How It Works
@@ -211,6 +208,7 @@ Supabase migrations are stored in `/supabase/migrations/`. Each migration includ
 ## 🔐 Authentication & Security
 
 - Email/password authentication via Supabase Auth
+- Social login options (Google, Facebook)
 - Row Level Security (RLS) on all database tables
 - User data isolation and privacy protection
 - Secure API endpoints with proper authorization
@@ -277,42 +275,3 @@ For support and questions:
 ---
 
 Built with ❤️ for dog lovers everywhere 🐾
-
-### Database Setup
-
-Run the migrations in the `supabase/migrations` folder to set up the database schema.
-
-The following public storage buckets are also required:
-- `avatars` for user profile photos
-- `dog-photos` for dog photos
-
-Both buckets are public and protected by RLS policies defined in the migrations.
-
-### Development
-
-```bash
-npm install
-npm run dev
-```
-
-## Features
-
-- User authentication with Supabase
-- Dog profile management
-- Territory conquest through walking
-- Achievement system
-- Friends and social features
-- Paws currency system
-
-## Database Schema
-
-The app uses the following main tables:
-- `profiles` - User profiles
-- `dogs` - Dog information
-- `profile_dogs` - Many-to-many relationship between users and dogs
-- `achievements` - Available achievements
-- `profile_achievements` - User's earned achievements
-- `friendships` - Friend relationships
-- `walk_points` - GPS points from walks
-- `territory` - Conquered territory data
-
