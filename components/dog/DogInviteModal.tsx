@@ -8,8 +8,10 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  Share,
+  Platform,
 } from 'react-native';
-import { X, Mail, Send, UserPlus } from 'lucide-react-native';
+import { X, Mail, Send, Share2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 
@@ -49,6 +51,20 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
       Alert.alert('Error', 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleShareInvite = async () => {
+    try {
+      const message = `I'd like to invite you to be an owner of my dog ${dogName} on Dote. Download the app and register to accept my invitation!`;
+      
+      await Share.share({
+        message,
+        title: `Invitation to co-own ${dogName}`,
+      });
+    } catch (error) {
+      console.error('Error sharing invitation:', error);
+      Alert.alert('Error', 'Failed to share invitation');
     }
   };
 
@@ -116,6 +132,20 @@ export default function DogInviteModal({ visible, onClose, dogId, dogName }: Dog
                   <Text style={styles.sendButtonText}>Send Invitation</Text>
                 </>
               )}
+            </TouchableOpacity>
+
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={handleShareInvite}
+            >
+              <Share2 size={20} color={COLORS.primary} />
+              <Text style={styles.shareButtonText}>Share via Messaging Apps</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -212,12 +242,44 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     paddingVertical: 16,
     borderRadius: 16,
-    marginTop: 16,
+    marginTop: 8,
     gap: 8,
   },
   sendButtonText: {
     fontFamily: 'Inter-Bold',
     fontSize: 16,
     color: COLORS.white,
+  },
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.neutralLight,
+  },
+  dividerText: {
+    fontFamily: 'Inter-Medium',
+    fontSize: 14,
+    color: COLORS.neutralMedium,
+    marginHorizontal: 12,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: COLORS.white,
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    gap: 8,
+  },
+  shareButtonText: {
+    fontFamily: 'Inter-Bold',
+    fontSize: 16,
+    color: COLORS.primary,
   },
 });

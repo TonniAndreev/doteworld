@@ -8,9 +8,10 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
-  TextInput,
+  Share,
+  Platform,
 } from 'react-native';
-import { X, Crown, UserX, UserPlus, Mail, Send } from 'lucide-react-native';
+import { X, Crown, UserX, UserPlus, Share2 } from 'lucide-react-native';
 import { COLORS } from '@/constants/theme';
 import { useDogOwnership } from '@/hooks/useDogOwnership';
 import { useAuth } from '@/contexts/AuthContext';
@@ -82,15 +83,15 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
     // Can't remove the original owner
     if (owner.role === 'owner') return false;
     
-    // Check if current user has share permissions
+    // Check if current user is the alpha owner
     const currentUserOwnership = owners.find(o => o.profile_id === user.id);
-    return currentUserOwnership?.permissions?.share === true;
+    return currentUserOwnership?.role === 'owner';
   };
 
-  const canInviteOwners = () => {
+  const isAlphaOwner = () => {
     if (!user) return false;
     const currentUserOwnership = owners.find(o => o.profile_id === user.id);
-    return currentUserOwnership?.permissions?.share === true;
+    return currentUserOwnership?.role === 'owner';
   };
 
   const renderOwner = ({ item: owner }: { item: any }) => (
@@ -143,7 +144,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
             </View>
 
             <View style={styles.content}>
-              {canInviteOwners() && (
+              {isAlphaOwner() && (
                 <TouchableOpacity 
                   style={styles.inviteButton}
                   onPress={() => {

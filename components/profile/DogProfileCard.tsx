@@ -179,8 +179,8 @@ export default function DogProfileCard({ dog, onPress, showFullDetails = false }
     }
   };
 
-  const displayedOwners = showAllOwners ? owners : owners.slice(0, 3);
-  const hasMoreOwners = owners.length > 3;
+  const displayedOwners = owners;
+  const hasMoreOwners = false;
 
   const CardComponent = onPress ? TouchableOpacity : View;
 
