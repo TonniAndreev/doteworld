@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Modal,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -114,8 +113,36 @@ export default function DogProfileScreen() {
   const [breedSearchQuery, setBreedSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isCheckingUser, setIsCheckingUser] = useState(true);
   
   const { user, updateDogProfile } = useAuth();
+  
+  // Check if user is loaded
+  useEffect(() => {
+    const checkUser = async () => {
+      setIsCheckingUser(true);
+      
+      // Wait for user to be available
+      if (!user) {
+        console.log('No user found in dog-profile screen, waiting...');
+        // Wait a bit and check again
+        const timeout = setTimeout(() => {
+          if (!user) {
+            console.log('Still no user after timeout, showing error');
+            setError('No user logged in');
+          }
+          setIsCheckingUser(false);
+        }, 2000);
+        
+        return () => clearTimeout(timeout);
+      }
+      
+      console.log('User found in dog-profile screen:', user.id);
+      setIsCheckingUser(false);
+    };
+    
+    checkUser();
+  }, [user]);
   
   // Filter and sort breeds based on search query
   const filteredBreeds = DOG_BREEDS.filter(breed =>
@@ -190,6 +217,11 @@ export default function DogProfileScreen() {
   };
   
   const handleSubmit = async () => {
+    if (!user) {
+      setError('No user logged in');
+      return;
+    }
+    
     if (!dogName) {
       setError('Please enter your dog\'s name');
       return;
@@ -349,147 +381,156 @@ export default function DogProfileScreen() {
             </View>
           ) : null}
           
-          <View style={styles.photoContainer}>
-            <UserAvatar
-              userId={user?.id || 'temp'}
-              photoURL={dogPhoto}
-              userName={dogName || 'Dog'}
-              size={160}
-              showFallback={!dogPhoto}
-              style={styles.dogPhoto}
-              isDogAvatar={true}
-              dogBreed={dogBreed}
-            />
-            
-            <View style={styles.photoButtons}>
+          {isCheckingUser ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.loadingText}>Loading user profile...</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.photoContainer}>
+                <UserAvatar
+                  userId={user?.id || 'temp'}
+                  photoURL={dogPhoto}
+                  userName={dogName || 'Dog'}
+                  size={160}
+                  showFallback={!dogPhoto}
+                  style={styles.dogPhoto}
+                  isDogAvatar={true}
+                  dogBreed={dogBreed}
+                />
+                
+                <View style={styles.photoButtons}>
+                  <TouchableOpacity 
+                    style={styles.photoButton}
+                    onPress={takePhoto}
+                  >
+                    <Text style={styles.photoButtonText}>Take Photo</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.photoButton}
+                    onPress={pickImage}
+                  >
+                    <Text style={styles.photoButtonText}>Choose Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.formContainer}>
+                <Text style={styles.inputLabel}>Dog's Name</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="E.g., Max, Bella, etc."
+                  value={dogName}
+                  onChangeText={setDogName}
+                  placeholderTextColor={COLORS.neutralMedium}
+                />
+                
+                <Text style={styles.inputLabel}>Dog's Breed</Text>
+                <TouchableOpacity 
+                  style={styles.breedSelector}
+                  onPress={() => setShowBreedDropdown(!showBreedDropdown)}
+                >
+                  <Text style={dogBreed ? styles.breedText : styles.breedPlaceholder}>
+                    {dogBreed || 'Select breed'}
+                  </Text>
+                  <ChevronDown size={20} color={COLORS.neutralDark} />
+                </TouchableOpacity>
+                
+                <Text style={styles.inputLabel}>Birthday (Optional)</Text>
+                <TouchableOpacity 
+                  style={styles.breedSelector}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Calendar size={20} color={COLORS.neutralMedium} />
+                  <Text style={dogBirthday ? styles.breedText : styles.breedPlaceholder}>
+                    {dogBirthday ? new Date(dogBirthday).toLocaleDateString() : 'Select birthday'}
+                  </Text>
+                </TouchableOpacity>
+                
+                {showBreedDropdown && (
+                  <View style={styles.dropdownContainer}>
+                    {/* Search Header */}
+                    <View style={styles.searchHeader}>
+                      <View style={styles.searchInputContainer}>
+                        <Search size={16} color={COLORS.neutralMedium} style={styles.searchIcon} />
+                        <TextInput
+                          style={styles.searchInput}
+                          placeholder="Search breeds..."
+                          value={breedSearchQuery}
+                          onChangeText={setBreedSearchQuery}
+                          placeholderTextColor={COLORS.neutralMedium}
+                          autoFocus={true}
+                        />
+                        {breedSearchQuery.length > 0 && (
+                          <TouchableOpacity onPress={clearBreedSearch} style={styles.clearButton}>
+                            <X size={16} color={COLORS.neutralMedium} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+                      <TouchableOpacity onPress={closeBreedDropdown} style={styles.closeDropdownButton}>
+                        <X size={20} color={COLORS.neutralDark} />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Results Count */}
+                    <View style={styles.resultsHeader}>
+                      <Text style={styles.resultsCount}>
+                        {filteredBreeds.length} breed{filteredBreeds.length !== 1 ? 's' : ''} found
+                      </Text>
+                    </View>
+
+                    {/* Breeds List */}
+                    <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
+                      {filteredBreeds.length > 0 ? (
+                        filteredBreeds.map((breed, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.dropdownItem}
+                            onPress={() => handleBreedSelect(breed)}
+                          >
+                            <Text style={styles.dropdownItemText}>{breed}</Text>
+                            {breed === dogBreed && (
+                              <Check size={16} color={COLORS.primary} />
+                            )}
+                          </TouchableOpacity>
+                        ))
+                      ) : (
+                        <View style={styles.noResultsContainer}>
+                          <Text style={styles.noResultsText}>
+                            No breeds found matching "{breedSearchQuery}"
+                          </Text>
+                          <Text style={styles.noResultsSubtext}>
+                            Try a different search term or select "Other"
+                          </Text>
+                        </View>
+                      )}
+                    </ScrollView>
+                  </View>
+                )}
+              </View>
+              
               <TouchableOpacity 
-                style={styles.photoButton}
-                onPress={takePhoto}
+                style={styles.saveButton}
+                onPress={handleSubmit}
+                disabled={isLoading}
               >
-                <Text style={styles.photoButtonText}>Take Photo</Text>
+                {isLoading ? (
+                  <ActivityIndicator color={COLORS.white} />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save & Continue</Text>
+                )}
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.photoButton}
-                onPress={pickImage}
+                style={styles.skipButton}
+                onPress={() => router.replace('/(tabs)')}
               >
-                <Text style={styles.photoButtonText}>Choose Photo</Text>
+                <Text style={styles.skipButtonText}>Skip for now</Text>
               </TouchableOpacity>
-            </View>
-          </View>
-          
-          <View style={styles.formContainer}>
-            <Text style={styles.inputLabel}>Dog's Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="E.g., Max, Bella, etc."
-              value={dogName}
-              onChangeText={setDogName}
-              placeholderTextColor={COLORS.neutralMedium}
-            />
-            
-            <Text style={styles.inputLabel}>Dog's Breed</Text>
-            <TouchableOpacity 
-              style={styles.breedSelector}
-              onPress={() => setShowBreedDropdown(!showBreedDropdown)}
-            >
-              <Text style={dogBreed ? styles.breedText : styles.breedPlaceholder}>
-                {dogBreed || 'Select breed'}
-              </Text>
-              <ChevronDown size={20} color={COLORS.neutralDark} />
-            </TouchableOpacity>
-            
-            <Text style={styles.inputLabel}>Birthday (Optional)</Text>
-            <TouchableOpacity 
-              style={styles.breedSelector}
-              onPress={() => setShowDatePicker(true)}
-            >
-              <Calendar size={20} color={COLORS.neutralMedium} />
-              <Text style={dogBirthday ? styles.breedText : styles.breedPlaceholder}>
-                {dogBirthday ? new Date(dogBirthday).toLocaleDateString() : 'Select birthday'}
-              </Text>
-            </TouchableOpacity>
-            
-            {showBreedDropdown && (
-              <View style={styles.dropdownContainer}>
-                {/* Search Header */}
-                <View style={styles.searchHeader}>
-                  <View style={styles.searchInputContainer}>
-                    <Search size={16} color={COLORS.neutralMedium} style={styles.searchIcon} />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search breeds..."
-                      value={breedSearchQuery}
-                      onChangeText={setBreedSearchQuery}
-                      placeholderTextColor={COLORS.neutralMedium}
-                      autoFocus={true}
-                    />
-                    {breedSearchQuery.length > 0 && (
-                      <TouchableOpacity onPress={clearBreedSearch} style={styles.clearButton}>
-                        <X size={16} color={COLORS.neutralMedium} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                  <TouchableOpacity onPress={closeBreedDropdown} style={styles.closeDropdownButton}>
-                    <X size={20} color={COLORS.neutralDark} />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Results Count */}
-                <View style={styles.resultsHeader}>
-                  <Text style={styles.resultsCount}>
-                    {filteredBreeds.length} breed{filteredBreeds.length !== 1 ? 's' : ''} found
-                  </Text>
-                </View>
-
-                {/* Breeds List */}
-                <ScrollView style={styles.dropdown} nestedScrollEnabled={true}>
-                  {filteredBreeds.length > 0 ? (
-                    filteredBreeds.map((breed, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={styles.dropdownItem}
-                        onPress={() => handleBreedSelect(breed)}
-                      >
-                        <Text style={styles.dropdownItemText}>{breed}</Text>
-                        {breed === dogBreed && (
-                          <Check size={16} color={COLORS.primary} />
-                        )}
-                      </TouchableOpacity>
-                    ))
-                  ) : (
-                    <View style={styles.noResultsContainer}>
-                      <Text style={styles.noResultsText}>
-                        No breeds found matching "{breedSearchQuery}"
-                      </Text>
-                      <Text style={styles.noResultsSubtext}>
-                        Try a different search term or select "Other"
-                      </Text>
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-          
-          <TouchableOpacity 
-            style={styles.saveButton}
-            onPress={handleSubmit}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color={COLORS.white} />
-            ) : (
-              <Text style={styles.saveButtonText}>Save & Continue</Text>
-            )}
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.skipButton}
-            onPress={() => router.replace('/(tabs)')}
-          >
-            <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
+            </>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
       
@@ -539,6 +580,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.error,
     marginLeft: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  loadingText: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 16,
+    color: COLORS.neutralMedium,
+    marginTop: 16,
   },
   photoContainer: {
     alignItems: 'center',

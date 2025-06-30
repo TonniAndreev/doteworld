@@ -29,8 +29,9 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [registrationCompletedSuccessfully, setRegistrationCompletedSuccessfully] = useState(false);
   
-  const { register } = useAuth();
+  const { user, register } = useAuth();
   const { acceptInvite } = useDogOwnership();
   const params = useLocalSearchParams();
   
@@ -43,8 +44,21 @@ export default function RegisterScreen() {
     }
   }, [isInviteFlow, params]);
 
+  // Watch for user to be loaded after successful registration
+  useEffect(() => {
+    if (registrationCompletedSuccessfully && user) {
+      console.log('User profile loaded after registration, proceeding with navigation');
+      
+      if (isInviteFlow) {
+        handlePostRegistrationInvite();
+      } else {
+        router.replace('/(auth)/dog-profile');
+      }
+    }
+  }, [registrationCompletedSuccessfully, user]);
+
   const handlePostRegistrationInvite = async () => {
-    if (!isInviteFlow) return;
+    if (!isInviteFlow || !user) return;
 
     try {
       // Get stored invite data
@@ -135,15 +149,17 @@ export default function RegisterScreen() {
     
     try {
       await register(email, password, firstName, lastName, phone);
+      console.log('Registration successful, waiting for user profile to load');
       
-      if (isInviteFlow) {
-        await handlePostRegistrationInvite();
-      } else {
-        router.replace('/(auth)/dog-profile');
-      }
+      // Set flag to indicate registration was successful
+      setRegistrationCompletedSuccessfully(true);
+      
+      // Note: Navigation to dog profile or invite handling will happen in the useEffect
+      // when the user object is available in the AuthContext
     } catch (error: any) {
       console.error(error);
       setError(error.message || 'Registration failed. Please try again.');
+      setRegistrationCompletedSuccessfully(false);
     } finally {
       setIsLoading(false);
     }
