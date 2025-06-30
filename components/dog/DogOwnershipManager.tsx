@@ -140,6 +140,7 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
       setSearchResults(results);
     } catch (error) {
       console.error('Error searching users:', error);
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -374,25 +375,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                       Invite by Email
                     </Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[
-                      styles.actionButton,
-                      showSearchUsers && styles.activeActionButton
-                    ]}
-                    onPress={() => {
-                      setShowSearchUsers(!showSearchUsers);
-                      setShowInviteForm(false);
-                    }}
-                  >
-                    <Search size={20} color={showSearchUsers ? COLORS.white : COLORS.primary} />
-                    <Text style={[
-                      styles.actionButtonText,
-                      showSearchUsers && styles.activeActionButtonText
-                    ]}>
-                      Find Users
-                    </Text>
-                  </TouchableOpacity>
                 </View>
               )}
 
@@ -443,42 +425,6 @@ export default function DogOwnershipManager({ dogId, dogName, visible, onClose }
                       </>
                     )}
                   </TouchableOpacity>
-                </View>
-              )}
-
-              {/* User Search */}
-              {showSearchUsers && (
-                <View style={styles.userSearchContainer}>
-                  <View style={styles.userSearchInputContainer}>
-                    <Search size={20} color={COLORS.neutralMedium} style={styles.searchIcon} />
-                    <TextInput
-                      style={styles.searchInput}
-                      placeholder="Search by name or email..."
-                      value={userSearchQuery}
-                      onChangeText={setUserSearchQuery}
-                      placeholderTextColor={COLORS.neutralMedium}
-                      autoFocus
-                    />
-                  </View>
-                  
-                  {isSearching ? (
-                    <View style={styles.searchingContainer}>
-                      <ActivityIndicator size="small" color={COLORS.primary} />
-                      <Text style={styles.searchingText}>Searching...</Text>
-                    </View>
-                  ) : userSearchQuery.length > 0 && searchResults.length === 0 ? (
-                    <View style={styles.noResultsContainer}>
-                      <Text style={styles.noResultsText}>No users found</Text>
-                    </View>
-                  ) : (
-                    <FlatList
-                      data={searchResults}
-                      renderItem={renderSearchResult}
-                      keyExtractor={(item) => item.id}
-                      style={styles.searchResultsList}
-                      contentContainerStyle={styles.searchResultsContent}
-                    />
-                  )}
                 </View>
               )}
 
